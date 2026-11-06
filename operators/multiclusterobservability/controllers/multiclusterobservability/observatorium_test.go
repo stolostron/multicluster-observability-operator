@@ -1448,4 +1448,3 @@ func TestNewAPISpecMetricsInspectorFeatureGate(t *testing.T) {
 		t.Errorf("ServerName = %q, want %q", tlsCfg.ServerName, mcoconfig.ServerCertCN)
 	}
 }
-

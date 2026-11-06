@@ -21,12 +21,13 @@ import (
 )
 
 const (
-	DefaultFlushInterval = 60 * time.Second
-	DefaultInitialDelay  = 5 * time.Minute
-	DefaultBatchSize     = 10000
-	DefaultTimeout       = 30 * time.Second
-	DefaultTenantHeader  = "THANOS-TENANT"
-	DefaultTenantID      = "default"
+	DefaultFlushInterval      = 60 * time.Second
+	DefaultInitialDelay       = 5 * time.Minute
+	DefaultProbeRetryInterval = 5 * time.Second
+	DefaultBatchSize          = 10000
+	DefaultTimeout            = 30 * time.Second
+	DefaultTenantHeader       = "THANOS-TENANT"
+	DefaultTenantID           = "default"
 )
 
 // PusherConfig configures the periodic Remote Write v1 snapshot pusher.
@@ -38,12 +39,13 @@ type PusherConfig struct {
 	// clusters (including Legacy metrics-collector with a 5m interval) to report
 	// at least once after a Pod restart before overwriting fleet-wide aggregates
 	// in Thanos Receive.
-	InitialDelay time.Duration
-	BatchSize    int
-	Timeout      time.Duration
-	TenantHeader string
-	TenantID     string
-	Logger       *slog.Logger
+	InitialDelay       time.Duration
+	ProbeRetryInterval time.Duration
+	BatchSize          int
+	Timeout            time.Duration
+	TenantHeader       string
+	TenantID           string
+	Logger             *slog.Logger
 }
 
 // Pusher periodically evaluates snapshots from an estimator.Engine and pushes
@@ -56,6 +58,10 @@ type Pusher struct {
 	tenantMu sync.RWMutex
 	tenantID string
 
+	ready      atomic.Bool
+	readyErrMu sync.RWMutex
+	readyErr   string
+
 	pushedSeriesTotal  atomic.Uint64
 	pushSuccessTotal   atomic.Uint64
 	pushErrorsTotal    atomic.Uint64
@@ -66,6 +72,9 @@ type Pusher struct {
 func NewPusher(cfg PusherConfig, engine *estimator.Engine) *Pusher {
 	if cfg.FlushInterval <= 0 {
 		cfg.FlushInterval = DefaultFlushInterval
+	}
+	if cfg.ProbeRetryInterval <= 0 {
+		cfg.ProbeRetryInterval = DefaultProbeRetryInterval
 	}
 	if cfg.BatchSize <= 0 {
 		cfg.BatchSize = DefaultBatchSize
@@ -83,14 +92,55 @@ func NewPusher(cfg PusherConfig, engine *estimator.Engine) *Pusher {
 		cfg.Logger = slog.Default()
 	}
 
-	return &Pusher{
+	p := &Pusher{
 		cfg:    cfg,
 		engine: engine,
 		client: &http.Client{
 			Timeout: cfg.Timeout,
 		},
 		tenantID: cfg.TenantID,
+		readyErr: "waiting for initial thanos receive connectivity check",
 	}
+	if cfg.Endpoint == "" {
+		p.ready.Store(true)
+	}
+	return p
+}
+
+// Ready reports whether initial connectivity to the configured Remote Write endpoint
+// has been verified. Once latched true, Ready remains true for the life of the Pusher.
+func (p *Pusher) Ready() (bool, string) {
+	if p == nil || p.cfg.Endpoint == "" || p.ready.Load() {
+		return true, ""
+	}
+	p.readyErrMu.RLock()
+	defer p.readyErrMu.RUnlock()
+	return false, p.readyErr
+}
+
+func (p *Pusher) setReadyErr(err error) {
+	p.readyErrMu.Lock()
+	if err != nil {
+		p.readyErr = err.Error()
+	}
+	p.readyErrMu.Unlock()
+}
+
+// Probe sends an empty Snappy-compressed WriteRequest to verify connectivity and
+// configuration of the Remote Write endpoint without ingesting any series.
+func (p *Pusher) Probe(ctx context.Context) error {
+	if p.cfg.Endpoint == "" {
+		p.ready.Store(true)
+		return nil
+	}
+	probeCtx, cancel := context.WithTimeout(ctx, min(p.cfg.Timeout, DefaultProbeRetryInterval))
+	defer cancel()
+	if err := p.sendBatch(probeCtx, nil); err != nil {
+		p.setReadyErr(err)
+		return err
+	}
+	p.ready.Store(true)
+	return nil
 }
 
 // ObserveTenantID updates the tenant ID used in outgoing Remote Write headers
@@ -130,6 +180,10 @@ func (p *Pusher) Run(ctx context.Context) {
 		"initial_delay", p.cfg.InitialDelay.String(),
 	)
 
+	if !p.probeUntilReady(ctx) {
+		return
+	}
+
 	if p.cfg.InitialDelay > 0 {
 		timer := time.NewTimer(p.cfg.InitialDelay)
 		select {
@@ -153,6 +207,30 @@ func (p *Pusher) Run(ctx context.Context) {
 		case now := <-ticker.C:
 			if err := p.FlushAt(ctx, now); err != nil {
 				p.cfg.Logger.Error("failed to push cardinality snapshots", "err", err)
+			}
+		}
+	}
+}
+
+func (p *Pusher) probeUntilReady(ctx context.Context) bool {
+	if err := p.Probe(ctx); err == nil {
+		return true
+	} else if ctx.Err() == nil {
+		p.cfg.Logger.Warn("initial thanos receive connectivity probe failed; retrying", "endpoint", p.cfg.Endpoint, "err", err)
+	}
+
+	ticker := time.NewTicker(p.cfg.ProbeRetryInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-ticker.C:
+			if err := p.Probe(ctx); err == nil {
+				p.cfg.Logger.Info("thanos receive connectivity verified", "endpoint", p.cfg.Endpoint)
+				return true
+			} else if ctx.Err() == nil {
+				p.cfg.Logger.Warn("thanos receive connectivity probe failed; retrying", "endpoint", p.cfg.Endpoint, "err", err)
 			}
 		}
 	}
@@ -186,6 +264,7 @@ func (p *Pusher) FlushAt(ctx context.Context, now time.Time) error {
 		p.pushSuccessTotal.Add(1)
 	}
 
+	p.ready.Store(true)
 	p.lastPushTimestampS.Store(now.Unix())
 	p.cfg.Logger.Debug("pushed cardinality snapshots",
 		"series_count", len(allSeries),

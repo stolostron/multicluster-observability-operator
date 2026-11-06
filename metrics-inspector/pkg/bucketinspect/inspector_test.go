@@ -386,3 +386,65 @@ config:
 		t.Errorf("MetaBytes = %d, want %d (meta.json + deletion-mark.json)", blk.MetaBytes, wantMetaBytes)
 	}
 }
+
+func TestInspectorStartupRetryAndLatch(t *testing.T) {
+	spy := newSpyBucketReader()
+	spy.mu.Lock()
+	spy.iterErr = errors.New("s3 temporarily unreachable")
+	spy.mu.Unlock()
+
+	ins := NewInspector(spy, InspectorConfig{
+		SyncInterval:      time.Hour,
+		InitRetryInterval: 15 * time.Millisecond,
+	})
+	if ok, _ := ins.Ready(); ok {
+		t.Fatal("expected Ready()=false before initial sync")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ins.Run(ctx)
+	}()
+
+	// Wait for at least one failed sync attempt so Ready() records the S3 error.
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for ins.syncErrorsTotal.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if ok, reason := ins.Ready(); ok || !strings.Contains(reason, "s3 temporarily unreachable") {
+		cancel()
+		<-done
+		t.Fatalf("expected Ready()=false with S3 error, got ok=%v reason=%q", ok, reason)
+	}
+
+	// Clear the error and verify Run() retries with InitRetryInterval and latches Ready()=true.
+	spy.mu.Lock()
+	spy.iterErr = nil
+	spy.mu.Unlock()
+
+	for time.Now().Before(deadline) {
+		if ok, _ := ins.Ready(); ok {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	if ok, reason := ins.Ready(); !ok {
+		t.Fatalf("expected Ready()=true after retry succeeded, got false (%s)", reason)
+	}
+
+	// Verify Ready() stays latched true even if a subsequent Sync fails.
+	spy.mu.Lock()
+	spy.iterErr = errors.New("transient s3 503")
+	spy.mu.Unlock()
+	if err := ins.Sync(context.Background()); err == nil {
+		t.Fatal("expected subsequent Sync to return error")
+	}
+	if ok, _ := ins.Ready(); !ok {
+		t.Fatal("expected Ready() to remain latched true after transient subsequent sync failure")
+	}
+}

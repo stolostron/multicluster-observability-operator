@@ -499,7 +499,7 @@ func (gs *groupSize) totalSize() int64 {
 			}
 		}
 		gs.rejectMu.Unlock()
-		size += int64(rejectSize)
+		size += int64(rejectSize) //nolint:gosec // HLL cardinality estimate is bounded well below math.MaxInt64
 	}
 	return size
 }

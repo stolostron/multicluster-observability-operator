@@ -15,6 +15,7 @@ import (
 type serverMetrics struct {
 	writeRequestsTotal atomic.Uint64
 	writeErrorsTotal   atomic.Uint64
+	shuttingDown       atomic.Bool
 }
 
 var (

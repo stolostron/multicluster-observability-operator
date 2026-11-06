@@ -109,20 +109,26 @@ type thanosBlockMeta struct {
 
 // InspectorConfig configures the periodic Thanos bucket inspector.
 type InspectorConfig struct {
-	SyncInterval time.Duration
-	Retention    RetentionConfig
-	Concurrency  int
-	Logger       *slog.Logger
+	SyncInterval      time.Duration
+	InitRetryInterval time.Duration
+	Retention         RetentionConfig
+	Concurrency       int
+	Logger            *slog.Logger
 }
 
 // Inspector periodically scans a Thanos object storage bucket using an incremental
 // in-memory ULID cache and exposes raw storage primitives in Prometheus text format.
 type Inspector struct {
-	bkt         objstore.BucketReader
-	interval    time.Duration
-	retention   RetentionConfig
-	concurrency int
-	logger      *slog.Logger
+	bkt               objstore.BucketReader
+	interval          time.Duration
+	initRetryInterval time.Duration
+	retention         RetentionConfig
+	concurrency       int
+	logger            *slog.Logger
+
+	ready      atomic.Bool
+	readyErrMu sync.RWMutex
+	readyErr   string
 
 	mu     sync.RWMutex
 	blocks map[string]BlockSummary
@@ -139,6 +145,10 @@ func NewInspector(bkt objstore.BucketReader, cfg InspectorConfig) *Inspector {
 	if interval <= 0 {
 		interval = DefaultSyncInterval
 	}
+	initRetryInterval := cfg.InitRetryInterval
+	if initRetryInterval <= 0 {
+		initRetryInterval = 5 * time.Second
+	}
 	concurrency := cfg.Concurrency
 	if concurrency <= 0 {
 		concurrency = defaultMetaFetchConcurrency
@@ -147,24 +157,50 @@ func NewInspector(bkt objstore.BucketReader, cfg InspectorConfig) *Inspector {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Inspector{
-		bkt:         bkt,
-		interval:    interval,
-		retention:   cfg.Retention,
-		concurrency: concurrency,
-		logger:      logger,
-		blocks:      make(map[string]BlockSummary),
+	ins := &Inspector{
+		bkt:               bkt,
+		interval:          interval,
+		initRetryInterval: initRetryInterval,
+		retention:         cfg.Retention,
+		concurrency:       concurrency,
+		logger:            logger,
+		readyErr:          "waiting for initial object storage bucket sync",
+		blocks:            make(map[string]BlockSummary),
 	}
+	if bkt == nil {
+		ins.ready.Store(true)
+	}
+	return ins
 }
 
-// Run executes an initial bucket sync immediately and then syncs on every interval tick
-// until ctx is canceled. Object storage errors are logged and counted without crashing.
+// Ready reports whether initial connectivity to the object storage bucket has been verified.
+// Once latched true, Ready remains true for the life of the Inspector.
+func (ins *Inspector) Ready() (bool, string) {
+	if ins == nil || ins.bkt == nil || ins.ready.Load() {
+		return true, ""
+	}
+	ins.readyErrMu.RLock()
+	defer ins.readyErrMu.RUnlock()
+	return false, ins.readyErr
+}
+
+func (ins *Inspector) setReadyErr(err error) {
+	ins.readyErrMu.Lock()
+	if err != nil {
+		ins.readyErr = err.Error()
+	}
+	ins.readyErrMu.Unlock()
+}
+
+// Run executes an initial bucket sync immediately (retrying with a short backoff until
+// initial connectivity is established) and then syncs on every interval tick until ctx
+// is canceled. Object storage errors are logged and counted without crashing.
 func (ins *Inspector) Run(ctx context.Context) {
 	if ins.bkt == nil {
 		return
 	}
-	if err := ins.Sync(ctx); err != nil && ctx.Err() == nil {
-		ins.logger.Warn("initial thanos bucket inspection failed", "err", err)
+	if !ins.syncUntilReady(ctx) {
+		return
 	}
 
 	ticker := time.NewTicker(ins.interval)
@@ -177,6 +213,29 @@ func (ins *Inspector) Run(ctx context.Context) {
 		case <-ticker.C:
 			if err := ins.Sync(ctx); err != nil && ctx.Err() == nil {
 				ins.logger.Warn("periodic thanos bucket inspection failed", "err", err)
+			}
+		}
+	}
+}
+
+func (ins *Inspector) syncUntilReady(ctx context.Context) bool {
+	if err := ins.Sync(ctx); err == nil {
+		return true
+	} else if ctx.Err() == nil {
+		ins.logger.Warn("initial thanos bucket inspection failed; retrying", "err", err)
+	}
+
+	ticker := time.NewTicker(ins.initRetryInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-ticker.C:
+			if err := ins.Sync(ctx); err == nil {
+				return true
+			} else if ctx.Err() == nil {
+				ins.logger.Warn("initial thanos bucket inspection failed; retrying", "err", err)
 			}
 		}
 	}
@@ -220,7 +279,9 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 	if err != nil {
 		ins.syncErrorsTotal.Add(1)
 		ins.lastSyncDurationNano.Store(time.Since(start).Nanoseconds())
-		return fmt.Errorf("failed to list bucket objects: %w", err)
+		wrappedErr := fmt.Errorf("failed to list bucket objects: %w", err)
+		ins.setReadyErr(wrappedErr)
+		return wrappedErr
 	}
 
 	// Identify which ULIDs have a valid meta.json and are not yet cached.
@@ -318,9 +379,12 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 
 	if fetchErrors > 0 {
 		ins.syncErrorsTotal.Add(1)
-		return fmt.Errorf("failed to fetch %d/%d new block meta.json files (first error: %w)", fetchErrors, len(missingULIDs), firstFetchErr)
+		wrappedErr := fmt.Errorf("failed to fetch %d/%d new block meta.json files (first error: %w)", fetchErrors, len(missingULIDs), firstFetchErr)
+		ins.setReadyErr(wrappedErr)
+		return wrappedErr
 	}
 
+	ins.ready.Store(true)
 	now := time.Now()
 	ins.lastSyncTimestampSecs.Store(now.Unix())
 	ins.logger.Info("completed thanos bucket inspection",

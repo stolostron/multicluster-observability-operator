@@ -89,7 +89,7 @@ func run() int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inspector := initBucketInspector(
+	inspector, err := initBucketInspector(
 		ctx,
 		*objstoreConfigFile,
 		*bucketSyncInterval,
@@ -98,6 +98,10 @@ func run() int {
 		*retention1h,
 		logger,
 	)
+	if err != nil {
+		logger.Error("failed to initialize bucket inspector", "file", *objstoreConfigFile, "err", err)
+		return 1
+	}
 
 	metrics := &serverMetrics{}
 	requireClientCert := *tlsClientCAFile != ""
@@ -105,7 +109,7 @@ func run() int {
 	var mainMux *http.ServeMux
 	var metricsSrv *http.Server
 	if *metricsListenAddr != "" {
-		mainMux = newWriteServerMux(eng, pusher, metrics, *tenantHeader, *maxRequestSize, requireClientCert, logger)
+		mainMux = newWriteServerMux(eng, pusher, inspector, metrics, *tenantHeader, *maxRequestSize, requireClientCert, logger)
 		metricsMux := newMetricsServerMux(eng, pusher, inspector, metrics, logger)
 		metricsSrv = &http.Server{
 			Addr:              *metricsListenAddr,
@@ -155,7 +159,7 @@ func run() int {
 	go func() {
 		sig := <-stopSigCh
 		logger.Info("received shutdown signal", "signal", sig.String())
-		cancel()
+		metrics.shuttingDown.Store(true)
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer shutdownCancel()
 		if metricsSrv != nil {
@@ -166,6 +170,7 @@ func run() int {
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			logger.Warn("failed to gracefully shut down Remote Write server", "err", err)
 		}
+		cancel()
 	}()
 
 	logger.Info("starting ACM metrics inspector", "listen", *listenAddr, "tls", useTLS, "mtls", requireClientCert)
@@ -195,21 +200,22 @@ func initBucketInspector(
 	syncInterval time.Duration,
 	retentionRaw, retention5m, retention1h string,
 	logger *slog.Logger,
-) *bucketinspect.Inspector {
+) (*bucketinspect.Inspector, error) {
 	if objstoreConfigFile == "" {
-		return nil
+		return nil, nil
 	}
 
 	bkt, err := bucketinspect.NewBucketFromFile(objstoreConfigFile)
 	if err != nil {
-		logger.Error("failed to initialize object storage bucket client; bucket inspection disabled", "file", objstoreConfigFile, "err", err)
-		return nil
+		return nil, fmt.Errorf("initialize object storage bucket client: %w", err)
 	}
 
 	retCfg, err := bucketinspect.ParseRetentionConfig(retentionRaw, retention5m, retention1h)
 	if err != nil {
-		logger.Warn("failed to parse configured retention durations; falling back to defaults", "err", err)
-		retCfg = bucketinspect.DefaultRetentionConfig()
+		if closeErr := bkt.Close(); closeErr != nil {
+			logger.Warn("failed to close object storage bucket client", "err", closeErr)
+		}
+		return nil, fmt.Errorf("parse retention configuration: %w", err)
 	}
 
 	inspector := bucketinspect.NewInspector(bkt, bucketinspect.InspectorConfig{
@@ -225,7 +231,7 @@ func initBucketInspector(
 		}()
 		inspector.Run(ctx)
 	}()
-	return inspector
+	return inspector, nil
 }
 
 func parseLogLevel(level string) (slog.Level, error) {
@@ -292,13 +298,14 @@ func newServerMux(
 	mux := http.NewServeMux()
 	registerWriteHandlers(mux, eng, pusher, m, tenantHeader, maxRequestSize, requireClientCert, logger)
 	registerMetricsHandlers(mux, eng, pusher, inspector, m, logger)
-	registerHealthHandlers(mux)
+	registerHealthHandlers(mux, pusher, inspector, m)
 	return mux
 }
 
 func newWriteServerMux(
 	eng *estimator.Engine,
 	pusher *remotewrite.Pusher,
+	inspector *bucketinspect.Inspector,
 	m *serverMetrics,
 	tenantHeader string,
 	maxRequestSize int64,
@@ -307,7 +314,7 @@ func newWriteServerMux(
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 	registerWriteHandlers(mux, eng, pusher, m, tenantHeader, maxRequestSize, requireClientCert, logger)
-	registerHealthHandlers(mux)
+	registerHealthHandlers(mux, pusher, inspector, m)
 	return mux
 }
 
@@ -320,7 +327,7 @@ func newMetricsServerMux(
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 	registerMetricsHandlers(mux, eng, pusher, inspector, m, logger)
-	registerHealthHandlers(mux)
+	registerHealthHandlers(mux, pusher, inspector, m)
 	return mux
 }
 
@@ -392,11 +399,30 @@ func registerMetricsHandlers(
 	mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 }
 
-func registerHealthHandlers(mux *http.ServeMux) {
-	healthHandler := func(w http.ResponseWriter, _ *http.Request) {
+func registerHealthHandlers(
+	mux *http.ServeMux,
+	pusher *remotewrite.Pusher,
+	inspector *bucketinspect.Inspector,
+	m *serverMetrics,
+) {
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok\n"))
-	}
-	mux.HandleFunc("/healthz", healthHandler)
-	mux.HandleFunc("/readyz", healthHandler)
+	})
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
+		if m != nil && m.shuttingDown.Load() {
+			http.Error(w, "shutting down", http.StatusServiceUnavailable)
+			return
+		}
+		if ok, reason := pusher.Ready(); !ok {
+			http.Error(w, "thanos receive not ready: "+reason, http.StatusServiceUnavailable)
+			return
+		}
+		if ok, reason := inspector.Ready(); !ok {
+			http.Error(w, "object storage not ready: "+reason, http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok\n"))
+	})
 }

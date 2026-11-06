@@ -163,7 +163,7 @@ func (s *Sketch) insertSparse(idx uint32, rho uint8) {
 		return 0
 	})
 	if found {
-		oldRho := uint8(s.sparseList[pos] & 0x3f)
+		oldRho := uint8(s.sparseList[pos] & 0x3f) //nolint:gosec // masked to 6 bits (0..63)
 		if rho > oldRho {
 			s.sparseList[pos] = entry
 		}
@@ -184,7 +184,7 @@ func (s *Sketch) promoteToDense() {
 	regs := getRegisters(s.precision)
 	for _, entry := range s.sparseList {
 		idx := entry >> 6
-		rho := uint8(entry & 0x3f)
+		rho := uint8(entry & 0x3f) //nolint:gosec // masked to 6 bits (0..63)
 		if rho > regs[idx] {
 			regs[idx] = rho
 		}
@@ -206,7 +206,7 @@ func (s *Sketch) Merge(other *Sketch) error {
 	if other.sparse {
 		for _, entry := range other.sparseList {
 			idx := entry >> 6
-			rho := uint8(entry & 0x3f)
+			rho := uint8(entry & 0x3f) //nolint:gosec // masked to 6 bits (0..63)
 			if s.sparse {
 				s.insertSparse(idx, rho)
 			} else if rho > s.regs[idx] {

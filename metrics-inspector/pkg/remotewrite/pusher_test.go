@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -189,5 +190,67 @@ streams:
 
 	if got := pusher.PushSuccessTotal(); got != 1 {
 		t.Fatalf("expected 1 push immediately after InitialDelay elapsed, got %d", got)
+	}
+}
+
+func TestPusherStartupProbeRetryAndLatch(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) < 3 {
+			http.Error(w, "service starting", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	cfg, err := estimator.ParseConfig([]byte(`
+streams:
+  - interval: 15m
+    group_by: [cluster]
+`))
+	if err != nil {
+		t.Fatalf("ParseConfig failed: %v", err)
+	}
+	eng, err := estimator.NewEngine(cfg)
+	if err != nil {
+		t.Fatalf("NewEngine failed: %v", err)
+	}
+	defer eng.Stop()
+
+	pusher := NewPusher(PusherConfig{
+		Endpoint:           srv.URL,
+		InitialDelay:       time.Hour,
+		FlushInterval:      time.Hour,
+		ProbeRetryInterval: 15 * time.Millisecond,
+	}, eng)
+
+	if ok, _ := pusher.Ready(); ok {
+		t.Fatal("expected Ready()=false before initial probe")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		pusher.Run(ctx)
+	}()
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if ok, _ := pusher.Ready(); ok {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+
+	if ok, reason := pusher.Ready(); !ok {
+		t.Fatalf("expected Ready()=true after probe retry succeeded, got false (%s)", reason)
+	}
+	// Startup connectivity probe must not increment PushSuccessTotal while InitialDelay is still active.
+	if got := pusher.PushSuccessTotal(); got != 0 {
+		t.Fatalf("expected PushSuccessTotal()=0 during InitialDelay, got %d", got)
 	}
 }

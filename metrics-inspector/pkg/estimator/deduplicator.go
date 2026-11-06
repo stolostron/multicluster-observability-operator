@@ -48,8 +48,8 @@ func newBloomFilter(expectedItems int) *bloomFilter {
 // Returns true if h was newly added, or false if all 4 bits were already set.
 func (bf *bloomFilter) isNew(h uint64) bool {
 	numBits := uint64(len(bf.bits)) * 64
-	h1 := uint32(h) //nolint:gosec // intentional lower 32 bits for Kirsch-Mitzenmacher double hashing
-	h2 := uint32(h >> 32)
+	h1 := uint32(h)       //nolint:gosec // intentional lower 32 bits for Kirsch-Mitzenmacher double hashing
+	h2 := uint32(h >> 32) //nolint:gosec // intentional upper 32 bits for Kirsch-Mitzenmacher double hashing
 	allSet := true
 	for i := range uint32(hashesCount) {
 		bitPos := uint64(h1+i*h2) % numBits
@@ -83,7 +83,7 @@ func NewDeduplicator(interval time.Duration, maxItemsPerInterval int) *Deduplica
 
 	d := &Deduplicator{
 		interval:      interval,
-		bucketMaxSize: uint64(expectedPerBucket),
+		bucketMaxSize: uint64(expectedPerBucket), //nolint:gosec // expectedPerBucket >= 1 via max(..., 1)
 		stopCh:        make(chan struct{}),
 	}
 	for i := range d.bfs {
