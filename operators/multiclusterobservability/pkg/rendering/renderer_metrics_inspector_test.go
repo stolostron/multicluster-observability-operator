@@ -235,10 +235,16 @@ func TestMetricsInspectorRendering(t *testing.T) {
 		"--retention.resolution-raw=14d",
 		"--retention.resolution-5m=90d",
 		"--retention.resolution-1h=180d",
+		"--tls-min-version=VersionTLS12",
 	} {
 		if !slices.Contains(inspectorContainer.Args, wantArg) {
 			t.Errorf("expected %q in inspectorContainer.Args, got %v", wantArg, inspectorContainer.Args)
 		}
+	}
+	if !slices.ContainsFunc(inspectorContainer.Args, func(arg string) bool {
+		return len(arg) > len("--tls-cipher-suites=") && arg[:len("--tls-cipher-suites=")] == "--tls-cipher-suites="
+	}) {
+		t.Errorf("expected --tls-cipher-suites=<ciphers> in inspectorContainer.Args, got %v", inspectorContainer.Args)
 	}
 	if rbacProxyContainer.Name != "kube-rbac-proxy" {
 		t.Errorf("second container Name = %q, want kube-rbac-proxy", rbacProxyContainer.Name)

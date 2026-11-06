@@ -266,6 +266,11 @@ func (r *MCORenderer) renderMetricsInspectorDeployment(
 	)
 	inspectorContainer.Args = append(inspectorContainer.Args, retArgs...)
 	inspectorContainer.Args = append(inspectorContainer.Args, objArgs...)
+	inspectorArgs, err := util.SetTLSSecurityConfiguration(ctx, inspectorContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
+	if err != nil {
+		return nil, err
+	}
+	inspectorContainer.Args = inspectorArgs
 
 	inspectorContainer.VolumeMounts = append(inspectorContainer.VolumeMounts, objMounts...)
 	dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, objVolumes...)

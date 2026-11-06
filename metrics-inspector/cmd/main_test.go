@@ -161,7 +161,7 @@ streams:
 		t.Fatalf("WriteFile client-ca.crt failed: %v", err)
 	}
 
-	tlsCfg, err := buildTLSConfig(serverCertFile, serverKeyFile, clientCAFile)
+	tlsCfg, err := buildTLSConfig(serverCertFile, serverKeyFile, clientCAFile, "VersionTLS12", "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256")
 	if err != nil {
 		t.Fatalf("buildTLSConfig failed: %v", err)
 	}
@@ -449,6 +449,37 @@ func TestInitBucketInspectorFailFast(t *testing.T) {
 	}
 	if _, err := initBucketInspector(t.Context(), cfgPath, time.Minute, "invalid-duration", "90d", "180d", slog.Default()); err == nil {
 		t.Fatal("expected error for invalid retention duration")
+	}
+}
+
+func TestBuildTLSConfigProfileOptions(t *testing.T) {
+	tmpDir := t.TempDir()
+	_, certFile, keyFile := generateTestCerts(t, tmpDir, "server", true)
+
+	// Valid TLS 1.3 profile (no explicit cipher suites)
+	cfg13, err := buildTLSConfig(certFile, keyFile, "", "VersionTLS13", "")
+	if err != nil {
+		t.Fatalf("buildTLSConfig VersionTLS13 failed: %v", err)
+	}
+	if cfg13.MinVersion != tls.VersionTLS13 {
+		t.Fatalf("MinVersion = %x, want %x", cfg13.MinVersion, tls.VersionTLS13)
+	}
+	hs13, err := cfg13.GetConfigForClient(nil)
+	if err != nil {
+		t.Fatalf("GetConfigForClient failed: %v", err)
+	}
+	if hs13.MinVersion != tls.VersionTLS13 {
+		t.Fatalf("handshake MinVersion = %x, want %x", hs13.MinVersion, tls.VersionTLS13)
+	}
+
+	// Invalid TLS version
+	if _, err := buildTLSConfig(certFile, keyFile, "", "VersionTLS99", ""); err == nil {
+		t.Fatal("expected error for invalid TLS min version")
+	}
+
+	// Invalid cipher suite name
+	if _, err := buildTLSConfig(certFile, keyFile, "", "VersionTLS12", "INVALID_CIPHER_SUITE"); err == nil {
+		t.Fatal("expected error for invalid TLS cipher suite")
 	}
 }
 
