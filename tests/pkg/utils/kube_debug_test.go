@@ -21,7 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
@@ -1055,6 +1057,75 @@ func TestPrintManifestWorks(t *testing.T) {
 
 	// Verify executing printManifestWorks runs cleanly without error or panic
 	printManifestWorks(client)
+}
+
+func TestFormatAppliedManifestWorks(t *testing.T) {
+	now := metav1.Now()
+	items := []unstructured.Unstructured{
+		{
+			Object: map[string]any{
+				"metadata": map[string]any{
+					"name":              "hubhash-addon-multicluster-observability-addon-deploy-0",
+					"deletionTimestamp": now.Format(time.RFC3339),
+					"finalizers":        []any{"cluster.open-cluster-management.io/applied-manifest-work-cleanup"},
+				},
+				"spec": map[string]any{"manifestWorkName": "addon-multicluster-observability-addon-deploy-0"},
+				"status": map[string]any{
+					"appliedResources": []any{
+						map[string]any{
+							"group": "apps", "version": "v1", "resource": "deployments",
+							"namespace": "open-cluster-management-agent-addon", "name": "endpoint-monitoring-operator", "uid": "deployment-uid",
+						},
+						map[string]any{
+							"group": "", "version": "v1", "resource": "secrets",
+							"namespace": "openshift-monitoring", "name": "hub-mtls-ca", "uid": "secret-uid",
+						},
+					},
+				},
+			},
+		},
+		{
+			Object: map[string]any{
+				"metadata": map[string]any{"name": "hubhash-other-work"},
+				"spec":     map[string]any{"manifestWorkName": "unrelated-work"},
+			},
+		},
+	}
+
+	out := formatAppliedManifestWorks(items)
+	for _, expected := range []string{
+		"ManifestWork=addon-multicluster-observability-addon-deploy-0",
+		"deleting=YES (" + now.Format(time.RFC3339) + ")",
+		"finalizers=[cluster.open-cluster-management.io/applied-manifest-work-cleanup]",
+		"status.appliedResources=2",
+		"apps/v1 deployments open-cluster-management-agent-addon/endpoint-monitoring-operator (uid=deployment-uid)",
+		"core/v1 secrets openshift-monitoring/hub-mtls-ca (uid=secret-uid)",
+	} {
+		if !strings.Contains(out, expected) {
+			t.Errorf("expected %q in AppliedManifestWork output, got:\n%s", expected, out)
+		}
+	}
+	if strings.Contains(out, "hubhash-other-work") {
+		t.Errorf("unrelated AppliedManifestWork should not appear in output: %s", out)
+	}
+	if got := formatAppliedManifestWorks(items[1:]); got != "" {
+		t.Errorf("expected no output for unrelated AppliedManifestWorks, got: %s", got)
+	}
+	if got := NewOCMAppliedManifestworksGVR(); got != (schema.GroupVersionResource{Group: OCM_WORK_GROUP, Version: "v1", Resource: "appliedmanifestworks"}) {
+		t.Errorf("unexpected AppliedManifestWork GVR: %v", got)
+	}
+}
+
+func TestSelectWorkAgentPods(t *testing.T) {
+	pods := []corev1.Pod{
+		{ObjectMeta: metav1.ObjectMeta{Name: "registration-agent-abc"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "klusterlet-work-agent-bbb"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "klusterlet-work-agent-aaa"}},
+	}
+	selected := selectWorkAgentPods(pods)
+	if len(selected) != 2 || selected[0].Name != "klusterlet-work-agent-aaa" || selected[1].Name != "klusterlet-work-agent-bbb" {
+		t.Errorf("expected both work-agent replicas in name order, got: %v", selected)
+	}
 }
 
 func TestFormatFeedbackValue(t *testing.T) {
@@ -2142,6 +2213,92 @@ func TestDefensiveNilClientGuards(t *testing.T) {
 	logClusterMonitoringConfigStatus(nil, "Hub")
 	logSpokeClusterDebugInfo(nil, nil, "cluster1", true)
 	logSpokeClusterDebugInfo(nil, nil, "cluster1", false)
+}
+
+func TestFormatSpokeLoggingResources(t *testing.T) {
+	installPlanGVR := schema.GroupVersionResource{Group: "operators.coreos.com", Version: "v1alpha1", Resource: "installplans"}
+	listKinds := map[schema.GroupVersionResource]string{
+		NewSubscriptionGVR():          "SubscriptionList",
+		NewClusterServiceVersionGVR(): "ClusterServiceVersionList",
+		installPlanGVR:                "InstallPlanList",
+		NewOperatorGroupGVR():         "OperatorGroupList",
+		NewClusterLogForwarderGVR():   "ClusterLogForwarderList",
+	}
+	makeObject := func(apiVersion, kind, namespace, name string, spec, status map[string]any) *unstructured.Unstructured {
+		return &unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": apiVersion,
+			"kind":       kind,
+			"metadata": map[string]any{
+				"name":      name,
+				"namespace": namespace,
+			},
+			"spec":   spec,
+			"status": status,
+		}}
+	}
+	condition := func(kind, status, reason, message string) []any {
+		return []any{map[string]any{"type": kind, "status": status, "reason": reason, "message": message}}
+	}
+
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), listKinds,
+		makeObject("apiextensions.k8s.io/v1", "CustomResourceDefinition", "", "clusterlogforwarders.observability.openshift.io",
+			map[string]any{"versions": []any{map[string]any{"name": "v1", "served": true}}},
+			map[string]any{"conditions": condition("Established", "False", "Installing", "waiting for API")}),
+		makeObject("operators.coreos.com/v1alpha1", "Subscription", "openshift-logging", "cluster-logging",
+			map[string]any{"name": "cluster-logging", "channel": "stable", "source": "redhat-operators"},
+			map[string]any{
+				"currentCSV": "cluster-logging.v1", "installPlanRef": map[string]any{"name": "install-abc"},
+				"conditions": condition("InstallPlanPending", "True", "Waiting", "pending approval"),
+			}),
+		makeObject("operators.coreos.com/v1alpha1", "ClusterServiceVersion", "openshift-logging", "cluster-logging.v1",
+			map[string]any{}, map[string]any{"phase": "Installing", "reason": "Waiting", "message": "deployment not ready"}),
+		makeObject("operators.coreos.com/v1alpha1", "InstallPlan", "openshift-logging", "install-abc",
+			map[string]any{"approved": false}, map[string]any{"phase": "RequiresApproval"}),
+		makeObject("operators.coreos.com/v1", "OperatorGroup", "openshift-logging", "logging-group",
+			map[string]any{"targetNamespaces": []any{"openshift-logging"}},
+			map[string]any{"namespaces": []any{"openshift-logging"}}),
+		makeObject("observability.openshift.io/v1", "ClusterLogForwarder", "openshift-logging", "mcoa-logging-managed-collection",
+			map[string]any{}, map[string]any{
+				"observedGeneration": int64(2),
+				"conditions":         condition("Ready", "False", "Pending", "collector unavailable"),
+			}),
+	)
+
+	out := formatSpokeLoggingResources(client, "managed")
+	for _, want := range []string{
+		"Logging installation on spoke managed:",
+		"ClusterLogForwarder CRD: servedVersions=[v1], conditions=Established=False(Installing: waiting for API)",
+		"Subscription openshift-logging/cluster-logging: package=cluster-logging, channel=stable, source=redhat-operators, currentCSV=cluster-logging.v1, installPlan=install-abc",
+		"InstallPlanPending=True(Waiting: pending approval)",
+		"ClusterServiceVersion openshift-logging/cluster-logging.v1: phase=Installing, reason=Waiting, message=deployment not ready",
+		"InstallPlan openshift-logging/install-abc: approved=false, phase=RequiresApproval",
+		"OperatorGroup openshift-logging/logging-group: targetNamespaces=[openshift-logging], namespaces=[openshift-logging]",
+		"ClusterLogForwarder openshift-logging/mcoa-logging-managed-collection: observedGeneration=2, conditions=Ready=False(Pending: collector unavailable)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("logging diagnostics missing %q:\n%s", want, out)
+		}
+	}
+
+	emptyClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), listKinds)
+	missing := formatSpokeLoggingResources(emptyClient, "managed")
+	for _, want := range []string{
+		"ClusterLogForwarder CRD: customresourcedefinitions.apiextensions.k8s.io \"clusterlogforwarders.observability.openshift.io\" not found",
+		"Subscription in openshift-logging: none",
+		"ClusterLogForwarder in openshift-logging: none",
+	} {
+		if !strings.Contains(missing, want) {
+			t.Errorf("missing-resource diagnostics missing %q:\n%s", want, missing)
+		}
+	}
+
+	emptyClient.PrependReactor("list", "clusterlogforwarders", func(ktesting.Action) (bool, runtime.Object, error) {
+		return true, nil, fmt.Errorf("the server doesn't have a resource type ClusterLogForwarder")
+	})
+	unserved := formatSpokeLoggingResources(emptyClient, "managed")
+	if !strings.Contains(unserved, "ClusterLogForwarder in openshift-logging: the server doesn't have a resource type ClusterLogForwarder") {
+		t.Errorf("unserved-API diagnostics missing ClusterLogForwarder error:\n%s", unserved)
+	}
 }
 
 func TestFormatMCOCapabilities(t *testing.T) {
