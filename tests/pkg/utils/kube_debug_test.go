@@ -1059,6 +1059,75 @@ func TestPrintManifestWorks(t *testing.T) {
 	printManifestWorks(client)
 }
 
+func TestFormatAppliedManifestWorks(t *testing.T) {
+	now := metav1.Now()
+	items := []unstructured.Unstructured{
+		{
+			Object: map[string]any{
+				"metadata": map[string]any{
+					"name":              "hubhash-addon-multicluster-observability-addon-deploy-0",
+					"deletionTimestamp": now.Format(time.RFC3339),
+					"finalizers":        []any{"cluster.open-cluster-management.io/applied-manifest-work-cleanup"},
+				},
+				"spec": map[string]any{"manifestWorkName": "addon-multicluster-observability-addon-deploy-0"},
+				"status": map[string]any{
+					"appliedResources": []any{
+						map[string]any{
+							"group": "apps", "version": "v1", "resource": "deployments",
+							"namespace": "open-cluster-management-agent-addon", "name": "endpoint-monitoring-operator", "uid": "deployment-uid",
+						},
+						map[string]any{
+							"group": "", "version": "v1", "resource": "secrets",
+							"namespace": "openshift-monitoring", "name": "hub-mtls-ca", "uid": "secret-uid",
+						},
+					},
+				},
+			},
+		},
+		{
+			Object: map[string]any{
+				"metadata": map[string]any{"name": "hubhash-other-work"},
+				"spec":     map[string]any{"manifestWorkName": "unrelated-work"},
+			},
+		},
+	}
+
+	out := formatAppliedManifestWorks(items)
+	for _, expected := range []string{
+		"ManifestWork=addon-multicluster-observability-addon-deploy-0",
+		"deleting=YES (" + now.Format(time.RFC3339) + ")",
+		"finalizers=[cluster.open-cluster-management.io/applied-manifest-work-cleanup]",
+		"status.appliedResources=2",
+		"apps/v1 deployments open-cluster-management-agent-addon/endpoint-monitoring-operator (uid=deployment-uid)",
+		"core/v1 secrets openshift-monitoring/hub-mtls-ca (uid=secret-uid)",
+	} {
+		if !strings.Contains(out, expected) {
+			t.Errorf("expected %q in AppliedManifestWork output, got:\n%s", expected, out)
+		}
+	}
+	if strings.Contains(out, "hubhash-other-work") {
+		t.Errorf("unrelated AppliedManifestWork should not appear in output: %s", out)
+	}
+	if got := formatAppliedManifestWorks(items[1:]); got != "" {
+		t.Errorf("expected no output for unrelated AppliedManifestWorks, got: %s", got)
+	}
+	if got := NewOCMAppliedManifestworksGVR(); got != (schema.GroupVersionResource{Group: OCM_WORK_GROUP, Version: "v1", Resource: "appliedmanifestworks"}) {
+		t.Errorf("unexpected AppliedManifestWork GVR: %v", got)
+	}
+}
+
+func TestSelectWorkAgentPods(t *testing.T) {
+	pods := []corev1.Pod{
+		{ObjectMeta: metav1.ObjectMeta{Name: "registration-agent-abc"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "klusterlet-work-agent-bbb"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "klusterlet-work-agent-aaa"}},
+	}
+	selected := selectWorkAgentPods(pods)
+	if len(selected) != 2 || selected[0].Name != "klusterlet-work-agent-aaa" || selected[1].Name != "klusterlet-work-agent-bbb" {
+		t.Errorf("expected both work-agent replicas in name order, got: %v", selected)
+	}
+}
+
 func TestFormatFeedbackValue(t *testing.T) {
 	testCases := []struct {
 		name     string

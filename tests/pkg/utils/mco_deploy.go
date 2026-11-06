@@ -72,6 +72,14 @@ func NewOCMManifestworksGVR() schema.GroupVersionResource {
 	}
 }
 
+func NewOCMAppliedManifestworksGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    OCM_WORK_GROUP,
+		Version:  "v1",
+		Resource: "appliedmanifestworks",
+	}
+}
+
 func NewOCMManagedClustersGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    OCM_CLUSTER_GROUP,
