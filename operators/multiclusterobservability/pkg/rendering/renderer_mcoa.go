@@ -36,6 +36,7 @@ const (
 	GrafanaMCOADashboardPath = grafanaLink
 
 	// AODC CustomizedVariable Names
+	nameOpenShiftLoggingChannel       = "openshiftLoggingChannel"
 	namePlatformLogsCollection        = "platformLogsCollection"
 	namePlatformLogsDefault           = "platformLogsDefault"
 	namePlatformIncidentDetection     = "platformIncidentDetection"
@@ -295,6 +296,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 	managedLogging := mcoconfig.IsManagedLoggingEnabled(r.cr.Annotations)
 	if managedLogging {
 		appendCustomVar(aodc, namePlatformLogsDefault, "true")
+		appendCustomVar(aodc, nameOpenShiftLoggingChannel, "stable-6.7")
 	}
 
 	// Platform metrics uses controller-side defaulting — can be enabled even when cs is nil.
