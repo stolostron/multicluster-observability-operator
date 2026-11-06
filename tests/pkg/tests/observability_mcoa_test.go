@@ -21,6 +21,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/alertmanager/api/v2/models"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1372,6 +1373,40 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					Eventually(func() error {
 						return utils.CheckClusterLogForwarderExists(testOptions.HubCluster, "openshift-logging")
 					}, 300, 5).Should(Succeed())
+				})
+			})
+
+			It("should deploy a ClusterLogForwarder to collect platform logs on OpenShift managed clusters", SpecTimeout(25*time.Minute), func(ctx context.Context) {
+				if len(accessibleOCPClusters) == 1 {
+					Skip("no OpenShift managed clusters with API access")
+				}
+
+				By("Waiting for the ClusterLogForwarder CRD to become Established on every accessible OpenShift managed cluster", func() {
+					Eventually(func() error {
+						for _, cluster := range accessibleOCPClusters {
+							if cluster.Name == testOptions.HubCluster.Name {
+								continue
+							}
+							if err := utils.CheckCRDEstablished(cluster, mcoconfig.ClusterLogForwarderCRDName); err != nil {
+								return err
+							}
+						}
+						return nil
+					}, 10*time.Minute, 5*time.Second).Should(Succeed())
+				})
+
+				By("Checking a ClusterLogForwarder is reconciled on every accessible OpenShift managed cluster", func() {
+					Eventually(func() error {
+						for _, cluster := range accessibleOCPClusters {
+							if cluster.Name == testOptions.HubCluster.Name {
+								continue
+							}
+							if err := utils.CheckClusterLogForwarderExists(cluster, "openshift-logging"); err != nil {
+								return err
+							}
+						}
+						return nil
+					}, 10*time.Minute, 5*time.Second).Should(Succeed())
 				})
 			})
 		},
