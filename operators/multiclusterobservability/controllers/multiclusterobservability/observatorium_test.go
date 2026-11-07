@@ -153,6 +153,73 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	}
 }
 
+func TestNewAPISpecRejectsMissingTLSSecret(t *testing.T) {
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Annotations: map[string]string{
+				mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
+				mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
+			},
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:  "key",
+					Name: "name",
+				},
+				WriteStorage: []*mcoshared.PreConfiguredStorage{
+					{Key: "write_key", Name: "write_name"},
+				},
+				StorageClass:            storageClassName,
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      300,
+			},
+		},
+	}
+
+	writeStorageS := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "write_name",
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Type: "Opaque",
+		Data: map[string][]byte{
+			"write_key": []byte(`url: https://remotewrite/endpoint
+http_client_config:
+  tls_config:
+    secret_name: "nonexistent-ca-secret"
+    ca_file_key: "ca.crt"
+`),
+		},
+	}
+
+	s := runtime.NewScheme()
+	scheme.AddToScheme(s)
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
+
+	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+
+	_, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "", observatoriumv1alpha1.TLSProfileSpec{})
+	if err == nil {
+		t.Fatal("expected error when TLS secret does not exist, got nil")
+	}
+	want := `writeStorage endpoint "write_name" references secret "nonexistent-ca-secret" which does not exist`
+	if err.Error() != want {
+		t.Errorf("unexpected error message:\n got: %s\nwant: %s", err.Error(), want)
+	}
+}
+
 func TestNewDefaultObservatoriumSpecWithTShirtSize(t *testing.T) {
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
