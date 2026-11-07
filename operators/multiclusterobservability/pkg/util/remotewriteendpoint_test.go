@@ -88,6 +88,31 @@ func TestTransform(t *testing.T) {
 	}
 }
 
+func TestTransformTLSConfigEmptySecretName(t *testing.T) {
+	cfg := HTTPClientConfigWithSecret{
+		BasicAuth: &BasicAuthWithSecret{
+			Username: "user",
+			Password: "pwd",
+		},
+		// tls_config has no secret_name — only insecure_skip_verify is set.
+		TLSConfig: &TLSConfigWithSecret{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	newConfig, names := Transform(cfg)
+
+	if newConfig.TLSConfig == nil {
+		t.Fatal("TLSConfig must not be nil when tls_config is present, even with empty secret_name")
+	}
+	if !newConfig.TLSConfig.InsecureSkipVerify {
+		t.Fatal("InsecureSkipVerify must be preserved when secret_name is empty")
+	}
+	if len(names) != 0 {
+		t.Fatalf("expected 0 mount secrets, got %d: %v", len(names), names)
+	}
+}
+
 func TestValidateRemoteWriteEndpointWithSecret(t *testing.T) {
 	testCases := []struct {
 		name     string

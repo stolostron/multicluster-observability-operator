@@ -134,10 +134,8 @@ func transformBasicAuth(old BasicAuthWithSecret) *BasicAuthWithSecret {
 
 func transformTLSConfig(old TLSConfigWithSecret) *TLSConfigWithSecret {
 	tlsConfig := &TLSConfigWithSecret{
+		ServerName:         old.ServerName,
 		InsecureSkipVerify: old.InsecureSkipVerify,
-	}
-	if old.SecretName != "" {
-		tlsConfig.ServerName = old.ServerName
 	}
 	if old.SecretName != "" {
 		if old.CAFileKey != "" {
@@ -208,7 +206,7 @@ func Transform(oldClientConfig HTTPClientConfigWithSecret) (*HTTPClientConfigWit
 			sNames = append(sNames, oldClientConfig.BasicAuth.SecretName)
 		}
 	}
-	if oldClientConfig.TLSConfig != nil && oldClientConfig.TLSConfig.SecretName != "" {
+	if oldClientConfig.TLSConfig != nil {
 		clientConfig.TLSConfig = transformTLSConfig(*oldClientConfig.TLSConfig)
 		if oldClientConfig.TLSConfig.SecretName != "" {
 			sNames = append(sNames, oldClientConfig.TLSConfig.SecretName)
