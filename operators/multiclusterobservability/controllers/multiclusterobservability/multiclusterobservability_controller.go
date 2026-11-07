@@ -49,6 +49,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	addonv1beta1 "open-cluster-management.io/api/addon/v1beta1"
+	clusterv1alpha1 "open-cluster-management.io/api/cluster/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -469,7 +470,34 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		isLegacyResourceRemoved = true
 	}
 
+	if err := r.ensureHubClusterClaim(ctx); err != nil {
+		reqLogger.Error(err, "Failed to ensure hub observability ClusterClaim")
+	}
+
 	return ctrl.Result{}, nil
+}
+
+// ensureHubClusterClaim creates or updates a ClusterClaim that signals this
+// cluster is running MCO. When the cluster is itself a managed cluster (e.g., a
+// managed hub in a Global Hub topology), the OCM registration agent syncs this
+// claim to ManagedCluster.Status.ClusterClaims on the parent hub, allowing it
+// to distinguish managed hubs from plain spokes.
+func (r *MultiClusterObservabilityReconciler) ensureHubClusterClaim(ctx context.Context) error {
+	claim := &clusterv1alpha1.ClusterClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: config.MCOHubClaimName},
+	}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, claim, func() error {
+		claim.Spec.Value = "true"
+		return nil
+	})
+	if err != nil {
+		if meta.IsNoMatchError(err) {
+			log.V(1).Info("ClusterClaim CRD not available, skipping hub claim registration")
+			return nil
+		}
+		return fmt.Errorf("failed to ensure ClusterClaim %s: %w", config.MCOHubClaimName, err)
+	}
+	return nil
 }
 
 // initFinalization handles MCO deletion by cleaning up resources across namespaces and removing the finalizer.
