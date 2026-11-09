@@ -42,16 +42,20 @@ func run() int {
 			estimator.DefaultMaxItemsPerInterval,
 			"Default Bloom filter deduplication capacity per interval when not specified in config.yaml.",
 		)
-		listenAddr         = flag.String("web.listen-address", ":8490", "Address to listen on for Remote Write ingestion and health probes.")
-		metricsListenAddr  = flag.String("metrics.listen-address", "", "Optional address to listen on for operational /metrics over plain HTTP (e.g. 127.0.0.1:8080 for kube-rbac-proxy).")
-		tlsServerCertFile  = flag.String("tls.server.cert-file", "", "Optional path to the server TLS certificate file for the Remote Write listener.")
-		tlsServerKeyFile   = flag.String("tls.server.key-file", "", "Optional path to the server TLS private key file for the Remote Write listener.")
-		tlsClientCAFile    = flag.String("tls.client-ca-file", "", "Optional path to the client CA certificate bundle for mTLS verification on the Remote Write listener.")
-		tlsMinVersion      = flag.String("tls-min-version", "VersionTLS12", "Minimum TLS version supported by the Remote Write listener (e.g. VersionTLS12, VersionTLS13).")
-		tlsCipherSuites    = flag.String("tls-cipher-suites", "", "Comma-separated list of TLS cipher suite names for the Remote Write listener. If omitted, Go defaults are used.")
-		remoteWriteURL     = flag.String("remote-write.url", "", "Thanos Receive Remote Write v1 endpoint URL for periodic snapshot flushing.")
-		flushInterval      = flag.Duration("remote-write.interval", remotewrite.DefaultFlushInterval, "Interval between Remote Write snapshot flushes.")
-		initialDelay       = flag.Duration("remote-write.initial-delay", remotewrite.DefaultInitialDelay, "Initial warm-up delay after startup before pushing the first Remote Write snapshot.")
+		listenAddr        = flag.String("web.listen-address", ":8490", "Address to listen on for Remote Write ingestion and health probes.")
+		metricsListenAddr = flag.String("metrics.listen-address", "", "Optional address to listen on for operational /metrics over plain HTTP (e.g. 127.0.0.1:8080 for kube-rbac-proxy).")
+		tlsServerCertFile = flag.String("tls.server.cert-file", "", "Optional path to the server TLS certificate file for the Remote Write listener.")
+		tlsServerKeyFile  = flag.String("tls.server.key-file", "", "Optional path to the server TLS private key file for the Remote Write listener.")
+		tlsClientCAFile   = flag.String("tls.client-ca-file", "", "Optional path to the client CA certificate bundle for mTLS verification on the Remote Write listener.")
+		tlsMinVersion     = flag.String("tls-min-version", "VersionTLS12", "Minimum TLS version supported by the Remote Write listener (e.g. VersionTLS12, VersionTLS13).")
+		tlsCipherSuites   = flag.String("tls-cipher-suites", "", "Comma-separated list of TLS cipher suite names for the Remote Write listener. If omitted, Go defaults are used.")
+		remoteWriteURL    = flag.String("remote-write.url", "", "Thanos Receive Remote Write v1 endpoint URL for periodic cardinality report flushing.")
+		flushInterval     = flag.Duration("remote-write.interval", remotewrite.DefaultFlushInterval, "Interval between Remote Write cardinality report flushes.")
+		initialDelay      = flag.Duration(
+			"remote-write.initial-delay",
+			remotewrite.DefaultInitialDelay,
+			"Initial warm-up delay after startup before pushing the first Remote Write cardinality report.",
+		)
 		tenantHeader       = flag.String("remote-write.tenant-header", remotewrite.DefaultTenantHeader, "HTTP header name used to propagate the Thanos tenant ID.")
 		tenantID           = flag.String("remote-write.tenant", remotewrite.DefaultTenantID, "Fallback Thanos tenant ID before any incoming write header is observed.")
 		maxRequestSize     = flag.Int64("max-request-size", protoparser.DefaultMaxWriteRequestSize, "Maximum uncompressed Remote Write payload size in bytes.")
@@ -417,7 +421,7 @@ func registerMetricsHandlers(
 	mux.HandleFunc("/cardinality/metrics", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 		if err := eng.WritePrometheusText(w, time.Now()); err != nil {
-			logger.Warn("failed to write cardinality snapshot metrics", "err", err)
+			logger.Warn("failed to write cardinality report metrics", "err", err)
 		}
 	})
 

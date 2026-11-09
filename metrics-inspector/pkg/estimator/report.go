@@ -29,8 +29,8 @@ type GroupEstimate struct {
 	ChurnRatio float64
 }
 
-// Snapshot represents a point-in-time evaluation of a single Estimator stream.
-type Snapshot struct {
+// StreamReport represents a point-in-time evaluation of a single Estimator stream.
+type StreamReport struct {
 	Interval       time.Duration
 	Filter         string
 	GroupBy        []string
@@ -66,52 +66,52 @@ type seriesPoint struct {
 	intVal int64
 }
 
-func (s *Snapshot) collectSeries() []seriesPoint {
-	intervalStr := s.Interval.String()
+func (r *StreamReport) collectSeries() []seriesPoint {
+	intervalStr := r.Interval.String()
 	b := labels.NewBuilder(labels.EmptyLabels())
 
-	if len(s.GroupBy) == 0 {
+	if len(r.GroupBy) == 0 {
 		out := make([]seriesPoint, 0, 2)
 		b.Reset(labels.EmptyLabels())
 		b.Set(labels.MetricName, MetricCardinalityEstimate)
-		b.Set("filter", s.Filter)
+		b.Set("filter", r.Filter)
 		b.Set("group_by_keys", globalKeyword)
 		b.Set("interval", intervalStr)
 		out = append(out, seriesPoint{
 			labels: b.Labels(),
-			value:  float64(s.GlobalEstimate),
+			value:  float64(r.GlobalEstimate),
 			isInt:  true,
-			intVal: int64(s.GlobalEstimate), //nolint:gosec // HLL estimate is bounded well below math.MaxInt64
+			intVal: int64(r.GlobalEstimate), //nolint:gosec // HLL estimate is bounded well below math.MaxInt64
 		})
 
-		if s.CalculateChurn {
+		if r.CalculateChurn {
 			b.Set(labels.MetricName, MetricCardinalityChurn)
 			out = append(out, seriesPoint{
 				labels: b.Labels(),
-				value:  s.GlobalChurn,
+				value:  r.GlobalChurn,
 			})
 		}
 		return out
 	}
 
-	groupByKeys := strings.Join(s.GroupBy, ",")
-	byLabelNames := make([]string, len(s.GroupBy))
-	for i, k := range s.GroupBy {
+	groupByKeys := strings.Join(r.GroupBy, ",")
+	byLabelNames := make([]string, len(r.GroupBy))
+	for i, k := range r.GroupBy {
 		byLabelNames[i] = ByLabelName(k)
 	}
 
-	capacity := len(s.Groups) + 3
-	if s.CalculateChurn {
-		capacity += len(s.Groups)
+	capacity := len(r.Groups) + 3
+	if r.CalculateChurn {
+		capacity += len(r.Groups)
 	}
 	out := make([]seriesPoint, 0, capacity)
 
-	for _, g := range s.Groups {
+	for _, g := range r.Groups {
 		groupValues := strings.Join(g.Values, ",")
 
 		b.Reset(labels.EmptyLabels())
 		b.Set(labels.MetricName, MetricCardinalityEstimate)
-		b.Set("filter", s.Filter)
+		b.Set("filter", r.Filter)
 		b.Set("group_by_keys", groupByKeys)
 		b.Set("group_by_values", groupValues)
 		b.Set("interval", intervalStr)
@@ -125,7 +125,7 @@ func (s *Snapshot) collectSeries() []seriesPoint {
 			intVal: int64(g.Estimate), //nolint:gosec // HLL estimate is bounded well below math.MaxInt64
 		})
 
-		if s.CalculateChurn {
+		if r.CalculateChurn {
 			b.Set(labels.MetricName, MetricCardinalityChurn)
 			out = append(out, seriesPoint{
 				labels: b.Labels(),
@@ -137,48 +137,48 @@ func (s *Snapshot) collectSeries() []seriesPoint {
 	// Emit group size metadata series: cardinality_estimate{group_by_keys="__group__", group_by_values="<keys>"}
 	b.Reset(labels.EmptyLabels())
 	b.Set(labels.MetricName, MetricCardinalityEstimate)
-	b.Set("filter", s.Filter)
+	b.Set("filter", r.Filter)
 	b.Set("group_by_keys", groupKeyword)
 	b.Set("group_by_values", groupByKeys)
 	b.Set("interval", intervalStr)
 	out = append(out, seriesPoint{
 		labels: b.Labels(),
-		value:  float64(s.GroupSize),
+		value:  float64(r.GroupSize),
 		isInt:  true,
-		intVal: s.GroupSize,
+		intVal: r.GroupSize,
 	})
 
 	// Emit group limit series
 	b.Set(labels.MetricName, MetricGroupLimit)
 	out = append(out, seriesPoint{
 		labels: b.Labels(),
-		value:  float64(s.GroupLimit),
+		value:  float64(r.GroupLimit),
 		isInt:  true,
-		intVal: s.GroupLimit,
+		intVal: r.GroupLimit,
 	})
 
-	if s.DroppedCount > 0 {
+	if r.DroppedCount > 0 {
 		b.Reset(labels.EmptyLabels())
 		b.Set(labels.MetricName, MetricEstimatesDropped)
-		b.Set("filter", s.Filter)
+		b.Set("filter", r.Filter)
 		b.Set("group_by_keys", groupByKeys)
 		b.Set("interval", intervalStr)
 		out = append(out, seriesPoint{
 			labels: b.Labels(),
-			value:  float64(s.DroppedCount),
+			value:  float64(r.DroppedCount),
 			isInt:  true,
-			intVal: int64(s.DroppedCount), //nolint:gosec // dropped group count fits in int64
+			intVal: int64(r.DroppedCount), //nolint:gosec // dropped group count fits in int64
 		})
 	}
 
 	return out
 }
 
-// ToTimeSeries converts the Snapshot into Prometheus Remote Write TimeSeries using
+// ToTimeSeries converts the StreamReport into Prometheus Remote Write TimeSeries using
 // upstream Prometheus labels.Builder and prompb.FromLabels to guarantee canonical
 // label sorting, deduplication, and empty-label omission.
-func (s *Snapshot) ToTimeSeries(timestampMs int64) []prompb.TimeSeries {
-	points := s.collectSeries()
+func (r *StreamReport) ToTimeSeries(timestampMs int64) []prompb.TimeSeries {
+	points := r.collectSeries()
 	out := make([]prompb.TimeSeries, len(points))
 	for i, pt := range points {
 		out[i] = prompb.TimeSeries{
@@ -194,10 +194,10 @@ func (s *Snapshot) ToTimeSeries(timestampMs int64) []prompb.TimeSeries {
 	return out
 }
 
-// WritePrometheusText formats the Snapshot in Prometheus text exposition format
+// WritePrometheusText formats the StreamReport in Prometheus text exposition format
 // from the canonical labels.Labels set.
-func (s *Snapshot) WritePrometheusText(w io.Writer) error {
-	points := s.collectSeries()
+func (r *StreamReport) WritePrometheusText(w io.Writer) error {
+	points := r.collectSeries()
 	var b strings.Builder
 	for _, pt := range points {
 		b.Reset()

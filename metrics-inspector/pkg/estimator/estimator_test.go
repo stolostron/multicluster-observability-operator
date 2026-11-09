@@ -192,9 +192,9 @@ func TestEstimatorRotationsAndExpiry(t *testing.T) {
 	est.InsertMany(makeBatch("cluster-2", 0, 50))
 
 	t0 := time.Now()
-	snap1 := est.SnapshotAt(t0)
-	if len(snap1.Groups) != 2 {
-		t.Fatalf("expected 2 groups in window 1, got %d", len(snap1.Groups))
+	rep1 := est.EvaluateAt(t0)
+	if len(rep1.Groups) != 2 {
+		t.Fatalf("expected 2 groups in window 1, got %d", len(rep1.Groups))
 	}
 
 	// Rotate all 4 buckets once (curr -> prev, new empty curr).
@@ -205,12 +205,12 @@ func TestEstimatorRotationsAndExpiry(t *testing.T) {
 	// Window 2: insert 100 more series (100..199) for cluster-1; nothing for cluster-2.
 	est.InsertMany(makeBatch("cluster-1", 100, 100))
 
-	snap2 := est.SnapshotAt(t0.Add(15 * time.Minute))
+	rep2 := est.EvaluateAt(t0.Add(15 * time.Minute))
 	// Both cluster-1 (prev 100 + curr 100 = ~200) and cluster-2 (prev 50) should still be present!
-	if len(snap2.Groups) != 2 {
-		t.Fatalf("expected 2 groups after 1st rotation (prev+curr), got %d", len(snap2.Groups))
+	if len(rep2.Groups) != 2 {
+		t.Fatalf("expected 2 groups after 1st rotation (prev+curr), got %d", len(rep2.Groups))
 	}
-	for _, g := range snap2.Groups {
+	for _, g := range rep2.Groups {
 		switch g.Values[0] {
 		case "cluster-1":
 			if g.Estimate < 185 || g.Estimate > 215 {
@@ -227,22 +227,22 @@ func TestEstimatorRotationsAndExpiry(t *testing.T) {
 	for _, b := range est.buckets {
 		b.rotate()
 	}
-	snap3 := est.SnapshotAt(t0.Add(30 * time.Minute))
+	rep3 := est.EvaluateAt(t0.Add(30 * time.Minute))
 	// cluster-2 has now expired; cluster-1 retains only Window 2's 100 series.
-	if len(snap3.Groups) != 1 {
-		t.Fatalf("expected 1 group after 2nd rotation (cluster-2 expired), got %d", len(snap3.Groups))
+	if len(rep3.Groups) != 1 {
+		t.Fatalf("expected 1 group after 2nd rotation (cluster-2 expired), got %d", len(rep3.Groups))
 	}
-	if snap3.Groups[0].Values[0] != "cluster-1" || snap3.Groups[0].Estimate < 90 || snap3.Groups[0].Estimate > 110 {
-		t.Fatalf("expected cluster-1 estimate ~100 after 2nd rotation, got %+v", snap3.Groups[0])
+	if rep3.Groups[0].Values[0] != "cluster-1" || rep3.Groups[0].Estimate < 90 || rep3.Groups[0].Estimate > 110 {
+		t.Fatalf("expected cluster-1 estimate ~100 after 2nd rotation, got %+v", rep3.Groups[0])
 	}
 
 	// Rotate a third time with no inserts: all groups expire.
 	for _, b := range est.buckets {
 		b.rotate()
 	}
-	snap4 := est.SnapshotAt(t0.Add(45 * time.Minute))
-	if len(snap4.Groups) != 0 || snap4.GroupSize != 0 {
-		t.Fatalf("expected 0 groups and GroupSize=0 after 3rd rotation, got groups=%d size=%d", len(snap4.Groups), snap4.GroupSize)
+	rep4 := est.EvaluateAt(t0.Add(45 * time.Minute))
+	if len(rep4.Groups) != 0 || rep4.GroupSize != 0 {
+		t.Fatalf("expected 0 groups and GroupSize=0 after 3rd rotation, got groups=%d size=%d", len(rep4.Groups), rep4.GroupSize)
 	}
 }
 
@@ -270,13 +270,13 @@ func TestEstimatorGroupLimitAndOverflowAging(t *testing.T) {
 	}
 	est.InsertMany(tss)
 
-	snap := est.SnapshotAt(time.Now())
-	if len(snap.Groups) != 10 {
-		t.Fatalf("expected active groups to be capped at GroupLimit=10, got %d", len(snap.Groups))
+	rep := est.EvaluateAt(time.Now())
+	if len(rep.Groups) != 10 {
+		t.Fatalf("expected active groups to be capped at GroupLimit=10, got %d", len(rep.Groups))
 	}
 	// GroupSize includes both the 10 tracked groups and the HLL estimate of rejected groups (~40).
-	if snap.GroupSize < 35 || snap.GroupSize > 65 {
-		t.Fatalf("expected GroupSize (tracked + rejected HLL) ~50, got %d", snap.GroupSize)
+	if rep.GroupSize < 35 || rep.GroupSize > 65 {
+		t.Fatalf("expected GroupSize (tracked + rejected HLL) ~50, got %d", rep.GroupSize)
 	}
 
 	// Rotate twice so all groups and rejected sketches age out, then insert 5 new groups.
@@ -285,12 +285,12 @@ func TestEstimatorGroupLimitAndOverflowAging(t *testing.T) {
 		b.rotate()
 	}
 	est.InsertMany(tss[:5])
-	snapAfter := est.SnapshotAt(time.Now().Add(time.Hour))
-	if len(snapAfter.Groups) != 5 {
-		t.Fatalf("expected 5 groups after rotation recovery, got %d", len(snapAfter.Groups))
+	repAfter := est.EvaluateAt(time.Now().Add(time.Hour))
+	if len(repAfter.Groups) != 5 {
+		t.Fatalf("expected 5 groups after rotation recovery, got %d", len(repAfter.Groups))
 	}
-	if snapAfter.GroupSize != 5 {
-		t.Fatalf("expected GroupSize=5 after rotation recovery, got %d", snapAfter.GroupSize)
+	if repAfter.GroupSize != 5 {
+		t.Fatalf("expected GroupSize=5 after rotation recovery, got %d", repAfter.GroupSize)
 	}
 }
 
@@ -331,9 +331,9 @@ func TestEstimatorLabelKeywordWithWireParser(t *testing.T) {
 	}
 	est.InsertMany(wr.Timeseries)
 
-	snap := est.SnapshotAt(time.Now())
+	rep := est.EvaluateAt(time.Now())
 	byLabel := make(map[string]uint64)
-	for _, g := range snap.Groups {
+	for _, g := range rep.Groups {
 		if len(g.Values) != 3 {
 			t.Fatalf("expected 3 group values [cluster, __name__, __label__], got %v", g.Values)
 		}
@@ -393,13 +393,13 @@ func TestEstimatorFilterAndGlobalStream(t *testing.T) {
 	est.InsertMany(tss)
 
 	now := time.Now()
-	snap := est.SnapshotAt(now)
-	if snap.GlobalEstimate != 1 {
-		t.Fatalf("expected GlobalEstimate=1 after filter matching, got %d", snap.GlobalEstimate)
+	rep := est.EvaluateAt(now)
+	if rep.GlobalEstimate != 1 {
+		t.Fatalf("expected GlobalEstimate=1 after filter matching, got %d", rep.GlobalEstimate)
 	}
 
 	var buf bytes.Buffer
-	if err := snap.WritePrometheusText(&buf); err != nil {
+	if err := rep.WritePrometheusText(&buf); err != nil {
 		t.Fatalf("WritePrometheusText failed: %v", err)
 	}
 	if !strings.Contains(buf.String(), `cardinality_estimate{filter="{__name__=~\"apiserver_.*\", verb!=\"WATCH\", cluster=\"hub\"}",group_by_keys="__global__",interval="1h0m0s"} 1`) {
@@ -407,8 +407,8 @@ func TestEstimatorFilterAndGlobalStream(t *testing.T) {
 	}
 }
 
-func TestSnapshotLabelEscaping(t *testing.T) {
-	snap := Snapshot{
+func TestStreamReportLabelEscaping(t *testing.T) {
+	rep := StreamReport{
 		Interval:       15 * time.Minute,
 		GroupBy:        []string{"cluster", "reason"},
 		GroupLimit:     100,
@@ -424,7 +424,7 @@ func TestSnapshotLabelEscaping(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := snap.WritePrometheusText(&buf); err != nil {
+	if err := rep.WritePrometheusText(&buf); err != nil {
 		t.Fatalf("WritePrometheusText failed: %v", err)
 	}
 	out := buf.String()
@@ -462,7 +462,7 @@ func TestCalculateChurnRatio(t *testing.T) {
 	}
 }
 
-func TestEngineIngestAndSnapshots(t *testing.T) {
+func TestEngineIngestAndEvaluate(t *testing.T) {
 	cfg, err := ParseConfig([]byte(`
 max_items_per_interval: 100000
 streams:
@@ -529,32 +529,32 @@ streams:
 	}
 
 	now := time.Now()
-	snaps := eng.Snapshots(now)
-	if len(snaps) != 2 {
-		t.Fatalf("expected 2 snapshots, got %d", len(snaps))
+	reports := eng.Evaluate(now)
+	if len(reports) != 2 {
+		t.Fatalf("expected 2 reports, got %d", len(reports))
 	}
 
 	// Stream 0: [cluster] -> 1 group ("cluster-a") with ~55 series
-	if len(snaps[0].Groups) != 1 {
-		t.Fatalf("expected 1 cluster group, got %d", len(snaps[0].Groups))
+	if len(reports[0].Groups) != 1 {
+		t.Fatalf("expected 1 cluster group, got %d", len(reports[0].Groups))
 	}
-	if snaps[0].Groups[0].Estimate < 52 || snaps[0].Groups[0].Estimate > 58 {
-		t.Fatalf("expected cluster-a estimate ~55, got %d", snaps[0].Groups[0].Estimate)
+	if reports[0].Groups[0].Estimate < 52 || reports[0].Groups[0].Estimate > 58 {
+		t.Fatalf("expected cluster-a estimate ~55, got %d", reports[0].Groups[0].Estimate)
 	}
 
 	// Stream 1: [cluster, namespace] -> ns-low dropped by min_cardinality=10, only ns-high emitted
-	if len(snaps[1].Groups) != 1 {
-		t.Fatalf("expected 1 namespace group after min_cardinality filter, got %d", len(snaps[1].Groups))
+	if len(reports[1].Groups) != 1 {
+		t.Fatalf("expected 1 namespace group after min_cardinality filter, got %d", len(reports[1].Groups))
 	}
-	if snaps[1].DroppedCount != 1 {
-		t.Fatalf("expected DroppedCount=1, got %d", snaps[1].DroppedCount)
+	if reports[1].DroppedCount != 1 {
+		t.Fatalf("expected DroppedCount=1, got %d", reports[1].DroppedCount)
 	}
-	if !slices.Equal(snaps[1].Groups[0].Values, []string{"cluster-a", "ns-high"}) {
-		t.Fatalf("unexpected group values: %v", snaps[1].Groups[0].Values)
+	if !slices.Equal(reports[1].Groups[0].Values, []string{"cluster-a", "ns-high"}) {
+		t.Fatalf("unexpected group values: %v", reports[1].Groups[0].Values)
 	}
 
 	// Verify Remote Write TimeSeries label sorting
-	tsList := snaps[1].ToTimeSeries(now.UnixMilli())
+	tsList := reports[1].ToTimeSeries(now.UnixMilli())
 	if len(tsList) == 0 {
 		t.Fatalf("expected non-empty TimeSeries slice")
 	}
