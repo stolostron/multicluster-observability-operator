@@ -223,6 +223,7 @@ func TestMetricsInspectorRendering(t *testing.T) {
 	for _, wantArg := range []string{
 		"--config.file=/etc/metrics-inspector/config.yaml",
 		"--estimator.interval=15m",
+		"--estimator.max-items-per-interval=15000000",
 		"--web.listen-address=:8490",
 		"--metrics.listen-address=127.0.0.1:8080",
 		"--tls.server.cert-file=/var/metrics-inspector/server-certs/tls.crt",
@@ -300,5 +301,27 @@ func TestMetricsInspectorRendering(t *testing.T) {
 	}
 	if len(removalResources) != 11 {
 		t.Fatalf("expected 11 resources in MetricsInspectorResourcesForRemoval, got %d", len(removalResources))
+	}
+}
+
+func TestResolveMetricsInspectorMaxItems(t *testing.T) {
+	cases := []struct {
+		size mcov1beta2.TShirtSize
+		want int
+	}{
+		{size: "", want: 500000},
+		{size: mcoconfig.Default, want: 500000},
+		{size: mcoconfig.Minimal, want: 1500000},
+		{size: mcoconfig.Small, want: 1500000},
+		{size: mcoconfig.Medium, want: 7500000},
+		{size: mcoconfig.Large, want: 15000000},
+		{size: mcoconfig.XLarge, want: 30000000},
+		{size: mcoconfig.TwoXLarge, want: 75000000},
+		{size: mcoconfig.FourXLarge, want: 150000000},
+	}
+	for _, tc := range cases {
+		if got := resolveMetricsInspectorMaxItems(tc.size); got != tc.want {
+			t.Errorf("resolveMetricsInspectorMaxItems(%q) = %d, want %d", tc.size, got, tc.want)
+		}
 	}
 }

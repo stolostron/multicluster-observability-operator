@@ -46,17 +46,17 @@ var (
 	)
 	descPushSuccessTotal = prometheus.NewDesc(
 		"cardinality_estimator_push_success_total",
-		"Total number of successful Remote Write snapshot flushes.",
+		"Total number of successful Remote Write cardinality report flushes.",
 		nil, nil,
 	)
 	descPushErrorsTotal = prometheus.NewDesc(
 		"cardinality_estimator_push_errors_total",
-		"Total number of failed Remote Write snapshot flushes.",
+		"Total number of failed Remote Write cardinality report flushes.",
 		nil, nil,
 	)
 	descLastPushTimestampSecs = prometheus.NewDesc(
 		"cardinality_estimator_last_push_timestamp_seconds",
-		"Unix timestamp in seconds of the last successful Remote Write snapshot flush.",
+		"Unix timestamp in seconds of the last successful Remote Write cardinality report flush.",
 		nil, nil,
 	)
 )

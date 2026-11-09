@@ -30,12 +30,12 @@ const (
 	DefaultTenantID           = "default"
 )
 
-// PusherConfig configures the periodic Remote Write v1 snapshot pusher.
+// PusherConfig configures the periodic Remote Write v1 cardinality report pusher.
 type PusherConfig struct {
 	Endpoint      string
 	FlushInterval time.Duration
 	// InitialDelay specifies an optional warm-up duration before the first
-	// Remote Write snapshot is pushed after startup. This allows all managed
+	// Remote Write report is pushed after startup. This allows all managed
 	// clusters (including Legacy metrics-collector with a 5m interval) to report
 	// at least once after a Pod restart before overwriting fleet-wide aggregates
 	// in Thanos Receive.
@@ -48,7 +48,7 @@ type PusherConfig struct {
 	Logger             *slog.Logger
 }
 
-// Pusher periodically evaluates snapshots from an estimator.Engine and pushes
+// Pusher periodically evaluates stream reports from an estimator.Engine and pushes
 // them to Thanos Receive via Prometheus Remote Write v1.
 type Pusher struct {
 	cfg    PusherConfig
@@ -170,11 +170,11 @@ func (p *Pusher) getTenantID() string {
 // Run starts the periodic flush loop until ctx is canceled.
 func (p *Pusher) Run(ctx context.Context) {
 	if p.cfg.Endpoint == "" {
-		p.cfg.Logger.Info("remote-write endpoint is empty; periodic snapshot push is disabled")
+		p.cfg.Logger.Info("remote-write endpoint is empty; periodic report push is disabled")
 		return
 	}
 
-	p.cfg.Logger.Info("started remote-write snapshot pusher",
+	p.cfg.Logger.Info("started remote-write cardinality report pusher",
 		"endpoint", p.cfg.Endpoint,
 		"interval", p.cfg.FlushInterval.String(),
 		"initial_delay", p.cfg.InitialDelay.String(),
@@ -192,7 +192,7 @@ func (p *Pusher) Run(ctx context.Context) {
 			return
 		case now := <-timer.C:
 			if err := p.FlushAt(ctx, now); err != nil {
-				p.cfg.Logger.Error("failed to push initial cardinality snapshots", "err", err)
+				p.cfg.Logger.Error("failed to push initial cardinality reports", "err", err)
 			}
 		}
 	}
@@ -206,7 +206,7 @@ func (p *Pusher) Run(ctx context.Context) {
 			return
 		case now := <-ticker.C:
 			if err := p.FlushAt(ctx, now); err != nil {
-				p.cfg.Logger.Error("failed to push cardinality snapshots", "err", err)
+				p.cfg.Logger.Error("failed to push cardinality reports", "err", err)
 			}
 		}
 	}
@@ -236,19 +236,19 @@ func (p *Pusher) probeUntilReady(ctx context.Context) bool {
 	}
 }
 
-// FlushAt evaluates all stream snapshots at now and pushes them to the configured Remote Write endpoint.
+// FlushAt evaluates all stream reports at now and pushes them to the configured Remote Write endpoint.
 func (p *Pusher) FlushAt(ctx context.Context, now time.Time) error {
 	flushStart := time.Now()
-	snaps := p.engine.Snapshots(now)
+	reports := p.engine.Evaluate(now)
 	tsMs := now.UnixMilli()
 
 	estimatedCap := 0
-	for i := range snaps {
-		estimatedCap += len(snaps[i].Groups)*2 + 4
+	for i := range reports {
+		estimatedCap += len(reports[i].Groups)*2 + 4
 	}
 	allSeries := make([]prompb.TimeSeries, 0, estimatedCap)
-	for i := range snaps {
-		allSeries = append(allSeries, snaps[i].ToTimeSeries(tsMs)...)
+	for i := range reports {
+		allSeries = append(allSeries, reports[i].ToTimeSeries(tsMs)...)
 	}
 	if len(allSeries) == 0 {
 		return nil
@@ -266,7 +266,7 @@ func (p *Pusher) FlushAt(ctx context.Context, now time.Time) error {
 
 	p.ready.Store(true)
 	p.lastPushTimestampS.Store(now.Unix())
-	p.cfg.Logger.Debug("pushed cardinality snapshots",
+	p.cfg.Logger.Debug("pushed cardinality reports",
 		"series_count", len(allSeries),
 		"duration_ms", time.Since(flushStart).Milliseconds(),
 	)

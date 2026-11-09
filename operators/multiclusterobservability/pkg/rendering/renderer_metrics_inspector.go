@@ -261,6 +261,7 @@ func (r *MCORenderer) renderMetricsInspectorDeployment(
 
 	inspectorContainer.Args = append(
 		inspectorContainer.Args,
+		fmt.Sprintf("--estimator.max-items-per-interval=%d", resolveMetricsInspectorMaxItems(r.cr.Spec.InstanceSize)),
 		fmt.Sprintf("--remote-write.url=%s", receiveWriteURL),
 		fmt.Sprintf("--remote-write.tenant=%s", mcoconfig.GetTenantUID()),
 	)
@@ -322,6 +323,31 @@ func resolveMetricsInspectorServiceAccountAnnotations(mco *obv1beta2.MultiCluste
 		return maps.Clone(mco.Spec.AdvancedConfig.Receive.ServiceAccountAnnotations)
 	}
 	return nil
+}
+
+// resolveMetricsInspectorMaxItems returns the Bloom filter capacity per sliding interval
+// for the given instanceSize, oversized by ~1.5x (2.5x for default) above the nominal
+// active series tier. Because saturated Bloom filter shards switch to pass-through mode
+// (forwarding all duplicate samples to the mutex-locked HLL maps), this headroom absorbs
+// 15-minute cumulative series churn and minor hash imbalance across shards at a cost of
+// only 16 bits (2 bytes) of RAM per item.
+func resolveMetricsInspectorMaxItems(instanceSize obv1beta2.TShirtSize) int {
+	switch instanceSize {
+	case mcoconfig.Minimal, mcoconfig.Small:
+		return 1500000
+	case mcoconfig.Medium:
+		return 7500000
+	case mcoconfig.Large:
+		return 15000000
+	case mcoconfig.XLarge:
+		return 30000000
+	case mcoconfig.TwoXLarge:
+		return 75000000
+	case mcoconfig.FourXLarge:
+		return 150000000
+	default:
+		return 500000
+	}
 }
 
 func resolveMetricsInspectorRetentionArgs(mco *obv1beta2.MultiClusterObservability) []string {

@@ -136,7 +136,7 @@ func BenchmarkEngineIngestColdStartUniqueSeries(b *testing.B) {
 	b.ReportMetric(float64(len(wr.Timeseries)*b.N)/b.Elapsed().Seconds(), "series/s")
 }
 
-func BenchmarkEngineSnapshots(b *testing.B) {
+func BenchmarkEngineEvaluate(b *testing.B) {
 	cfg, err := ParseConfig([]byte(prodStreamsYAML))
 	if err != nil {
 		b.Fatal(err)
@@ -158,9 +158,9 @@ func BenchmarkEngineSnapshots(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for range b.N {
-		snaps := eng.Snapshots(now)
-		for i := range snaps {
-			_ = snaps[i].ToTimeSeries(now.UnixMilli())
+		reports := eng.Evaluate(now)
+		for i := range reports {
+			_ = reports[i].ToTimeSeries(now.UnixMilli())
 		}
 	}
 }

@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/part-of: multicluster-observability-operator
 data:
   config.yaml: |
-    max_items_per_interval: 15000000
     streams:
       - group_by: [cluster]
         hll_precision: 14

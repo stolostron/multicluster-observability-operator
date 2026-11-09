@@ -214,9 +214,9 @@ func (e *Estimator) matchesFilter(lbls []prompb.Label) bool {
 	return true
 }
 
-// SnapshotAt computes a point-in-time Snapshot across all buckets at timestamp now.
-func (e *Estimator) SnapshotAt(now time.Time) Snapshot {
-	snap := Snapshot{
+// EvaluateAt computes a point-in-time StreamReport across all buckets at timestamp now.
+func (e *Estimator) EvaluateAt(now time.Time) StreamReport {
+	report := StreamReport{
 		Interval:       e.cfg.Interval,
 		Filter:         e.cfg.Filter,
 		GroupBy:        slices.Clone(e.cfg.GroupBy),
@@ -233,11 +233,11 @@ func (e *Estimator) SnapshotAt(now time.Time) Snapshot {
 			mergeInto(resSK, eb.sketch, eb.prevSketch)
 			eb.mu.Unlock()
 		}
-		snap.GlobalEstimate = resSK.Estimate()
+		report.GlobalEstimate = resSK.Estimate()
 		if e.churn != nil {
-			snap.GlobalChurn = e.churn.updateAndRate(0, resSK, now)
+			report.GlobalChurn = e.churn.updateAndRate(0, resSK, now)
 		}
-		return snap
+		return report
 	}
 
 	const batchSize = 1000
@@ -294,11 +294,11 @@ func (e *Estimator) SnapshotAt(now time.Time) Snapshot {
 				}
 
 				if est < e.cfg.MinCardinality {
-					snap.DroppedCount++
+					report.DroppedCount++
 					continue
 				}
 
-				snap.Groups = append(snap.Groups, GroupEstimate{
+				report.Groups = append(report.Groups, GroupEstimate{
 					Values:     values,
 					Estimate:   est,
 					ChurnRatio: churnRate,
@@ -311,8 +311,8 @@ func (e *Estimator) SnapshotAt(now time.Time) Snapshot {
 	if e.churn != nil {
 		e.churn.cleanup(now)
 	}
-	snap.GroupSize = e.groupSize.totalSize()
-	return snap
+	report.GroupSize = e.groupSize.totalSize()
+	return report
 }
 
 func (e *Estimator) runRotation() {
@@ -614,26 +614,26 @@ func (eng *Engine) Ingest(tss []protoparser.TimeSeries) {
 	}
 }
 
-// Snapshots evaluates and returns point-in-time Snapshots for all active streams.
-func (eng *Engine) Snapshots(now time.Time) []Snapshot {
+// Evaluate computes and returns point-in-time StreamReports for all active streams.
+func (eng *Engine) Evaluate(now time.Time) []StreamReport {
 	total := 0
 	for _, p := range eng.pipelines {
 		total += len(p.estimators)
 	}
-	out := make([]Snapshot, 0, total)
+	out := make([]StreamReport, 0, total)
 	for _, p := range eng.pipelines {
 		for _, est := range p.estimators {
-			out = append(out, est.SnapshotAt(now))
+			out = append(out, est.EvaluateAt(now))
 		}
 	}
 	return out
 }
 
-// WritePrometheusText writes all stream snapshots in Prometheus text exposition format.
+// WritePrometheusText evaluates and writes all stream reports in Prometheus text exposition format.
 func (eng *Engine) WritePrometheusText(w io.Writer, now time.Time) error {
-	snaps := eng.Snapshots(now)
-	for i := range snaps {
-		if err := snaps[i].WritePrometheusText(w); err != nil {
+	reports := eng.Evaluate(now)
+	for i := range reports {
+		if err := reports[i].WritePrometheusText(w); err != nil {
 			return err
 		}
 	}
