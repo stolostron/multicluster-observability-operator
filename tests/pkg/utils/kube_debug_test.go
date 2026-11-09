@@ -16,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1145,6 +1146,18 @@ func TestSelectWorkAgentDeployments(t *testing.T) {
 	}
 }
 
+func TestSelectWorkAgentEvents(t *testing.T) {
+	events := []corev1.Event{
+		{InvolvedObject: corev1.ObjectReference{Name: "klusterlet-work-agent-abc"}, Reason: "Killing", Type: corev1.EventTypeNormal},
+		{InvolvedObject: corev1.ObjectReference{Name: "klusterlet-agent"}, Message: "Deleted klusterlet-work-agent deployment", Type: corev1.EventTypeNormal},
+		{InvolvedObject: corev1.ObjectReference{Name: "registration-agent"}, Reason: "Started", Type: corev1.EventTypeNormal},
+	}
+	selected := selectWorkAgentEvents(events)
+	if len(selected) != 2 || selected[0].Reason != "Killing" || selected[1].Message != events[1].Message {
+		t.Errorf("expected work-agent lifecycle events including normal deletion events, got: %v", selected)
+	}
+}
+
 func TestFormatNamespaceDeletionStatus(t *testing.T) {
 	now := metav1.Now()
 	namespace := corev1.Namespace{
@@ -1229,6 +1242,60 @@ func TestFormatLoggingPodStatuses(t *testing.T) {
 	}
 }
 
+func TestLoggingPodAndNodeResources(t *testing.T) {
+	grace := int64(600)
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "mcoa-logging-ingester-0", Namespace: loggingNamespace},
+		Spec: corev1.PodSpec{
+			NodeName:                      "worker-1",
+			TerminationGracePeriodSeconds: &grace,
+			Overhead: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("16Mi"),
+			},
+			InitContainers: []corev1.Container{{Name: "init", Resources: corev1.ResourceRequirements{Requests: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("500m"), corev1.ResourceMemory: resource.MustParse("128Mi"),
+			}}}},
+			Containers: []corev1.Container{{Name: "ingester", Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("250m"), corev1.ResourceMemory: resource.MustParse("256Mi")},
+				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1"), corev1.ResourceMemory: resource.MustParse("1Gi")},
+			}}},
+			Volumes: []corev1.Volume{{Name: "data", VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "ingester-data"},
+			}}},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning, QOSClass: corev1.PodQOSBurstable},
+	}
+	cpu, memory := podResourceRequests(pod)
+	if cpu.MilliValue() != 510 || memory.Value() != 272*1024*1024 {
+		t.Fatalf("effective requests = %s CPU, %s memory; want 510m and 272Mi", cpu.String(), memory.String())
+	}
+	sidecar := pod.DeepCopy()
+	restartPolicy := corev1.ContainerRestartPolicyAlways
+	sidecar.Spec.InitContainers[0].RestartPolicy = &restartPolicy
+	sidecarCPU, sidecarMemory := podResourceRequests(*sidecar)
+	if sidecarCPU.MilliValue() != 760 || sidecarMemory.Value() != 400*1024*1024 {
+		t.Fatalf("requests with restartable init container = %s CPU, %s memory; want 760m and 400Mi",
+			sidecarCPU.String(), sidecarMemory.String())
+	}
+	podDetails := formatLoggingPodResources([]corev1.Pod{pod})
+	for _, want := range []string{"effectiveRequests=cpu=510m memory=272Mi", "grace=600s", "PVCs=[ingester-data]", "limits=(cpu=1 memory=1Gi)"} {
+		if !strings.Contains(podDetails, want) {
+			t.Errorf("pod resource details missing %q:\n%s", want, podDetails)
+		}
+	}
+	node := corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-1"}, Status: corev1.NodeStatus{Allocatable: corev1.ResourceList{
+		corev1.ResourceCPU: resource.MustParse("2"), corev1.ResourceMemory: resource.MustParse("4Gi"), corev1.ResourcePods: resource.MustParse("10"),
+	}}}
+	finished := pod.DeepCopy()
+	finished.Name = "old-ingester"
+	finished.Status.Phase = corev1.PodSucceeded
+	nodeDetails := formatLoggingNodeResources([]corev1.Node{node}, []corev1.Pod{pod, *finished}, "Hub")
+	if !strings.Contains(nodeDetails, "worker-1: CPU requests=510m/2000m, memory requests=272Mi/4096Mi, pods=1/10") {
+		t.Errorf("node resource details should exclude completed pods:\n%s", nodeDetails)
+	}
+}
+
 func TestFormatLoggingNamespaceInventory(t *testing.T) {
 	listKinds := map[schema.GroupVersionResource]string{
 		{Group: "apps", Version: "v1", Resource: "replicasets"}:                       "ReplicaSetList",
@@ -1259,6 +1326,9 @@ func TestFormatLoggingNamespaceInventory(t *testing.T) {
 				"deletionTimestamp": now.Format(time.RFC3339),
 				"finalizers":        []any{"kubernetes.io/pvc-protection"},
 			},
+			"spec": map[string]any{"storageClassName": "gp3", "resources": map[string]any{
+				"requests": map[string]any{"storage": "10Gi"},
+			}},
 			"status": map[string]any{"phase": "Pending"},
 		}},
 	)
@@ -1271,6 +1341,8 @@ func TestFormatLoggingNamespaceInventory(t *testing.T) {
 		"logging-data: deleting=" + now.Format(time.RFC3339),
 		"finalizers=[kubernetes.io/pvc-protection]",
 		"phase=Pending",
+		"storageClass=gp3",
+		"requested=10Gi",
 		"Service: none",
 	} {
 		if !strings.Contains(out, want) {
@@ -2374,6 +2446,7 @@ func TestFormatLoggingResources(t *testing.T) {
 		installPlanGVR:                "InstallPlanList",
 		NewOperatorGroupGVR():         "OperatorGroupList",
 		NewClusterLogForwarderGVR():   "ClusterLogForwarderList",
+		NewLokiStackGVR():             "LokiStackList",
 	}
 	makeObject := func(apiVersion, kind, namespace, name string, spec, status map[string]any) *unstructured.Unstructured {
 		return &unstructured.Unstructured{Object: map[string]any{
@@ -2413,6 +2486,11 @@ func TestFormatLoggingResources(t *testing.T) {
 				"observedGeneration": int64(2),
 				"conditions":         condition("Ready", "False", "Pending", "collector unavailable"),
 			}),
+		makeObject("loki.grafana.com/v1", "LokiStack", "openshift-logging", managedLokiStackName,
+			map[string]any{}, map[string]any{
+				"conditions": condition("Ready", "False", "PendingComponents", "ingester is pending"),
+				"components": map[string]any{"ingester": map[string]any{"Pending": []any{"ingester-0"}}},
+			}),
 	)
 
 	out := formatLoggingResources(client, "managed")
@@ -2425,6 +2503,7 @@ func TestFormatLoggingResources(t *testing.T) {
 		"InstallPlan openshift-logging/install-abc: approved=false, phase=RequiresApproval",
 		"OperatorGroup openshift-logging/logging-group: targetNamespaces=[openshift-logging], namespaces=[openshift-logging]",
 		"ClusterLogForwarder openshift-logging/mcoa-logging-managed-collection: observedGeneration=2, conditions=Ready=False(Pending: collector unavailable)",
+		"LokiStack openshift-logging/mcoa-logging-managed-storage: generation=0, components=ingester{Pending=[ingester-0]}, conditions=Ready=False(PendingComponents: ingester is pending)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("logging diagnostics missing %q:\n%s", want, out)
@@ -2437,6 +2516,7 @@ func TestFormatLoggingResources(t *testing.T) {
 		"ClusterLogForwarder CRD: customresourcedefinitions.apiextensions.k8s.io \"clusterlogforwarders.observability.openshift.io\" not found",
 		"Subscription in openshift-logging: none",
 		"ClusterLogForwarder in openshift-logging: none",
+		"LokiStack in openshift-logging: none",
 	} {
 		if !strings.Contains(missing, want) {
 			t.Errorf("missing-resource diagnostics missing %q:\n%s", want, missing)
@@ -2449,6 +2529,32 @@ func TestFormatLoggingResources(t *testing.T) {
 	unserved := formatLoggingResources(emptyClient, "managed")
 	if !strings.Contains(unserved, "ClusterLogForwarder in openshift-logging: the server doesn't have a resource type ClusterLogForwarder") {
 		t.Errorf("unserved-API diagnostics missing ClusterLogForwarder error:\n%s", unserved)
+	}
+}
+
+func TestFormatLokiOperatorResources(t *testing.T) {
+	client := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(),
+		&unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "operators.coreos.com/v1alpha1", "kind": "Subscription",
+			"metadata": map[string]any{"namespace": "kubernetes-operators", "name": "loki-operator"},
+			"spec":     map[string]any{"name": "loki-operator", "channel": "stable-6.7"},
+			"status":   map[string]any{"installedCSV": "loki-operator.v6.7.0"},
+		}},
+		&unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "operators.coreos.com/v1alpha1", "kind": "ClusterServiceVersion",
+			"metadata": map[string]any{"namespace": "kubernetes-operators", "name": "loki-operator.v6.7.0"},
+			"status":   map[string]any{"phase": "Succeeded"},
+		}},
+	)
+	out := formatLokiOperatorResources(client)
+	for _, want := range []string{
+		"Loki Operator installation in kubernetes-operators:",
+		"Subscription kubernetes-operators/loki-operator: package=loki-operator, channel=stable-6.7, installedCSV=loki-operator.v6.7.0",
+		"ClusterServiceVersion kubernetes-operators/loki-operator.v6.7.0: phase=Succeeded",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("Loki Operator details missing %q:\n%s", want, out)
+		}
 	}
 }
 

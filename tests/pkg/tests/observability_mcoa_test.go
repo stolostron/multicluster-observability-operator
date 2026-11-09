@@ -1375,6 +1375,17 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				})
 			})
 
+			It("should have a healthy Cluster Logging Operator and LokiStack on the hub", SpecTimeout(18*time.Minute), func(ctx context.Context) {
+				By("Waiting for the Cluster Logging Operator and managed LokiStack to become healthy on the hub", func() {
+					Eventually(func() error {
+						if err := utils.CheckClusterLoggingOperatorHealthy(testOptions.HubCluster); err != nil {
+							return err
+						}
+						return utils.CheckMCOAManagedLokiStackHealthy(testOptions.HubCluster)
+					}, 15*time.Minute, 5*time.Second).Should(Succeed())
+				})
+			})
+
 			It("should deploy a ClusterLogForwarder to collect platform logs on the hub", SpecTimeout(10*time.Minute), func(ctx context.Context) {
 				By("Checking a ClusterLogForwarder is reconciled on the hub", func() {
 					Eventually(func() error {
@@ -1383,7 +1394,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 				})
 			})
 
-			It("should deploy a ClusterLogForwarder to collect platform logs on OpenShift managed clusters", SpecTimeout(25*time.Minute), func(ctx context.Context) {
+			It("should deploy a ClusterLogForwarder to collect platform logs on OpenShift managed clusters", SpecTimeout(35*time.Minute), func(ctx context.Context) {
 				if len(accessibleOCPClusters) == 1 {
 					Skip("no OpenShift managed clusters with API access")
 				}
@@ -1395,6 +1406,20 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 								continue
 							}
 							if err := utils.CheckCRDEstablished(cluster, mcoconfig.ClusterLogForwarderCRDName); err != nil {
+								return err
+							}
+						}
+						return nil
+					}, 10*time.Minute, 5*time.Second).Should(Succeed())
+				})
+
+				By("Waiting for the Cluster Logging Operator to become healthy on every accessible OpenShift managed cluster", func() {
+					Eventually(func() error {
+						for _, cluster := range accessibleOCPClusters {
+							if cluster.Name == testOptions.HubCluster.Name {
+								continue
+							}
+							if err := utils.CheckClusterLoggingOperatorHealthy(cluster); err != nil {
 								return err
 							}
 						}
