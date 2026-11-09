@@ -34,6 +34,35 @@ See `.env.example` for all supported variables.
 
 ---
 
+## Run E2E against a custom ACM catalog
+
+If ACM is already installed, `make e2e-tests` switches its existing
+`acm-custom-registry` CatalogSource to the temporary managed log store catalog
+configured in the Makefile, waits for OLM to upgrade the ACM CSV, and verifies
+the MCH operator image before starting the tests:
+
+```bash
+export KUBECONFIG=/path/to/hub.kubeconfig
+make e2e-tests
+```
+
+Prow leaves the ACM Subscription channel empty, so the script first sets it to
+`release-2.17` before switching catalogs.
+
+The Makefile defaults can be overridden with `CUSTOM_ACM_CATALOG_IMAGE` and
+`EXPECTED_MCH_OPERATOR_IMAGE`. Set `CUSTOM_ACM_CATALOG_IMAGE=` to skip the
+catalog switch. In Prow, `make e2e-tests` uses `${SHARED_DIR}/hub-1.kc` when no
+`KUBECONFIG` is set. The bundle image is selected by the catalog and is not an
+input to this script.
+
+The custom catalog must contain a new CSV in the subscribed channel with an
+upgrade path from the CSV already installed on the cluster. The script fails if
+OLM does not perform that upgrade or if the running MCH or MCO operator image
+does not match the expected image. The cluster must be able to pull the custom
+catalog and bundle images.
+
+---
+
 ## Path A — Fresh install from the standard OLM catalog
 
 Use this on a bare cluster with no ACM installed, when you don't need downstream dev builds.
@@ -380,6 +409,107 @@ go install github.com/onsi/ginkgo/v2/ginkgo@latest
 
 Per-cluster kubeconfigs are written to `tests/resources/kubeconfigs/` (gitignored).
 Results are written to `tests/pkg/tests/results.xml`.
+
+---
+
+## Building a custom ACM bundle for upgrade testing
+
+`build-acm-bundle.sh` uses `just dev-branch-e2e` from a local
+[`installer-dev-tools`](https://github.com/openshift/installer-dev-tools) checkout to
+build a custom ACM catalog/bundle. Use this when end-to-end upgrade tests need an ACM
+bundle containing a development change.
+
+### 1. Prepare `installer-dev-tools`
+
+Clone the upstream repository, add the development fork as a remote, and check out the
+branch containing the required bundle-build changes:
+
+```bash
+git clone https://github.com/openshift/installer-dev-tools.git
+cd installer-dev-tools
+git remote add acm-upgrade git@github.com:GeorgeFrankAeillo/installer-dev-tools.git
+git fetch acm-upgrade
+git switch --track acm-upgrade/gaeillo/addUpgradeOption
+```
+
+The build script runs `just` from the custom-catalog directory. Install `just` and any
+container/build tools required by the installer-dev-tools `dev-branch-e2e` recipe. You
+also need access to the Quay account used to publish the resulting catalog image. Note: this is subject to change, the workaround to build the acm bundle is not merged to main in `installer-dev-tools` (and doesn't seem likely to soon)
+
+### 2. Configure the build
+
+Create the dev-scripts environment file and set the custom-bundle variables in it:
+
+```bash
+cp dev-scripts/.env.example dev-scripts/.env
+```
+
+For example, for an ACM 5.0 bundle (adjust versions, branches, paths, and tags to match
+the ACM build and MCO change you are testing):
+
+```dotenv
+QUAY_USER=rh-ee-yourname
+INSTALLER_DEV_TOOLS_DIR=/absolute/path/to/installer-dev-tools/scripts/custom-catalog
+TARGET_CSV_VERSION=5.0.1-managedlogstore
+FROM_CSV_VERSION=advanced-cluster-management.v5.0.0
+BASE_ACM=release-5.0
+BASE_CATALOG_TAG=latest-5.0
+ACM_IMG_TAG=managed-logstore-test-5.0-amd64
+COMPONENT_BRANCH=multicluster-observability-operator:main
+```
+
+`QUAY_USER` is passed to the build recipe and must be set; authenticate to Quay as needed
+to push the generated image. Keep personal credentials out of committed files. The
+variables mean:
+
+| Variable | Purpose |
+|---|---|
+| `INSTALLER_DEV_TOOLS_DIR` | Path to `installer-dev-tools/scripts/custom-catalog`, where the script runs `just`. |
+| `TARGET_CSV_VERSION` | Version suffix for the new ACM CSV, without the `advanced-cluster-management.v` prefix. |
+| `FROM_CSV_VERSION` | Full currently-installed ACM CSV to upgrade from. |
+| `BASE_ACM` | ACM release branch used for the operator and bundle source. |
+| `BASE_CATALOG_TAG` | Base ACM catalog tag, such as `latest-5.0`. |
+| `ACM_IMG_TAG` | Tag for the resulting custom ACM catalog image. |
+| `COMPONENT_BRANCH` | MCO repository and branch to include, in `repository:branch` form. |
+
+The `.env` file is loaded automatically by dev-scripts. Run the build from the
+multicluster-observability-operator repository root:
+
+```bash
+./dev-scripts/build-acm-bundle.sh
+```
+
+### 3. Point upgrade tests at the generated bundle
+
+When using the generated catalog in end-to-end upgrade testing, update the image and
+target CSV in `cicd-scripts/upgrade-acm.sh` to match the image and CSV produced by the
+build. For example:
+
+```bash
+ACM_IMG='quay.io/rh-ee-dbuchana/acm-dev-catalog:managed-logstore-test-5.0-amd64'
+TARGET_CSV='advanced-cluster-management.v5.0.1-managedlogstore'
+```
+
+Before choosing the target CSV, check which ACM CSV is installed on the cluster. The
+current CSV is also the value to use for `FROM_CSV_VERSION` when building an upgrade
+bundle:
+
+```bash
+NAMESPACE=open-cluster-management
+SUB=$(oc -n "$NAMESPACE" get subscriptions.operators.coreos.com -o json |
+  jq -er '[.items[] | select(.spec.name == "advanced-cluster-management")] |
+    if length == 1 then .[0].metadata.name else error("expected one ACM subscription") end')
+oc -n "$NAMESPACE" get subscriptions.operators.coreos.com "$SUB" \
+  -o jsonpath='{.status.currentCSV}'
+```
+
+Set `TARGET_CSV` to the full CSV name generated by the bundle (the prefix plus
+`TARGET_CSV_VERSION`). It may need to change when building for a different ACM version.
+This will run as part of cicd. Can also run the upgrade helper against your own cluster:
+
+```bash
+./cicd-scripts/upgrade-acm.sh
+```
 
 ---
 
