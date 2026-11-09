@@ -9,11 +9,19 @@ import (
 	"fmt"
 
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	appsv1 "k8s.io/api/apps/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
+)
+
+const (
+	clusterLoggingNamespace        = "openshift-logging"
+	clusterLoggingSubscriptionName = "cluster-logging"
+	clusterLoggingDeploymentName   = "cluster-logging-operator"
+	managedLokiStackName           = "mcoa-logging-managed-storage"
 )
 
 // CheckCRDEstablished returns nil once the named CustomResourceDefinition exists on the given
@@ -61,6 +69,135 @@ func CheckLokiOperatorSubscriptionExists(cluster Cluster) error {
 
 	klog.V(1).Infof("Loki Operator subscription %s/%s found on cluster %s", sub.GetNamespace(), sub.GetName(), cluster.Name)
 	return nil
+}
+
+// CheckClusterLoggingOperatorHealthy waits for OLM to finish installing CLO and for its
+// Deployment to become available. A registered CLF CRD alone does not mean CLO can reconcile CLFs.
+func CheckClusterLoggingOperatorHealthy(cluster Cluster) error {
+	clientDynamic := GetKubeClientDynamicWithCluster(cluster)
+	sub, err := clientDynamic.Resource(NewSubscriptionGVR()).
+		Namespace(clusterLoggingNamespace).
+		Get(context.TODO(), clusterLoggingSubscriptionName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("get Cluster Logging Subscription on cluster %s: %w", cluster.Name, err)
+	}
+	if sub.GetDeletionTimestamp() != nil {
+		return fmt.Errorf("Cluster Logging Subscription on cluster %s is deleting", cluster.Name)
+	}
+	csvName, found, err := unstructured.NestedString(sub.Object, "status", "installedCSV")
+	if err != nil {
+		return fmt.Errorf("read Cluster Logging Subscription installedCSV on cluster %s: %w", cluster.Name, err)
+	}
+	if !found || csvName == "" {
+		return fmt.Errorf("Cluster Logging Subscription on cluster %s has no installedCSV yet", cluster.Name)
+	}
+	csv, err := clientDynamic.Resource(NewClusterServiceVersionGVR()).
+		Namespace(clusterLoggingNamespace).
+		Get(context.TODO(), csvName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("get Cluster Logging CSV %s on cluster %s: %w", csvName, cluster.Name, err)
+	}
+	if err := checkClusterLoggingCSVStatus(csv); err != nil {
+		return fmt.Errorf("Cluster Logging Operator on cluster %s: %w", cluster.Name, err)
+	}
+	deployment, err := GetDeploymentWithCluster(cluster, clusterLoggingDeploymentName, clusterLoggingNamespace)
+	if err != nil {
+		return fmt.Errorf("get Cluster Logging Deployment on cluster %s: %w", cluster.Name, err)
+	}
+	if err := checkClusterLoggingDeploymentStatus(deployment); err != nil {
+		return fmt.Errorf("Cluster Logging Operator on cluster %s: %w", cluster.Name, err)
+	}
+	return nil
+}
+
+func checkClusterLoggingCSVStatus(csv *unstructured.Unstructured) error {
+	if csv.GetDeletionTimestamp() != nil {
+		return fmt.Errorf("CSV %s is deleting", csv.GetName())
+	}
+	phase, _, err := unstructured.NestedString(csv.Object, "status", "phase")
+	if err != nil {
+		return fmt.Errorf("read CSV %s phase: %w", csv.GetName(), err)
+	}
+	if phase != "Succeeded" {
+		reason, _, _ := unstructured.NestedString(csv.Object, "status", "reason")
+		message, _, _ := unstructured.NestedString(csv.Object, "status", "message")
+		return fmt.Errorf("CSV %s phase is %q (reason: %s, message: %s)", csv.GetName(), phase, reason, message)
+	}
+	return nil
+}
+
+func checkClusterLoggingDeploymentStatus(deployment *appsv1.Deployment) error {
+	if deployment.DeletionTimestamp != nil {
+		return fmt.Errorf("Deployment %s/%s is deleting", deployment.Namespace, deployment.Name)
+	}
+	if deployment.Status.ObservedGeneration < deployment.Generation {
+		return fmt.Errorf("Deployment %s/%s has not observed generation %d yet (observed: %d)",
+			deployment.Namespace, deployment.Name, deployment.Generation, deployment.Status.ObservedGeneration)
+	}
+	desiredReplicas := int32(1)
+	if deployment.Spec.Replicas != nil {
+		desiredReplicas = *deployment.Spec.Replicas
+	}
+	if desiredReplicas == 0 {
+		return fmt.Errorf("Deployment %s/%s has zero desired replicas", deployment.Namespace, deployment.Name)
+	}
+	if deployment.Status.ReadyReplicas < desiredReplicas {
+		return FormatDeploymentNotReadyError(deployment, deployment.Namespace, deployment.Name)
+	}
+	if deployment.Status.AvailableReplicas < desiredReplicas {
+		return fmt.Errorf("Deployment %s/%s has %d/%d available replicas", deployment.Namespace, deployment.Name,
+			deployment.Status.AvailableReplicas, desiredReplicas)
+	}
+	return nil
+}
+
+// CheckMCOAManagedLokiStackHealthy waits until Loki Operator reports that all components
+// of the MCOA-managed LokiStack are Ready for the current generation.
+func CheckMCOAManagedLokiStackHealthy(cluster Cluster) error {
+	clientDynamic := GetKubeClientDynamicWithCluster(cluster)
+	stack, err := clientDynamic.Resource(NewLokiStackGVR()).
+		Namespace(clusterLoggingNamespace).
+		Get(context.TODO(), managedLokiStackName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("get managed LokiStack on cluster %s: %w", cluster.Name, err)
+	}
+	if err := checkManagedLokiStackStatus(stack); err != nil {
+		return fmt.Errorf("managed LokiStack on cluster %s: %w", cluster.Name, err)
+	}
+	return nil
+}
+
+func checkManagedLokiStackStatus(stack *unstructured.Unstructured) error {
+	if stack.GetDeletionTimestamp() != nil {
+		return fmt.Errorf("LokiStack %s/%s is deleting", stack.GetNamespace(), stack.GetName())
+	}
+	conditions, found, err := unstructured.NestedSlice(stack.Object, "status", "conditions")
+	if err != nil {
+		return fmt.Errorf("read LokiStack %s/%s conditions: %w", stack.GetNamespace(), stack.GetName(), err)
+	}
+	if !found {
+		return fmt.Errorf("LokiStack %s/%s has no status conditions yet", stack.GetNamespace(), stack.GetName())
+	}
+	for _, item := range conditions {
+		condition, ok := item.(map[string]any)
+		if !ok || condition["type"] != "Ready" {
+			continue
+		}
+		observedGeneration, _, err := unstructured.NestedInt64(condition, "observedGeneration")
+		if err != nil {
+			return fmt.Errorf("read LokiStack %s/%s Ready observedGeneration: %w", stack.GetNamespace(), stack.GetName(), err)
+		}
+		if observedGeneration < stack.GetGeneration() {
+			return fmt.Errorf("LokiStack %s/%s Ready condition is stale (observed generation %d, current generation %d)",
+				stack.GetNamespace(), stack.GetName(), observedGeneration, stack.GetGeneration())
+		}
+		if condition["status"] != "True" {
+			return fmt.Errorf("LokiStack %s/%s Ready=%v (reason: %v, message: %v)",
+				stack.GetNamespace(), stack.GetName(), condition["status"], condition["reason"], condition["message"])
+		}
+		return nil
+	}
+	return fmt.Errorf("LokiStack %s/%s has no Ready condition yet", stack.GetNamespace(), stack.GetName())
 }
 
 // CheckMCOARootCertificateResourcesExist returns nil once the self-signed Issuer, root CA
