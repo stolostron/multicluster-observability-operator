@@ -1309,6 +1309,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		"when the managed log store is enabled for MCOA [P1][Sev1][Observability][Stable]@ocpInterop (mcoa_logs/g0)",
 		func() {
 			BeforeAll(func(ctx SpecContext) {
+				/* Temporarily disabled while upgrade-acm.sh supplies the managed log store RBAC.
 				By("Pausing MultiClusterHub and granting the MCO operator managed log store permissions", func() {
 					rbacOverride, err := utils.NewManagedLogStoreRBACOverride(ctx, testOptions)
 					Expect(err).NotTo(HaveOccurred())
@@ -1330,6 +1331,7 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 					}, 3*time.Minute, 5*time.Second).Should(Succeed())
 					Expect(rbacOverride.ApplyRBAC(ctx)).To(Succeed())
 				})
+				*/
 
 				By("Deploying the object storage secret for the managed log store's LokiStack", func() {
 					Expect(utils.CreateMCOALoggingObjectStorageSecret(testOptions)).NotTo(HaveOccurred())
