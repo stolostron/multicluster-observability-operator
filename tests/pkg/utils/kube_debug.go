@@ -44,6 +44,7 @@ const (
 	maxTailLines                  = 20
 	maxPrecedingErrorLines        = 30
 	localWorkAgentNamespace       = "open-cluster-management-agent"
+	loggingNamespace              = "openshift-logging"
 	DebugDumpStartMarker          = "==================== [DEBUG DUMP START] ===================="
 	DebugDumpEndMarker            = "==================== [DEBUG DUMP END] ======================"
 	SectionMCOCR                  = "---------- [SECTION: MCO CR] ----------"
@@ -54,6 +55,7 @@ const (
 	SectionAppliedManifestWorks   = "---------- [SECTION: Observability AppliedManifestWorks] ----------"
 	SectionAddOnDeploymentConfigs = "---------- [SECTION: AddOnDeploymentConfigs] ----------"
 	SectionHubWorkloads           = "---------- [SECTION: Hub Workloads & Pods] ----------"
+	SectionHubLoggingCleanup      = "---------- [SECTION: Hub Logging Namespace Cleanup] ----------"
 	SectionLocalWorkAgent         = "---------- [SECTION: Local-Cluster Work Agent] ----------"
 	SectionSpokeWorkloads         = "---------- [SECTION: Spoke Workloads & Pods] ----------"
 	SectionWarningEvents          = "---------- [SECTION: Recent Warning Events] ----------"
@@ -240,6 +242,12 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	// local-cluster applies its ManifestWorks on the hub, so its AppliedManifestWorks are here too.
 	klog.Info(SectionAppliedManifestWorks)
 	printAppliedManifestWorks(hubDynClient)
+	if isMCOA {
+		// A local-cluster AppliedManifestWork can remain deleting while its hub-side
+		// openshift-logging Namespace is still finalizing.
+		klog.Info(SectionHubLoggingCleanup)
+		logLoggingNamespaceDebugInfo(hubClient, hubDynClient, "Hub")
+	}
 
 	if isMCOA {
 		klog.Info(SectionAddOnDeploymentConfigs)
@@ -2644,6 +2652,181 @@ func printAppliedManifestWorks(client dynamic.Interface) {
 	klog.Info(out)
 }
 
+func formatNamespaceDeletionStatus(namespace corev1.Namespace) string {
+	deleting := "-"
+	if namespace.DeletionTimestamp != nil {
+		deleting = namespace.DeletionTimestamp.Format(time.RFC3339)
+	}
+
+	var out strings.Builder
+	_, _ = fmt.Fprintf(&out, "Namespace %s: uid=%s, phase=%s, deleting=%s, metadata.finalizers=%v, spec.finalizers=%v\n",
+		namespace.Name, namespace.UID, namespace.Status.Phase, deleting,
+		namespace.Finalizers, namespace.Spec.Finalizers)
+	for _, condition := range namespace.Status.Conditions {
+		_, _ = fmt.Fprintf(&out, "  %s=%s (%s: %s)\n", condition.Type, condition.Status,
+			condition.Reason, truncateLogLine(condition.Message, 1000))
+	}
+	return out.String()
+}
+
+func logLoggingNamespaceDebugInfo(client kubernetes.Interface, dynClient dynamic.Interface, clusterName string) {
+	namespace, err := client.CoreV1().Namespaces().Get(context.TODO(), loggingNamespace, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			klog.Infof("Namespace %s on %s: not found", loggingNamespace, clusterName)
+		} else {
+			klog.Errorf("Failed to inspect Namespace %s on %s: %v", loggingNamespace, clusterName, err)
+		}
+	} else {
+		klog.Info(formatNamespaceDeletionStatus(*namespace))
+		CheckDeploymentsInNamespace(client, loggingNamespace)
+		CheckStatefulSetsInNamespace(client, loggingNamespace)
+		CheckDaemonSetsInNamespace(client, loggingNamespace)
+		CheckJobsInNamespace(client, loggingNamespace)
+		logLoggingNamespacePods(client)
+		klog.Info(formatLoggingNamespaceInventory(dynClient))
+	}
+	klog.Info(formatLoggingResources(dynClient, clusterName))
+	printRecentWarningEvents(client, clusterName+" logging", []string{loggingNamespace}, 15)
+}
+
+func isPodReady(pod corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady {
+			return condition.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func needsLoggingPodDiagnostics(pod corev1.Pod) bool {
+	return pod.DeletionTimestamp != nil || pod.Status.Phase != corev1.PodRunning || !isPodReady(pod)
+}
+
+func formatLoggingPodStatuses(pods []corev1.Pod) string {
+	if len(pods) == 0 {
+		return "No pods found in namespace " + loggingNamespace
+	}
+
+	sorted := slices.Clone(pods)
+	slices.SortFunc(sorted, func(a, b corev1.Pod) int { return strings.Compare(a.Name, b.Name) })
+	var out strings.Builder
+	out.WriteString("Pods in namespace " + loggingNamespace + ":\n")
+	writer := tabwriter.NewWriter(&out, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "NAME\tPHASE\tREADY\tRESTARTS\tNODE\tREASON\tDELETING\tFINALIZERS")
+	for _, pod := range sorted {
+		readyContainers := 0
+		var restarts int32
+		for _, container := range pod.Status.ContainerStatuses {
+			if container.Ready {
+				readyContainers++
+			}
+			restarts += container.RestartCount
+		}
+		for _, container := range pod.Status.InitContainerStatuses {
+			restarts += container.RestartCount
+		}
+		reason := pod.Status.Reason
+		if reason == "" {
+			reason = "-"
+		}
+		deleting := "-"
+		if pod.DeletionTimestamp != nil {
+			deleting = pod.DeletionTimestamp.Format(time.RFC3339)
+		}
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%d/%d (PodReady=%t)\t%d\t%s\t%s\t%s\t%v\n",
+			pod.Name, pod.Status.Phase, readyContainers, len(pod.Spec.Containers), isPodReady(pod),
+			restarts, pod.Spec.NodeName, reason, deleting, pod.Finalizers)
+	}
+	_ = writer.Flush()
+	return out.String()
+}
+
+func logLoggingNamespacePods(client kubernetes.Interface) {
+	pods, err := client.CoreV1().Pods(loggingNamespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list pods in namespace %s: %v", loggingNamespace, err)
+		return
+	}
+	klog.Info(formatLoggingPodStatuses(pods.Items))
+	for _, pod := range pods.Items {
+		if needsLoggingPodDiagnostics(pod) {
+			LogPodStatus(pod)
+			LogObjectEvents(client, loggingNamespace, "Pod", pod.Name)
+			LogPodLogs(client, loggingNamespace, pod)
+		} else if strings.Contains(pod.Name, "cluster-logging-operator") {
+			LogPodLogs(client, loggingNamespace, pod)
+		}
+	}
+}
+
+func formatLoggingNamespaceInventory(client dynamic.Interface) string {
+	resources := []struct {
+		kind string
+		gvr  schema.GroupVersionResource
+	}{
+		{"ReplicaSet", schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "replicasets"}},
+		{"Service", schema.GroupVersionResource{Version: "v1", Resource: "services"}},
+		{"ServiceAccount", schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}},
+		{"ConfigMap", schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}},
+		{"Secret", schema.GroupVersionResource{Version: "v1", Resource: "secrets"}},
+		{"PersistentVolumeClaim", schema.GroupVersionResource{Version: "v1", Resource: "persistentvolumeclaims"}},
+		{"ResourceQuota", schema.GroupVersionResource{Version: "v1", Resource: "resourcequotas"}},
+		{"NetworkPolicy", schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"}},
+		{"PodDisruptionBudget", schema.GroupVersionResource{Group: "policy", Version: "v1", Resource: "poddisruptionbudgets"}},
+		{"Role", schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"}},
+		{"RoleBinding", schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"}},
+		{"ServiceMonitor", schema.GroupVersionResource{Group: "monitoring.coreos.com", Version: "v1", Resource: "servicemonitors"}},
+	}
+
+	var out strings.Builder
+	out.WriteString("Other resources in namespace " + loggingNamespace + ":\n")
+	for _, resource := range resources {
+		list, err := client.Resource(resource.gvr).Namespace(loggingNamespace).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			_, _ = fmt.Fprintf(&out, "  %s: list failed: %v\n", resource.kind, err)
+			continue
+		}
+		if len(list.Items) == 0 {
+			_, _ = fmt.Fprintf(&out, "  %s: none\n", resource.kind)
+			continue
+		}
+		slices.SortFunc(list.Items, func(a, b unstructured.Unstructured) int { return strings.Compare(a.GetName(), b.GetName()) })
+		_, _ = fmt.Fprintf(&out, "  %s (%d):\n", resource.kind, len(list.Items))
+		for _, item := range list.Items {
+			_, _ = fmt.Fprintf(&out, "    %s%s\n", item.GetName(), formatLoggingInventoryItemDetails(resource.kind, item))
+		}
+	}
+	return out.String()
+}
+
+func formatLoggingInventoryItemDetails(kind string, item unstructured.Unstructured) string {
+	var details []string
+	if deletionTimestamp := item.GetDeletionTimestamp(); deletionTimestamp != nil {
+		details = append(details, "deleting="+deletionTimestamp.Format(time.RFC3339))
+	}
+	if finalizers := item.GetFinalizers(); len(finalizers) > 0 {
+		details = append(details, fmt.Sprintf("finalizers=%v", finalizers))
+	}
+	switch kind {
+	case "ReplicaSet":
+		ready, _, _ := unstructured.NestedInt64(item.Object, "status", "readyReplicas")
+		desired, _, _ := unstructured.NestedInt64(item.Object, "spec", "replicas")
+		details = append(details, fmt.Sprintf("ready=%d/%d", ready, desired))
+	case "PersistentVolumeClaim":
+		phase, _, _ := unstructured.NestedString(item.Object, "status", "phase")
+		details = append(details, "phase="+phase)
+	case "ResourceQuota":
+		used, _, _ := unstructured.NestedMap(item.Object, "status", "used")
+		hard, _, _ := unstructured.NestedMap(item.Object, "status", "hard")
+		details = append(details, fmt.Sprintf("used=%v hard=%v", used, hard))
+	}
+	if len(details) == 0 {
+		return ""
+	}
+	return ": " + strings.Join(details, ", ")
+}
+
 func selectWorkAgentPods(pods []corev1.Pod) []corev1.Pod {
 	workAgentPods := make([]corev1.Pod, 0)
 	for _, pod := range pods {
@@ -2651,27 +2834,74 @@ func selectWorkAgentPods(pods []corev1.Pod) []corev1.Pod {
 			workAgentPods = append(workAgentPods, pod)
 		}
 	}
-	slices.SortFunc(workAgentPods, func(a, b corev1.Pod) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(workAgentPods, func(a, b corev1.Pod) int {
+		if result := strings.Compare(a.Namespace, b.Namespace); result != 0 {
+			return result
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
 	return workAgentPods
 }
 
+func selectWorkAgentDeployments(deployments []appsv1.Deployment) []appsv1.Deployment {
+	selected := make([]appsv1.Deployment, 0)
+	for _, deployment := range deployments {
+		if strings.Contains(deployment.Name, "work-agent") {
+			selected = append(selected, deployment)
+		}
+	}
+	slices.SortFunc(selected, func(a, b appsv1.Deployment) int {
+		if result := strings.Compare(a.Namespace, b.Namespace); result != 0 {
+			return result
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+	return selected
+}
+
 func logLocalWorkAgentPods(client kubernetes.Interface) {
-	pods, err := client.CoreV1().Pods(localWorkAgentNamespace).List(context.TODO(), metav1.ListOptions{})
+	agentNamespaces := map[string]struct{}{localWorkAgentNamespace: {}}
+	deployments, err := client.AppsV1().Deployments("").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		klog.Errorf("failed to list local-cluster work-agent pods in namespace %s: %v", localWorkAgentNamespace, err)
+		klog.Errorf("Failed to list work-agent deployments on the hub: %v", err)
+	} else {
+		selected := selectWorkAgentDeployments(deployments.Items)
+		if len(selected) == 0 {
+			klog.Info("No work-agent deployments found on the hub in any namespace")
+		}
+		for _, deployment := range selected {
+			agentNamespaces[deployment.Namespace] = struct{}{}
+			desired := int32(1)
+			if deployment.Spec.Replicas != nil {
+				desired = *deployment.Spec.Replicas
+			}
+			klog.Infof("Work-agent Deployment %s/%s: desired=%d, updated=%d, ready=%d, available=%d, conditions=%v",
+				deployment.Namespace, deployment.Name, desired, deployment.Status.UpdatedReplicas,
+				deployment.Status.ReadyReplicas, deployment.Status.AvailableReplicas, deployment.Status.Conditions)
+		}
+	}
+
+	pods, err := client.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list work-agent pods on the hub: %v", err)
 		return
 	}
 
 	workAgentPods := selectWorkAgentPods(pods.Items)
 	if len(workAgentPods) == 0 {
-		klog.V(1).Infof("No local-cluster work-agent pods found in namespace %s", localWorkAgentNamespace)
-		return
+		klog.Info("No work-agent pods found on the hub in any namespace")
 	}
 
-	printPodsStatuses(workAgentPods)
 	for _, pod := range workAgentPods {
-		LogPodLogs(client, localWorkAgentNamespace, pod)
+		agentNamespaces[pod.Namespace] = struct{}{}
+		klog.Infof("Work-agent Pod %s/%s on node %s", pod.Namespace, pod.Name, pod.Spec.NodeName)
+		LogPodStatus(pod)
+		if pod.Status.Phase != corev1.PodRunning {
+			LogObjectEvents(client, pod.Namespace, "Pod", pod.Name)
+		}
+		LogPodLogs(client, pod.Namespace, pod)
 	}
+	printRecentWarningEvents(client, "Hub work-agent", slices.Sorted(maps.Keys(agentNamespaces)), 15)
 }
 
 // GetDiscoveredManagedClusterNames queries the Hub's ManagedCluster resources and returns their names.
@@ -2806,12 +3036,12 @@ func printMCOACustomResources(client dynamic.Interface, ns string) {
 	}
 }
 
-// formatSpokeLoggingResources records installation state before AfterAll can
-// remove the logging ManifestWork and its spoke-side resources.
-func formatSpokeLoggingResources(client dynamic.Interface, clusterName string) string {
-	const namespace = "openshift-logging"
+// formatLoggingResources records installation state before AfterAll can remove
+// logging resources from either the hub or a spoke.
+func formatLoggingResources(client dynamic.Interface, clusterName string) string {
+	const namespace = loggingNamespace
 	var out strings.Builder
-	fmt.Fprintf(&out, "Logging installation on spoke %s:\n", clusterName)
+	fmt.Fprintf(&out, "Logging installation on %s:\n", clusterName)
 
 	crdGVR := schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"}
 	crd, err := client.Resource(crdGVR).Get(context.TODO(), "clusterlogforwarders.observability.openshift.io", metav1.GetOptions{})
@@ -2862,6 +3092,12 @@ func formatSpokeLoggingResources(client dynamic.Interface, clusterName string) s
 
 func formatSpokeLoggingResource(kind string, item unstructured.Unstructured) string {
 	var details []string
+	if deletionTimestamp := item.GetDeletionTimestamp(); deletionTimestamp != nil {
+		details = append(details, "deleting="+deletionTimestamp.Format(time.RFC3339))
+	}
+	if finalizers := item.GetFinalizers(); len(finalizers) > 0 {
+		details = append(details, fmt.Sprintf("finalizers=%v", finalizers))
+	}
 	addString := func(label string, fields ...string) {
 		value, found, _ := unstructured.NestedString(item.Object, fields...)
 		if found {
@@ -3126,15 +3362,6 @@ func logSpokeClusterDebugInfo(
 }
 
 func logSpokeLoggingDebugInfo(spokeClient kubernetes.Interface, spokeDynClient dynamic.Interface, clusterName string) {
-	const namespace = "openshift-logging"
-	klog.Infof("Spoke logging namespace on %s: %s", clusterName, namespace)
-	_, err := spokeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
-	if err != nil {
-		klog.Warningf("Could not inspect %s on spoke %s: %v", namespace, clusterName, err)
-	} else {
-		CheckDeploymentsInNamespace(spokeClient, namespace)
-		CheckPodsInNamespace(spokeClient, namespace, []string{"cluster-logging-operator"}, map[string]string{})
-		printRecentWarningEvents(spokeClient, clusterName, []string{namespace}, 15)
-	}
-	klog.Info(formatSpokeLoggingResources(spokeDynClient, clusterName))
+	klog.Infof("Spoke logging namespace on %s: %s", clusterName, loggingNamespace)
+	logLoggingNamespaceDebugInfo(spokeClient, spokeDynClient, clusterName)
 }
