@@ -1118,13 +1118,164 @@ func TestFormatAppliedManifestWorks(t *testing.T) {
 
 func TestSelectWorkAgentPods(t *testing.T) {
 	pods := []corev1.Pod{
-		{ObjectMeta: metav1.ObjectMeta{Name: "registration-agent-abc"}},
-		{ObjectMeta: metav1.ObjectMeta{Name: "klusterlet-work-agent-bbb"}},
-		{ObjectMeta: metav1.ObjectMeta{Name: "klusterlet-work-agent-aaa"}},
+		{ObjectMeta: metav1.ObjectMeta{Namespace: "open-cluster-management-agent", Name: "registration-agent-abc"}},
+		{ObjectMeta: metav1.ObjectMeta{Namespace: "other-agent-namespace", Name: "klusterlet-work-agent-bbb"}},
+		{ObjectMeta: metav1.ObjectMeta{Namespace: "open-cluster-management-agent", Name: "klusterlet-work-agent-bbb"}},
+		{ObjectMeta: metav1.ObjectMeta{Namespace: "open-cluster-management-agent", Name: "klusterlet-work-agent-aaa"}},
 	}
 	selected := selectWorkAgentPods(pods)
-	if len(selected) != 2 || selected[0].Name != "klusterlet-work-agent-aaa" || selected[1].Name != "klusterlet-work-agent-bbb" {
-		t.Errorf("expected both work-agent replicas in name order, got: %v", selected)
+	if len(selected) != 3 ||
+		selected[0].Namespace != "open-cluster-management-agent" || selected[0].Name != "klusterlet-work-agent-aaa" ||
+		selected[1].Namespace != "open-cluster-management-agent" || selected[1].Name != "klusterlet-work-agent-bbb" ||
+		selected[2].Namespace != "other-agent-namespace" || selected[2].Name != "klusterlet-work-agent-bbb" {
+		t.Errorf("expected work-agent pods sorted by namespace and name, got: %v", selected)
+	}
+}
+
+func TestSelectWorkAgentDeployments(t *testing.T) {
+	deployments := []appsv1.Deployment{
+		{ObjectMeta: metav1.ObjectMeta{Namespace: "other-agent-namespace", Name: "klusterlet-work-agent"}},
+		{ObjectMeta: metav1.ObjectMeta{Namespace: "open-cluster-management-agent", Name: "registration-agent"}},
+		{ObjectMeta: metav1.ObjectMeta{Namespace: "open-cluster-management-agent", Name: "klusterlet-work-agent"}},
+	}
+	selected := selectWorkAgentDeployments(deployments)
+	if len(selected) != 2 || selected[0].Namespace != "open-cluster-management-agent" ||
+		selected[1].Namespace != "other-agent-namespace" {
+		t.Errorf("expected work-agent deployments sorted by namespace, got: %v", selected)
+	}
+}
+
+func TestFormatNamespaceDeletionStatus(t *testing.T) {
+	now := metav1.Now()
+	namespace := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "openshift-logging",
+			UID:               "logging-uid",
+			DeletionTimestamp: &now,
+			Finalizers:        []string{"example.com/cleanup"},
+		},
+		Spec: corev1.NamespaceSpec{Finalizers: []corev1.FinalizerName{corev1.FinalizerKubernetes}},
+		Status: corev1.NamespaceStatus{
+			Phase: corev1.NamespaceTerminating,
+			Conditions: []corev1.NamespaceCondition{{
+				Type:    corev1.NamespaceContentRemaining,
+				Status:  corev1.ConditionTrue,
+				Reason:  "SomeResourcesRemain",
+				Message: "Some resources are remaining: clusterlogforwarders.observability.openshift.io has 1 resource instances",
+			}},
+		},
+	}
+	out := formatNamespaceDeletionStatus(namespace)
+	for _, want := range []string{
+		"uid=logging-uid",
+		"phase=Terminating",
+		"deleting=" + now.Format(time.RFC3339),
+		"metadata.finalizers=[example.com/cleanup]",
+		"spec.finalizers=[kubernetes]",
+		"NamespaceContentRemaining=True (SomeResourcesRemain: Some resources are remaining: clusterlogforwarders.observability.openshift.io has 1 resource instances)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("namespace deletion diagnostics missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestFormatLoggingPodStatuses(t *testing.T) {
+	now := metav1.Now()
+	ready := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "collector-ready"},
+		Spec: corev1.PodSpec{
+			NodeName:   "worker-1",
+			Containers: []corev1.Container{{Name: "collector"}},
+		},
+		Status: corev1.PodStatus{
+			Phase:             corev1.PodRunning,
+			Conditions:        []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}},
+			ContainerStatuses: []corev1.ContainerStatus{{Name: "collector", Ready: true, RestartCount: 2}},
+		},
+	}
+	terminating := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "collector-terminating",
+			DeletionTimestamp: &now,
+			Finalizers:        []string{"example.com/cleanup"},
+		},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "collector"}}},
+		Status: corev1.PodStatus{
+			Phase:      corev1.PodRunning,
+			Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionFalse}},
+		},
+	}
+	out := formatLoggingPodStatuses([]corev1.Pod{terminating, ready})
+	for _, want := range []string{
+		"Pods in namespace openshift-logging:",
+		"collector-ready",
+		"1/1 (PodReady=true)",
+		"worker-1",
+		"collector-terminating",
+		"0/1 (PodReady=false)",
+		now.Format(time.RFC3339),
+		"[example.com/cleanup]",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("logging pod status missing %q:\n%s", want, out)
+		}
+	}
+	if needsLoggingPodDiagnostics(ready) || !needsLoggingPodDiagnostics(terminating) {
+		t.Fatal("expected only the unready, terminating pod to receive detailed diagnostics")
+	}
+	if got := formatLoggingPodStatuses(nil); got != "No pods found in namespace openshift-logging" {
+		t.Errorf("unexpected empty pod status: %s", got)
+	}
+}
+
+func TestFormatLoggingNamespaceInventory(t *testing.T) {
+	listKinds := map[schema.GroupVersionResource]string{
+		{Group: "apps", Version: "v1", Resource: "replicasets"}:                       "ReplicaSetList",
+		{Version: "v1", Resource: "services"}:                                         "ServiceList",
+		{Version: "v1", Resource: "serviceaccounts"}:                                  "ServiceAccountList",
+		{Version: "v1", Resource: "configmaps"}:                                       "ConfigMapList",
+		{Version: "v1", Resource: "secrets"}:                                          "SecretList",
+		{Version: "v1", Resource: "persistentvolumeclaims"}:                           "PersistentVolumeClaimList",
+		{Version: "v1", Resource: "resourcequotas"}:                                   "ResourceQuotaList",
+		{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"}:      "NetworkPolicyList",
+		{Group: "policy", Version: "v1", Resource: "poddisruptionbudgets"}:            "PodDisruptionBudgetList",
+		{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"}:        "RoleList",
+		{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"}: "RoleBindingList",
+		{Group: "monitoring.coreos.com", Version: "v1", Resource: "servicemonitors"}:  "ServiceMonitorList",
+	}
+	now := metav1.Now()
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), listKinds,
+		&unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "apps/v1", "kind": "ReplicaSet",
+			"metadata": map[string]any{"namespace": loggingNamespace, "name": "logging-rs"},
+			"spec":     map[string]any{"replicas": int64(2)},
+			"status":   map[string]any{"readyReplicas": int64(1)},
+		}},
+		&unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "v1", "kind": "PersistentVolumeClaim",
+			"metadata": map[string]any{
+				"namespace": loggingNamespace, "name": "logging-data",
+				"deletionTimestamp": now.Format(time.RFC3339),
+				"finalizers":        []any{"kubernetes.io/pvc-protection"},
+			},
+			"status": map[string]any{"phase": "Pending"},
+		}},
+	)
+	out := formatLoggingNamespaceInventory(client)
+	for _, want := range []string{
+		"Other resources in namespace openshift-logging:",
+		"ReplicaSet (1):",
+		"logging-rs: ready=1/2",
+		"PersistentVolumeClaim (1):",
+		"logging-data: deleting=" + now.Format(time.RFC3339),
+		"finalizers=[kubernetes.io/pvc-protection]",
+		"phase=Pending",
+		"Service: none",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("logging namespace inventory missing %q:\n%s", want, out)
+		}
 	}
 }
 
@@ -2215,7 +2366,7 @@ func TestDefensiveNilClientGuards(t *testing.T) {
 	logSpokeClusterDebugInfo(nil, nil, "cluster1", false)
 }
 
-func TestFormatSpokeLoggingResources(t *testing.T) {
+func TestFormatLoggingResources(t *testing.T) {
 	installPlanGVR := schema.GroupVersionResource{Group: "operators.coreos.com", Version: "v1alpha1", Resource: "installplans"}
 	listKinds := map[schema.GroupVersionResource]string{
 		NewSubscriptionGVR():          "SubscriptionList",
@@ -2264,9 +2415,9 @@ func TestFormatSpokeLoggingResources(t *testing.T) {
 			}),
 	)
 
-	out := formatSpokeLoggingResources(client, "managed")
+	out := formatLoggingResources(client, "managed")
 	for _, want := range []string{
-		"Logging installation on spoke managed:",
+		"Logging installation on managed:",
 		"ClusterLogForwarder CRD: servedVersions=[v1], conditions=Established=False(Installing: waiting for API)",
 		"Subscription openshift-logging/cluster-logging: package=cluster-logging, channel=stable, source=redhat-operators, currentCSV=cluster-logging.v1, installPlan=install-abc",
 		"InstallPlanPending=True(Waiting: pending approval)",
@@ -2281,7 +2432,7 @@ func TestFormatSpokeLoggingResources(t *testing.T) {
 	}
 
 	emptyClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), listKinds)
-	missing := formatSpokeLoggingResources(emptyClient, "managed")
+	missing := formatLoggingResources(emptyClient, "managed")
 	for _, want := range []string{
 		"ClusterLogForwarder CRD: customresourcedefinitions.apiextensions.k8s.io \"clusterlogforwarders.observability.openshift.io\" not found",
 		"Subscription in openshift-logging: none",
@@ -2295,9 +2446,30 @@ func TestFormatSpokeLoggingResources(t *testing.T) {
 	emptyClient.PrependReactor("list", "clusterlogforwarders", func(ktesting.Action) (bool, runtime.Object, error) {
 		return true, nil, fmt.Errorf("the server doesn't have a resource type ClusterLogForwarder")
 	})
-	unserved := formatSpokeLoggingResources(emptyClient, "managed")
+	unserved := formatLoggingResources(emptyClient, "managed")
 	if !strings.Contains(unserved, "ClusterLogForwarder in openshift-logging: the server doesn't have a resource type ClusterLogForwarder") {
 		t.Errorf("unserved-API diagnostics missing ClusterLogForwarder error:\n%s", unserved)
+	}
+}
+
+func TestFormatSpokeLoggingResourceDeletionMetadata(t *testing.T) {
+	now := metav1.Now()
+	item := unstructured.Unstructured{Object: map[string]any{
+		"metadata": map[string]any{
+			"name":              "mcoa-logging-managed-collection",
+			"namespace":         "openshift-logging",
+			"deletionTimestamp": now.Format(time.RFC3339),
+			"finalizers":        []any{"logging.openshift.io/cleanup"},
+		},
+	}}
+	out := formatSpokeLoggingResource("ClusterLogForwarder", item)
+	for _, want := range []string{
+		"deleting=" + now.Format(time.RFC3339),
+		"finalizers=[logging.openshift.io/cleanup]",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("logging resource deletion diagnostics missing %q:\n%s", want, out)
+		}
 	}
 }
 
