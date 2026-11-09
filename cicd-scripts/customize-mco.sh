@@ -19,7 +19,7 @@ LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_acm_snapshot)}
 # customize the images for testing
 # TODO: revert to the quay.io:443/acm-d/acm-multicluster-observability-addon-rhel9:$VERSION-dev
 # default before merging; this is pinned to a dev image for managed log store E2E testing.
-export MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF="quay.io/rh-ee-dbuchana/multicluster-observability-addon:rebaseAmMain"
+export MULTICLUSTER_OBSERVABILITY_ADDON_IMAGE_REF="quay.io/rh-ee-dbuchana/multicluster-observability-addon:mcoa-managedlogstore-test"
 export OBO_PROMETHEUS_OPERATOR_IMAGE_REF="quay.io:443/acm-d/obo-prometheus-rhel9-operator:$VERSION-dev"
 
 if [[ -n ${IS_KIND_ENV} ]]; then
