@@ -19,12 +19,14 @@ import (
 const (
 	// DefaultInterval is the default sliding window duration for cardinality estimation streams.
 	DefaultInterval = 15 * time.Minute
+	// DefaultMaxItemsPerInterval is the default Bloom filter capacity per sliding interval.
+	DefaultMaxItemsPerInterval = 15000000
 
 	minInterval     = time.Minute
 	maxGroupBy      = 5
 	defaultBuckets  = 15
 	defaultLimit    = 10000
-	defaultMaxItems = 30000000
+	defaultMaxItems = DefaultMaxItemsPerInterval
 	labelKeyword    = "__label__"
 	groupKeyword    = "__group__"
 	globalKeyword   = "__global__"
@@ -58,11 +60,17 @@ func LoadConfig(path string) (*Config, error) {
 // LoadConfigWithInterval reads and validates a cardinality estimator YAML configuration file,
 // applying defaultInterval to any stream that does not specify an explicit interval.
 func LoadConfigWithInterval(path string, defaultInterval time.Duration) (*Config, error) {
+	return LoadConfigWithDefaults(path, defaultInterval, DefaultMaxItemsPerInterval)
+}
+
+// LoadConfigWithDefaults reads and validates a cardinality estimator YAML configuration file,
+// applying defaultInterval and defaultMaxItems when omitted in the YAML file.
+func LoadConfigWithDefaults(path string, defaultInterval time.Duration, defaultMaxItems int) (*Config, error) {
 	data, err := os.ReadFile(path) // #nosec G304 -- Configuration file path is controlled by operator CLI flag.
 	if err != nil {
 		return nil, fmt.Errorf("cannot read config file %q: %w", path, err)
 	}
-	return ParseConfigWithInterval(data, defaultInterval)
+	return ParseConfigWithDefaults(data, defaultInterval, defaultMaxItems)
 }
 
 // ParseConfig unmarshals and validates a cardinality estimator YAML configuration.
@@ -73,9 +81,18 @@ func ParseConfig(data []byte) (*Config, error) {
 // ParseConfigWithInterval unmarshals and validates a cardinality estimator YAML configuration,
 // applying defaultInterval to any stream that does not specify an explicit interval.
 func ParseConfigWithInterval(data []byte, defaultInterval time.Duration) (*Config, error) {
+	return ParseConfigWithDefaults(data, defaultInterval, DefaultMaxItemsPerInterval)
+}
+
+// ParseConfigWithDefaults unmarshals and validates a cardinality estimator YAML configuration,
+// applying defaultInterval and defaultMaxItems when omitted in the YAML data.
+func ParseConfigWithDefaults(data []byte, defaultInterval time.Duration, defaultMaxItems int) (*Config, error) {
 	var cfg Config
 	if err := yaml.UnmarshalStrict(data, &cfg); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal estimator config: %w", err)
+	}
+	if cfg.MaxItemsPerInterval <= 0 && defaultMaxItems > 0 {
+		cfg.MaxItemsPerInterval = defaultMaxItems
 	}
 	if defaultInterval > 0 {
 		for i := range cfg.Streams {

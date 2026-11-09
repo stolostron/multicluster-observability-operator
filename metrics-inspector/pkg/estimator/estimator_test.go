@@ -576,3 +576,30 @@ streams:
 		t.Fatalf("expected Prometheus text to contain cluster-a/ns-high series, got:\n%s", text)
 	}
 }
+
+func TestParseConfigWithDefaults(t *testing.T) {
+	yamlWithoutMaxItems := []byte(`
+streams:
+  - group_by: [cluster]
+`)
+	cfg, err := ParseConfigWithDefaults(yamlWithoutMaxItems, DefaultInterval, 50_000_000)
+	if err != nil {
+		t.Fatalf("ParseConfigWithDefaults failed: %v", err)
+	}
+	if cfg.MaxItemsPerInterval != 50_000_000 {
+		t.Fatalf("expected fallback MaxItemsPerInterval=50000000, got %d", cfg.MaxItemsPerInterval)
+	}
+
+	yamlWithExplicitMaxItems := []byte(`
+max_items_per_interval: 20000000
+streams:
+  - group_by: [cluster]
+`)
+	cfgExplicit, err := ParseConfigWithDefaults(yamlWithExplicitMaxItems, DefaultInterval, 50_000_000)
+	if err != nil {
+		t.Fatalf("ParseConfigWithDefaults failed: %v", err)
+	}
+	if cfgExplicit.MaxItemsPerInterval != 20_000_000 {
+		t.Fatalf("expected explicit MaxItemsPerInterval=20000000 to take precedence, got %d", cfgExplicit.MaxItemsPerInterval)
+	}
+}

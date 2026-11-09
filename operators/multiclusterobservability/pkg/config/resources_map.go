@@ -389,19 +389,19 @@ var (
 		Small:      "250m",
 		Medium:     "500m",
 		Large:      "1",
-		XLarge:     "1",
+		XLarge:     "1500m",
 		TwoXLarge:  "2",
-		FourXLarge: "2",
+		FourXLarge: "4",
 	}
 	MetricsInspectorMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
 		Minimal:    "256Mi",
-		Default:    "512Mi",
-		Small:      "1Gi",
+		Default:    "256Mi",
+		Small:      "512Mi",
 		Medium:     "1Gi",
 		Large:      "2Gi",
 		XLarge:     "2Gi",
-		TwoXLarge:  "3Gi",
-		FourXLarge: "3Gi",
+		TwoXLarge:  "4Gi",
+		FourXLarge: "8Gi",
 	}
 )
 
