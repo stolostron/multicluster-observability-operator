@@ -85,15 +85,24 @@ func TestCheckClusterLoggingOperatorStatus(t *testing.T) {
 }
 
 func TestCheckManagedLokiStackStatus(t *testing.T) {
+	components := map[string]any{}
+	for _, name := range [...]string{"compactor", "distributor", "gateway", "indexGateway", "ingester", "querier", "queryFrontend"} {
+		components[name] = map[string]any{"Ready": []any{name + "-0"}}
+	}
+	components["ruler"] = map[string]any{"Ready": []any{}}
 	stack := &unstructured.Unstructured{Object: map[string]any{
 		"metadata": map[string]any{
 			"name":       managedLokiStackName,
 			"namespace":  clusterLoggingNamespace,
 			"generation": int64(2),
 		},
-		"status": map[string]any{"conditions": []any{map[string]any{
-			"type": "Ready", "status": "True", "observedGeneration": int64(2), "reason": "ReadyComponents",
-		}}},
+		"status": map[string]any{
+			"conditions": []any{
+				map[string]any{"type": "Warning", "status": "True", "reason": "InsufficientIngesterReplicas"},
+				map[string]any{"type": "Ready", "status": "True", "reason": "ReadyComponents"},
+			},
+			"components": components,
+		},
 	}}
 
 	tests := []struct {
@@ -101,7 +110,7 @@ func TestCheckManagedLokiStackStatus(t *testing.T) {
 		change    func(*unstructured.Unstructured)
 		wantError string
 	}{
-		{name: "healthy"},
+		{name: "healthy without observed generation"},
 		{
 			name: "no conditions yet",
 			change: func(stack *unstructured.Unstructured) {
@@ -110,23 +119,56 @@ func TestCheckManagedLokiStackStatus(t *testing.T) {
 			wantError: "has no status conditions yet",
 		},
 		{
-			name: "components pending",
+			name: "Ready condition false",
 			change: func(stack *unstructured.Unstructured) {
-				stack.Object["status"] = map[string]any{"conditions": []any{map[string]any{
-					"type": "Ready", "status": "False", "observedGeneration": int64(2),
+				stack.Object["status"].(map[string]any)["conditions"] = []any{map[string]any{
+					"type": "Ready", "status": "False",
 					"reason": "PendingComponents", "message": "ingester pod is pending",
-				}}}
+				}}
 			},
 			wantError: "ingester pod is pending",
 		},
 		{
-			name: "stale ready condition",
+			name: "no component status yet",
 			change: func(stack *unstructured.Unstructured) {
-				stack.Object["status"] = map[string]any{"conditions": []any{map[string]any{
-					"type": "Ready", "status": "True", "observedGeneration": int64(1),
-				}}}
+				delete(stack.Object["status"].(map[string]any), "components")
 			},
-			wantError: "Ready condition is stale",
+			wantError: "has no component status yet",
+		},
+		{
+			name: "core component missing",
+			change: func(stack *unstructured.Unstructured) {
+				delete(stack.Object["status"].(map[string]any)["components"].(map[string]any), "ingester")
+			},
+			wantError: "has no ingester component status yet",
+		},
+		{
+			name: "core component has no Ready pods",
+			change: func(stack *unstructured.Unstructured) {
+				stack.Object["status"].(map[string]any)["components"].(map[string]any)["ingester"] = map[string]any{"Ready": []any{}}
+			},
+			wantError: "component ingester has no Ready pods yet",
+		},
+		{
+			name: "component has a pending pod",
+			change: func(stack *unstructured.Unstructured) {
+				stack.Object["status"].(map[string]any)["components"].(map[string]any)["ingester"].(map[string]any)["Pending"] = []any{"ingester-1"}
+			},
+			wantError: "component ingester has Pending pods",
+		},
+		{
+			name: "component has an unready running pod",
+			change: func(stack *unstructured.Unstructured) {
+				stack.Object["status"].(map[string]any)["components"].(map[string]any)["ingester"].(map[string]any)["Running"] = []any{"ingester-1"}
+			},
+			wantError: "component ingester has Running pods",
+		},
+		{
+			name: "optional component has a failed pod",
+			change: func(stack *unstructured.Unstructured) {
+				stack.Object["status"].(map[string]any)["components"].(map[string]any)["ruler"].(map[string]any)["Failed"] = []any{"ruler-0"}
+			},
+			wantError: "component ruler has Failed pods",
 		},
 	}
 

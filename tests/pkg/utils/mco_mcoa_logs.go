@@ -151,8 +151,8 @@ func checkClusterLoggingDeploymentStatus(deployment *appsv1.Deployment) error {
 	return nil
 }
 
-// CheckMCOAManagedLokiStackHealthy waits until Loki Operator reports that all components
-// of the MCOA-managed LokiStack are Ready for the current generation.
+// CheckMCOAManagedLokiStackHealthy waits until Loki Operator reports that the
+// MCOA-managed LokiStack and its core components are Ready.
 func CheckMCOAManagedLokiStackHealthy(cluster Cluster) error {
 	clientDynamic := GetKubeClientDynamicWithCluster(cluster)
 	stack, err := clientDynamic.Resource(NewLokiStackGVR()).
@@ -178,26 +178,60 @@ func checkManagedLokiStackStatus(stack *unstructured.Unstructured) error {
 	if !found {
 		return fmt.Errorf("LokiStack %s/%s has no status conditions yet", stack.GetNamespace(), stack.GetName())
 	}
+	ready := false
 	for _, item := range conditions {
 		condition, ok := item.(map[string]any)
 		if !ok || condition["type"] != "Ready" {
 			continue
 		}
-		observedGeneration, _, err := unstructured.NestedInt64(condition, "observedGeneration")
-		if err != nil {
-			return fmt.Errorf("read LokiStack %s/%s Ready observedGeneration: %w", stack.GetNamespace(), stack.GetName(), err)
-		}
-		if observedGeneration < stack.GetGeneration() {
-			return fmt.Errorf("LokiStack %s/%s Ready condition is stale (observed generation %d, current generation %d)",
-				stack.GetNamespace(), stack.GetName(), observedGeneration, stack.GetGeneration())
-		}
 		if condition["status"] != "True" {
 			return fmt.Errorf("LokiStack %s/%s Ready=%v (reason: %v, message: %v)",
 				stack.GetNamespace(), stack.GetName(), condition["status"], condition["reason"], condition["message"])
 		}
-		return nil
+		ready = true
+		break
 	}
-	return fmt.Errorf("LokiStack %s/%s has no Ready condition yet", stack.GetNamespace(), stack.GetName())
+	if !ready {
+		return fmt.Errorf("LokiStack %s/%s has no Ready condition yet", stack.GetNamespace(), stack.GetName())
+	}
+
+	components, found, err := unstructured.NestedMap(stack.Object, "status", "components")
+	if err != nil {
+		return fmt.Errorf("read LokiStack %s/%s components: %w", stack.GetNamespace(), stack.GetName(), err)
+	}
+	if !found {
+		return fmt.Errorf("LokiStack %s/%s has no component status yet", stack.GetNamespace(), stack.GetName())
+	}
+	for name, raw := range components {
+		statuses, ok := raw.(map[string]any)
+		if !ok {
+			return fmt.Errorf("LokiStack %s/%s component %s has invalid status", stack.GetNamespace(), stack.GetName(), name)
+		}
+		for _, state := range [...]string{"Failed", "Pending", "Running"} {
+			pods, _, err := unstructured.NestedStringSlice(statuses, state)
+			if err != nil {
+				return fmt.Errorf("read LokiStack %s/%s component %s %s pods: %w", stack.GetNamespace(), stack.GetName(), name, state, err)
+			}
+			if len(pods) > 0 {
+				return fmt.Errorf("LokiStack %s/%s component %s has %s pods: %v", stack.GetNamespace(), stack.GetName(), name, state, pods)
+			}
+		}
+	}
+	// The ruler is optional, but these components must have Ready pods for this stack.
+	for _, name := range [...]string{"compactor", "distributor", "gateway", "indexGateway", "ingester", "querier", "queryFrontend"} {
+		statuses, ok := components[name].(map[string]any)
+		if !ok {
+			return fmt.Errorf("LokiStack %s/%s has no %s component status yet", stack.GetNamespace(), stack.GetName(), name)
+		}
+		pods, _, err := unstructured.NestedStringSlice(statuses, "Ready")
+		if err != nil {
+			return fmt.Errorf("read LokiStack %s/%s component %s Ready pods: %w", stack.GetNamespace(), stack.GetName(), name, err)
+		}
+		if len(pods) == 0 {
+			return fmt.Errorf("LokiStack %s/%s component %s has no Ready pods yet", stack.GetNamespace(), stack.GetName(), name)
+		}
+	}
+	return nil
 }
 
 // CheckMCOARootCertificateResourcesExist returns nil once the self-signed Issuer, root CA
