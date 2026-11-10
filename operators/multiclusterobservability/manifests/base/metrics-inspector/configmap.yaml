@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observability-metrics-inspector-config
+  namespace: open-cluster-management-observability
+  labels:
+    app.kubernetes.io/component: metrics-inspector
+    app.kubernetes.io/name: observability-metrics-inspector
+    app.kubernetes.io/part-of: multicluster-observability-operator
+data:
+  config.yaml: |
+    streams:
+      - group_by: [cluster]
+        hll_precision: 14
+        calculate_churn: true
+        group_limit: 5000
+        min_cardinality: 0
+      - group_by: [__name__]
+        hll_precision: 14
+        calculate_churn: true
+        group_limit: 10000
+        min_cardinality: 0
+      - group_by: [cluster, namespace]
+        hll_precision: 12
+        calculate_churn: true
+        group_limit: 500000
+        min_cardinality: 25
+      - group_by: [cluster, __name__]
+        hll_precision: 12
+        calculate_churn: false
+        group_limit: 650000
+        min_cardinality: 25

@@ -30,16 +30,17 @@ type RendererOptions struct {
 }
 
 type MCORenderer struct {
-	kubeClient            client.Client
-	imageClient           imagev1client.ImageV1Interface
-	renderer              *rendererutil.Renderer
-	cr                    *obv1beta2.MultiClusterObservability
-	rendererOptions       *RendererOptions
-	renderGrafanaFns      map[string]rendererutil.RenderFn
-	renderAlertManagerFns map[string]rendererutil.RenderFn
-	renderThanosFns       map[string]rendererutil.RenderFn
-	renderProxyFns        map[string]rendererutil.RenderFn
-	renderMCOAFns         map[string]rendererutil.RenderFn
+	kubeClient                client.Client
+	imageClient               imagev1client.ImageV1Interface
+	renderer                  *rendererutil.Renderer
+	cr                        *obv1beta2.MultiClusterObservability
+	rendererOptions           *RendererOptions
+	renderGrafanaFns          map[string]rendererutil.RenderFn
+	renderAlertManagerFns     map[string]rendererutil.RenderFn
+	renderThanosFns           map[string]rendererutil.RenderFn
+	renderProxyFns            map[string]rendererutil.RenderFn
+	renderMCOAFns             map[string]rendererutil.RenderFn
+	renderMetricsInspectorFns map[string]rendererutil.RenderFn
 }
 
 // NewMCORenderer creates a new MCO renderer with all sub-renderers initialized.
@@ -55,6 +56,7 @@ func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservabili
 	mcoRenderer.newThanosRenderer()
 	mcoRenderer.newProxyRenderer()
 	mcoRenderer.newMCOARenderer()
+	mcoRenderer.newMetricsInspectorRenderer()
 	return mcoRenderer
 }
 
@@ -128,6 +130,15 @@ func (r *MCORenderer) Render(ctx context.Context) ([]*unstructured.Unstructured,
 			return nil, err
 		}
 		resources = append(resources, mcoaResources...)
+	}
+
+	// load and render metrics-inspector templates
+	if MetricsInspectorEnabled(r.cr) {
+		inspectorResources, err := r.MetricsInspectorResources(ctx, namespace, labels)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, inspectorResources...)
 	}
 
 	for idx := range resources {
@@ -207,6 +218,17 @@ func (r *MCORenderer) MCOAGrafanaResourcesForRemoval(ctx context.Context, namesp
 	mcoaGrafanaResources, err := r.RenderGrafanaMCOATemplatesForRemoval(ctx, grafanaTemplates, namespace, labels)
 	if err != nil {
 		return nil, err
+	}
+	if MetricsInspectorEnabled(r.cr) {
+		inspectorTemplates, err := templates.GetOrLoadMetricsInspectorTemplates(templatesutil.GetTemplateRenderer())
+		if err != nil {
+			return nil, err
+		}
+		inspectorMCOAResources, err := r.RenderGrafanaMCOATemplatesForRemoval(ctx, inspectorTemplates, namespace, labels)
+		if err != nil {
+			return nil, err
+		}
+		mcoaGrafanaResources = append(mcoaGrafanaResources, inspectorMCOAResources...)
 	}
 
 	return mcoaGrafanaResources, nil

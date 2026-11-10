@@ -1,0 +1,28 @@
+# Developer build using publicly available base images.
+# Build from the repository root: podman build -f metrics-inspector/Dockerfile.dev -t <image> .
+
+# Builder always runs on the host platform so Go cross-compilation is native (no emulation).
+FROM --platform=$BUILDPLATFORM golang:1.25 AS builder
+
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
+WORKDIR /workspace
+COPY go.sum go.mod ./
+COPY ./metrics-inspector ./metrics-inspector
+
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=shared \
+    --mount=type=cache,target=/root/.cache/go-build,sharing=shared \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -o /metrics-inspector ./metrics-inspector/cmd
+
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+WORKDIR /
+
+USER 1001:1001
+
+COPY --from=builder /metrics-inspector /metrics-inspector
+
+EXPOSE 8490
+ENTRYPOINT ["/metrics-inspector"]

@@ -8,13 +8,16 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"path"
 	"reflect"
+	"slices"
 	"testing"
 
 	routev1 "github.com/openshift/api/route/v1"
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	tlsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
@@ -1363,4 +1366,91 @@ func TestNewObservatoriumSpecAPITimeouts(t *testing.T) {
 			t.Errorf("WriteTimeout = %q, want empty for invalid input", obs.API.WriteTimeout)
 		}
 	})
+}
+
+func TestNewAPISpecMetricsInspectorFeatureGate(t *testing.T) {
+	ctx := context.Background()
+	s := runtime.NewScheme()
+	if err := scheme.AddToScheme(s); err != nil {
+		t.Fatalf("AddToScheme: %v", err)
+	}
+	if err := mcov1beta2.SchemeBuilder.AddToScheme(s); err != nil {
+		t.Fatalf("AddToScheme mco: %v", err)
+	}
+	if err := observatoriumv1alpha1.SchemeBuilder.AddToScheme(s); err != nil {
+		t.Fatalf("AddToScheme observatorium: %v", err)
+	}
+
+	mco := newBaseMCO()
+	mco.Spec.StorageConfig.WriteStorage = nil
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, alertmanagerCABundleConfigMap()).Build()
+
+	// 1. Default (inspector disabled): AdditionalWriteEndpoints must be nil when WriteStorage is empty.
+	apiSpecDisabled, err := newAPISpec(cl, mco, observatoriumv1alpha1.TLSProfileSpec{})
+	if err != nil {
+		t.Fatalf("newAPISpec (disabled) failed: %v", err)
+	}
+	if apiSpecDisabled.AdditionalWriteEndpoints != nil {
+		t.Fatalf("expected nil AdditionalWriteEndpoints when inspector is disabled and WriteStorage is empty, got %+v", apiSpecDisabled.AdditionalWriteEndpoints)
+	}
+
+	// 2. Enable spec.capabilities.platform.metrics.inspector.enabled: true.
+	mco.Spec.Capabilities = &mcov1beta2.CapabilitiesSpec{
+		Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+			Metrics: mcov1beta2.PlatformMetricsSpec{
+				Inspector: mcov1beta2.MetricsInspectorSpec{
+					Enabled: true,
+				},
+			},
+		},
+	}
+
+	apiSpecEnabled, err := newAPISpec(cl, mco, observatoriumv1alpha1.TLSProfileSpec{})
+	if err != nil {
+		t.Fatalf("newAPISpec (enabled) failed: %v", err)
+	}
+	if apiSpecEnabled.AdditionalWriteEndpoints == nil || apiSpecEnabled.AdditionalWriteEndpoints.EndpointsConfigSecret != endpointsConfigName {
+		t.Fatalf("expected AdditionalWriteEndpoints to be set when inspector is enabled, got %+v", apiSpecEnabled.AdditionalWriteEndpoints)
+	}
+	for _, wantSecret := range []string{mcoconfig.ServerCACerts, mcoconfig.GrafanaCerts} {
+		if !slices.Contains(apiSpecEnabled.AdditionalWriteEndpoints.MountSecrets, wantSecret) {
+			t.Errorf("expected %q in AdditionalWriteEndpoints.MountSecrets, got %v", wantSecret, apiSpecEnabled.AdditionalWriteEndpoints.MountSecrets)
+		}
+	}
+
+	epSecret := &corev1.Secret{}
+	if err := cl.Get(ctx, types.NamespacedName{
+		Name:      endpointsConfigName,
+		Namespace: mcoconfig.GetDefaultNamespace(),
+	}, epSecret); err != nil {
+		t.Fatalf("failed to get endpoints secret: %v", err)
+	}
+	var eps []mcoutil.RemoteWriteEndpointWithSecret
+	if err := yaml.Unmarshal(epSecret.Data[endpointsKey], &eps); err != nil {
+		t.Fatalf("failed to unmarshal endpoints.yaml: %v", err)
+	}
+	if len(eps) != 1 {
+		t.Fatalf("expected 1 endpoint in endpoints.yaml, got %d (%+v)", len(eps), eps)
+	}
+	ep := eps[0]
+	if ep.Name != mcoconfig.MetricsInspector || ep.URL.String() != rendering.MetricsInspectorWriteURL() {
+		t.Errorf("unexpected endpoint: %+v, want URL %q", ep, rendering.MetricsInspectorWriteURL())
+	}
+	if ep.HttpClientConfig == nil || ep.HttpClientConfig.TLSConfig == nil {
+		t.Fatalf("expected mTLS TLSConfig on metrics-inspector write endpoint, got %+v", ep.HttpClientConfig)
+	}
+	tlsCfg := ep.HttpClientConfig.TLSConfig
+	if tlsCfg.CAFile != path.Join(mcoutil.MountPath, mcoconfig.ServerCACerts, "ca.crt") {
+		t.Errorf("CAFile = %q", tlsCfg.CAFile)
+	}
+	if tlsCfg.CertFile != path.Join(mcoutil.MountPath, mcoconfig.GrafanaCerts, "tls.crt") {
+		t.Errorf("CertFile = %q", tlsCfg.CertFile)
+	}
+	if tlsCfg.KeyFile != path.Join(mcoutil.MountPath, mcoconfig.GrafanaCerts, "tls.key") {
+		t.Errorf("KeyFile = %q", tlsCfg.KeyFile)
+	}
+	if tlsCfg.ServerName != mcoconfig.ServerCertCN {
+		t.Errorf("ServerName = %q, want %q", tlsCfg.ServerName, mcoconfig.ServerCertCN)
+	}
 }
