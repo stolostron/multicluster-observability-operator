@@ -300,9 +300,9 @@ stringData:
   access_key_secret: seaweedfsadmin
   # Pre-created bucket name (single name or comma-separated list)
   bucketnames: acm-observability-logs
-  # SeaweedFS's S3 gateway listens on 8333 (not MinIO's 9000), on the
-  # "seaweedfs" Service in this namespace
-  endpoint: http://seaweedfs:8333
+  # The Loki Secret is copied to openshift-logging, so use the Service's
+  # namespace-qualified name and the HTTP listener dedicated to this test.
+  endpoint: http://seaweedfs.open-cluster-management-observability.svc:8334
   # Still required — SeaweedFS is also a non-AWS S3-compatible store
   forcepathstyle: "true"
 `

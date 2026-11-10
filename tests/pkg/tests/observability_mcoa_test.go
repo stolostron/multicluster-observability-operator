@@ -1470,7 +1470,18 @@ var _ = Describe("Observability Addon (MCOA)", Ordered, func() {
 		By("Disabling MCOA", func() {
 			Expect(utils.ResetMCOACapabilities(testOptions)).NotTo(HaveOccurred())
 			utils.CheckStatefulSetAvailabilityOnClusters(managedClustersWithHub, platformPrometheusAgentStatefulSetName, utils.MCO_AGENT_ADDON_NAMESPACE, false)
-			utils.CheckDeploymentAvailability(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE, false)
+			// Loki ingester termination can take up to 10 minutes and hold the
+			// local-cluster ManifestWork finalizer during addon teardown.
+			Eventually(func() error {
+				dep, err := utils.GetDeploymentWithCluster(testOptions.HubCluster, mcoaManagerDeploymentName, utils.MCO_NAMESPACE)
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
+				if err != nil {
+					return fmt.Errorf("failed to get deployment %s/%s: %w", utils.MCO_NAMESPACE, mcoaManagerDeploymentName, err)
+				}
+				return utils.FormatDeploymentStillExistsError(dep, utils.MCO_NAMESPACE, mcoaManagerDeploymentName)
+			}, 15*time.Minute, 5*time.Second).Should(Succeed())
 			utils.CheckClusterManagementAddonDeleted(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME)
 			utils.CheckManagedClusterAddonDeleted(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME)
 			Expect(utils.DeleteAddOnDeploymentConfig(testOptions, utils.MCOA_CLUSTER_MANAGEMENT_ADDON_NAME, utils.MCO_NAMESPACE)).NotTo(HaveOccurred())
