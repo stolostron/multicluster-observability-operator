@@ -14,13 +14,19 @@ const (
 	// 16 bits per item with 4 hashes gives ~0.045% false-positive rate per bucket.
 	bitsPerItem       = 16
 	dedupBucketsCount = 10
+	// dedupCycleDivisor ensures a full Bloom filter shard cycle completes in interval/4.
+	// Because each Estimator bucket rotates its (prev, curr) HLL window every interval/2,
+	// resetting every deduplicator shard at least twice per half-window guarantees that
+	// active series are always re-inserted into the current HLL bucket before the previous
+	// HLL bucket expires (T_dedup + T_scrape < interval/2).
+	dedupCycleDivisor = 4
 	hashesCount       = 4
 )
 
 // Deduplicator implements a sharded, lock-free Bloom filter using Kirsch-Mitzenmacher
 // double hashing. Fingerprints are deterministically routed to one of 10 shards via
 // hash % 10, requiring only a single shard lookup per sample. One shard is cleared
-// every interval/10. If a shard reaches its capacity before rotation, it switches to
+// every interval/(4*10). If a shard reaches its capacity before rotation, it switches to
 // pass-through mode so Bloom filter saturation never drops genuinely new series before
 // they reach the idempotent HLL sketches.
 type Deduplicator struct {
@@ -120,7 +126,7 @@ func (d *Deduplicator) resetShard(idx int) {
 
 func (d *Deduplicator) rotateLoop() {
 	defer d.wg.Done()
-	bucketDur := max(d.interval/dedupBucketsCount, 10*time.Millisecond)
+	bucketDur := max(d.interval/(dedupCycleDivisor*dedupBucketsCount), 10*time.Millisecond)
 	timer := time.NewTimer(bucketDur)
 	defer timer.Stop()
 

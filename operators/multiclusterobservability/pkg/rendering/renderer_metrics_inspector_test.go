@@ -230,7 +230,7 @@ func TestMetricsInspectorRendering(t *testing.T) {
 		"--tls.server.key-file=/var/metrics-inspector/server-certs/tls.key",
 		"--tls.client-ca-file=/var/metrics-inspector/client-ca/ca.crt",
 		"--remote-write.interval=60s",
-		"--remote-write.initial-delay=5m",
+		"--remote-write.initial-delay=6m",
 		"--objstore.config-file=/etc/metrics-inspector/objstore/thanos.yaml",
 		"--bucket-inspect.interval=15m",
 		"--retention.resolution-raw=14d",

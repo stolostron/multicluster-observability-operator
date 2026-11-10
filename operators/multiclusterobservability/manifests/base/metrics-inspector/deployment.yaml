@@ -37,7 +37,8 @@ spec:
             - --tls.server.key-file=/var/metrics-inspector/server-certs/tls.key
             - --tls.client-ca-file=/var/metrics-inspector/client-ca/ca.crt
             - --remote-write.interval=60s
-            - --remote-write.initial-delay=5m
+            # 6m warm-up = 5m default scrape interval + 1m buffer for readiness/endpoint propagation
+            - --remote-write.initial-delay=6m
           ports:
             - name: https-write
               containerPort: 8490
