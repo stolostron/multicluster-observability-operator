@@ -40,6 +40,7 @@ type proxyConf struct {
 	tlsKeyFile         string
 	tlsMinVersion      string
 	tlsCipherSuites    []string
+	tlsGroups          []string
 	proxyTimeout       time.Duration
 }
 
@@ -71,6 +72,12 @@ func run() error {
 		"tls-cipher-suites",
 		nil,
 		"Comma-separated list of cipher suites for the server. Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants). If omitted, the default Go cipher suites will be used",
+	)
+	flagset.StringSliceVar(
+		&cfg.tlsGroups,
+		"tls-groups",
+		nil,
+		"Comma-separated list of TLS groups / named curves for the server (IANA names, e.g. X25519,secp256r1). If omitted, the default Go group selection is used",
 	)
 	flagset.DurationVar(&cfg.proxyTimeout, "proxy-timeout", 5*time.Minute, "The timeout for the proxy to wait for the downstream server response.")
 
@@ -127,6 +134,7 @@ func run() error {
 		ProxyTimeout:    cfg.proxyTimeout,
 		MinTLSVersion:   cfg.tlsMinVersion,
 		CipherSuites:    cfg.tlsCipherSuites,
+		NamedGroups:     cfg.tlsGroups,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set tls transport: %w", err)

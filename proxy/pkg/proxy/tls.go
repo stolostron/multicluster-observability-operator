@@ -7,6 +7,7 @@ package proxy
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -33,6 +34,41 @@ type TLSOptions struct {
 
 	MinTLSVersion string
 	CipherSuites  []string
+	// NamedGroups is the list of TLS named groups (IANA "TLS Supported Groups" names,
+	// e.g. "X25519", "secp256r1") to use as CurvePreferences. Empty uses Go's defaults.
+	NamedGroups []string
+}
+
+// tlsGroupToCurveID maps TLS named-group names (IANA "TLS Supported Groups" registry names,
+// matching the OpenShift TLSSecurityProfile groups field) to crypto/tls CurveIDs. Names with no
+// corresponding crypto/tls constant in the current Go runtime are treated as unsupported.
+//
+// TODO: once this repo moves to k8s >= 0.36 / the newer library-go, consider the shared
+// library-go helper crypto.TLSGroupsToCurveIDs instead of this local map (see STOR-3177). It is
+// kept local for now because that helper only exists in library-go revisions requiring k8s >= 0.36,
+// which ACM-49950 avoids, and to keep this proxy binary free of the openshift/library-go dependency.
+var tlsGroupToCurveID = map[string]tls.CurveID{
+	"X25519":             tls.X25519,
+	"secp256r1":          tls.CurveP256,
+	"secp384r1":          tls.CurveP384,
+	"secp521r1":          tls.CurveP521,
+	"X25519MLKEM768":     tls.X25519MLKEM768,
+	"SecP256r1MLKEM768":  tls.SecP256r1MLKEM768,
+	"SecP384r1MLKEM1024": tls.SecP384r1MLKEM1024,
+}
+
+// tlsCurvePreferences converts TLS named-group names to crypto/tls CurveIDs, logging and
+// skipping any the runtime does not recognize so an unknown group never breaks the server.
+func tlsCurvePreferences(groups []string) []tls.CurveID {
+	curves := make([]tls.CurveID, 0, len(groups))
+	for _, g := range groups {
+		if id, ok := tlsGroupToCurveID[g]; ok {
+			curves = append(curves, id)
+		} else {
+			klog.Warningf("ignoring unsupported TLS group %q", g)
+		}
+	}
+	return curves
 }
 
 // reloadingTransport wraps http.Transport to allow for safe, concurrent reloading of TLS configuration.
@@ -205,6 +241,16 @@ func (t *reloadingTransport) reloadTLSConfig() error {
 		RootCAs:      caCertPool,
 		MinVersion:   minVersion,
 		CipherSuites: cipherSuiteIDs,
+	}
+
+	// Fail closed: if named groups were explicitly configured but none are usable by this build,
+	// refuse rather than silently falling back to Go's defaults (which would drop the restriction).
+	curves := tlsCurvePreferences(t.opts.NamedGroups)
+	if len(t.opts.NamedGroups) > 0 && len(curves) == 0 {
+		return fmt.Errorf("no supported TLS groups in %q", t.opts.NamedGroups)
+	}
+	if len(curves) > 0 {
+		newTLSConfig.CurvePreferences = curves
 	}
 
 	t.mutex.Lock()

@@ -1,6 +1,6 @@
 module github.com/stolostron/multicluster-observability-operator
 
-go 1.25.1
+go 1.26.0
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.6
@@ -16,7 +16,7 @@ require (
 	github.com/imdario/mergo v1.0.2
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
-	github.com/openshift/api v0.0.0-20260325070019-86893981287e
+	github.com/openshift/api v0.0.0-20260610142756-120a096a2850
 	github.com/openshift/client-go v0.0.0-20260320040014-4b5fc2cdad98
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20251021084408-d3eba7e97d65
 	github.com/openshift/controller-runtime-common v0.0.0-20260428152732-64ee174f5e2e

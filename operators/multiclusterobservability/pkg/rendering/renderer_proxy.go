@@ -79,6 +79,11 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 	if err != nil {
 		return nil, err
 	}
+	// rbac-query-proxy is our own binary, so it understands --tls-groups (TLS named curves).
+	args0, err = util.SetTLSGroups(ctx, args0, "--tls-groups=")
+	if err != nil {
+		return nil, err
+	}
 	spec.Containers[0].Args = args0
 	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
@@ -94,6 +99,8 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 		if err != nil {
 			return nil, err
 		}
+		// TODO(ACM-49951): once the oauth-proxy image ships the --tls-groups flag (openshift/oauth-proxy#413),
+		// also apply TLS group preferences here: args1 = util.SetTLSGroups(ctx, args1, "--tls-groups=").
 	}
 	spec.Containers[1].Args = args1
 	spec.NodeSelector = r.cr.Spec.NodeSelector
