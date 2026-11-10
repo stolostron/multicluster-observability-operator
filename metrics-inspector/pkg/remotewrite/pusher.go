@@ -21,8 +21,12 @@ import (
 )
 
 const (
-	DefaultFlushInterval      = 60 * time.Second
-	DefaultInitialDelay       = 5 * time.Minute
+	DefaultFlushInterval = 60 * time.Second
+	// DefaultInitialDelay is set to 6m (the 5m default PrometheusAgent/metrics-collector
+	// scrape interval + 1m buffer for readiness probe, Service endpoint propagation, and
+	// remote-write queue batch_send_deadline) so all staggered scrape jobs complete at
+	// least one full push after a Pod rollout before the first cardinality report is flushed.
+	DefaultInitialDelay       = 6 * time.Minute
 	DefaultProbeRetryInterval = 5 * time.Second
 	DefaultBatchSize          = 10000
 	DefaultTimeout            = 30 * time.Second
