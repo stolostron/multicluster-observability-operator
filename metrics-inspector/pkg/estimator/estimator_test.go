@@ -603,3 +603,79 @@ streams:
 		t.Fatalf("expected explicit MaxItemsPerInterval=20000000 to take precedence, got %d", cfgExplicit.MaxItemsPerInterval)
 	}
 }
+
+func TestEngineContinuousIngestNoSawtoothDrop(t *testing.T) {
+	cfg, err := ParseConfig([]byte(`
+max_items_per_interval: 100000
+streams:
+  - interval: 15m
+    group_by: [cluster]
+    hll_precision: 14
+    calculate_churn: false
+    group_limit: 100
+    min_cardinality: 0
+`))
+	if err != nil {
+		t.Fatalf("ParseConfig failed: %v", err)
+	}
+	eng, err := NewEngine(cfg)
+	if err != nil {
+		t.Fatalf("NewEngine failed: %v", err)
+	}
+	defer eng.Stop()
+
+	const totalSeries = 5400
+	batch := make([]protoparser.TimeSeries, totalSeries)
+	for i := range totalSeries {
+		name := fmt.Sprintf("metric_%d", i)
+		batch[i] = protoparser.TimeSeries{
+			Hash: xxhash.Sum64([]byte("local-cluster|" + name)),
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: name},
+				{Name: "cluster", Value: "local-cluster"},
+			},
+		}
+	}
+
+	p := eng.pipelines[0]
+	est := p.estimators[0]
+
+	// Simulate 45 minutes of 30s scrapes (90 steps of 30s), advancing both the
+	// Deduplicator shard rotations (every 22.5s -> 1 shard per 22.5s) and Estimator
+	// bucket rotations (every 30s -> 1 bucket per 30s, so each bucket rotates every 7.5m).
+	var (
+		dedupShardIdx int
+		estBucketIdx  int
+		nextDedupRot  = 22500 * time.Millisecond // 15m / (4 * 10) = 22.5s
+		nextEstRot    = 30 * time.Second         // 15m / (2 * 15) = 30s
+	)
+
+	now := time.Now()
+	for step := range 90 {
+		elapsed := time.Duration(step) * 30 * time.Second
+
+		for nextDedupRot <= elapsed {
+			p.dedup.resetShard(dedupShardIdx)
+			dedupShardIdx = (dedupShardIdx + 1) % dedupBucketsCount
+			nextDedupRot += 22500 * time.Millisecond
+		}
+		for nextEstRot <= elapsed {
+			est.buckets[estBucketIdx].rotate()
+			estBucketIdx = (estBucketIdx + 1) % len(est.buckets)
+			nextEstRot += 30 * time.Second
+		}
+
+		eng.Ingest(batch)
+
+		reports := eng.Evaluate(now.Add(elapsed))
+		if len(reports) != 1 || len(reports[0].Groups) != 1 {
+			t.Fatalf("step %d (%s): expected 1 cluster group, got %+v", step, elapsed, reports)
+		}
+		got := reports[0].Groups[0].Estimate
+		// With p=14 (~0.8% standard error), 5400 series should stay tightly within [5250, 5550]
+		// across all rotations and never sawtooth down to ~2700.
+		if got < 5250 || got > 5550 {
+			t.Fatalf("step %d (%s): expected steady cardinality ~5400, got %d", step, elapsed, got)
+		}
+	}
+}
