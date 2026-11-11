@@ -19,15 +19,16 @@ spec:
     spec:
       containers:
       # Override args (not command) so the image's default entrypoint still
-      # dispatches to `mini`, just with TLS enabled on the S3 gateway. Providing
-      # -s3.cert.file/-s3.key.file with no -s3.port.https flips the default S3
-      # port (8333) to HTTPS in place, per weed/command/s3.go. Also disables
-      # the WebDAV and Iceberg listeners that `mini` starts by default —
+      # dispatches to `mini`. Keep HTTPS on 8333 for Thanos and expose HTTP on
+      # 8334 for the LokiStack, whose test storage secret has no SeaweedFS CA.
+      # Disable the WebDAV and Iceberg listeners that `mini` starts by default —
       # neither is used here, and leaving them off reduces the container's
       # exposed surface.
       - args:
         - mini
         - -dir=/data
+        - -s3.port=8334
+        - -s3.port.https=8333
         - -s3.cert.file=/etc/seaweedfs/certs/public.crt
         - -s3.key.file=/etc/seaweedfs/certs/private.key
         - -webdav=false
@@ -38,11 +39,13 @@ spec:
         - name: AWS_SECRET_ACCESS_KEY
           value: seaweedfsadmin
         - name: S3_BUCKET
-          value: thanos
+          value: thanos,acm-observability-logs
         image: chrislusf/seaweedfs:4.29
         name: seaweedfs
         ports:
         - containerPort: 8333
+          protocol: TCP
+        - containerPort: 8334
           protocol: TCP
         volumeMounts:
         - mountPath: /data
