@@ -8,6 +8,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -15,9 +16,34 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
+
+func TestTLSCurvePreferences(t *testing.T) {
+	cases := []struct {
+		name   string
+		groups []string
+		want   []tls.CurveID
+	}{
+		{"empty", nil, []tls.CurveID{}},
+		{
+			"supported",
+			[]string{"X25519", "secp256r1", "secp384r1", "secp521r1", "X25519MLKEM768", "SecP256r1MLKEM768", "SecP384r1MLKEM1024"},
+			[]tls.CurveID{tls.X25519, tls.CurveP256, tls.CurveP384, tls.CurveP521, tls.X25519MLKEM768, tls.SecP256r1MLKEM768, tls.SecP384r1MLKEM1024},
+		},
+		{"skips unsupported", []string{"X25519", "bogus"}, []tls.CurveID{tls.X25519}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tlsCurvePreferences(tc.groups)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("tlsCurvePreferences(%v) = %v, want %v", tc.groups, got, tc.want)
+			}
+		})
+	}
+}
 
 // Helper to create a self-signed certificate for testing.
 func createTestCert(t *testing.T, commonName string) ([]byte, []byte) {
@@ -83,6 +109,27 @@ func TestNewTransport_InitialLoadFails(t *testing.T) {
 	_, err := NewTransport(opts)
 	if err == nil {
 		t.Fatal("Expected NewTransport to fail with missing files, but it succeeded")
+	}
+}
+
+func TestNewTransport_AllUnsupportedGroupsFails(t *testing.T) {
+	// Fail closed: a non-empty NamedGroups list with nothing usable must error rather than
+	// silently falling back to Go's default curve selection.
+	tmpDir := t.TempDir()
+	cert, key := createTestCert(t, "server")
+	writeTestCert(t, filepath.Join(tmpDir, "ca.crt"), cert)
+	writeTestCert(t, filepath.Join(tmpDir, "tls.crt"), cert)
+	writeTestCert(t, filepath.Join(tmpDir, "tls.key"), key)
+
+	opts := &TLSOptions{
+		CaFile:      filepath.Join(tmpDir, "ca.crt"),
+		CertFile:    filepath.Join(tmpDir, "tls.crt"),
+		KeyFile:     filepath.Join(tmpDir, "tls.key"),
+		NamedGroups: []string{"bogus-group"},
+	}
+
+	if _, err := NewTransport(opts); err == nil {
+		t.Fatal("Expected NewTransport to fail when all configured TLS groups are unsupported")
 	}
 }
 
