@@ -6,7 +6,7 @@ set -euo pipefail
 # Optional: ACM_CHANNEL (defaults to the installed ACM major.minor release channel)
 #           CATALOG_SOURCE_NAME (defaults to acm-managed-logstore-<major><minor>)
 # Happy path
-ACM_IMG='quay.io/rh-ee-dbuchana/acm-dev-catalog:managed-logstore-test-5.0-amd64'
+ACM_IMG='quay.io/rh-ee-dbuchana/acm-dev-catalog:managed-logstore-test-5.0.1-amd64'
 PUBLISHER='cicd'
 TARGET_CSV='advanced-cluster-management.v5.0.1-managedlogstore'
 
