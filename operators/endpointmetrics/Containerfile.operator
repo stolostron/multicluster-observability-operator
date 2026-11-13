@@ -9,8 +9,8 @@ COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservabi
 COPY ./operators/multiclusterobservability/pkg/config ./operators/multiclusterobservability/pkg/config
 COPY ./operators/pkg ./operators/pkg
 
-RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator operators/endpointmetrics/main.go
-RUN CGO_ENABLED=1 GOFLAGS="" go build -a -installsuffix cgo -o build/_output/bin/cmo-config-revert operators/endpointmetrics/cmd/cmo-config-revert/main.go
+RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime GOFLAGS="" go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator operators/endpointmetrics/main.go
+RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime GOFLAGS="" go build -a -installsuffix cgo -o build/_output/bin/cmo-config-revert operators/endpointmetrics/cmd/cmo-config-revert/main.go
 
 # IMPORTANT: When changing base image RHEL version (ubi9 → ubi10):
 # 1. Update FROM statement below
