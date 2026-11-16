@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
 func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
@@ -351,4 +352,91 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestMCOAAgentReconciler_UnmanagedAnnotationTransition is the MCOA counterpart to the legacy
+// observabilityendpoint integration test covering the same scenario: an ACM Policy (or admin) marks
+// cluster-monitoring-config unmanaged to own its Alertmanager configuration, the real Reconcile()
+// entry point must leave it untouched, and removing the annotation (even with .Data otherwise
+// unchanged) must be detected by the watch predicate and cause MCOA to resume reconciling it.
+func TestMCOAAgentReconciler_UnmanagedAnnotationTransition(t *testing.T) {
+	t.Parallel()
+
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	addRhobsToScheme(t, s)
+
+	ctx := context.Background()
+	namespace := "test-ns"
+	alertmanagerEndpoint := "https://hub-am.example.com"
+
+	agent := newTestPrometheusAgent("test-agent-platform", namespace, platformMetricsCollectorComponent, alertmanagerEndpoint, "", "")
+
+	// Data an ACM Policy wants to own exclusively (e.g. a custom externalLabel).
+	policyManagedData := "prometheusK8s:\n  externalLabels:\n    policy_owned: \"true\"\n"
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			Annotations: map[string]string{
+				observabilityendpoint.UnmanagedAnnotationKey: observabilityendpoint.UnmanagedAnnotationValue,
+			},
+		},
+		Data: map[string]string{
+			observabilityendpoint.ClusterMonitoringConfigDataKey: policyManagedData,
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(s).WithObjects(cm, agent).Build()
+	r := NewMCOAAgentReconciler(
+		c,
+		ctrl.Log.WithName("test"),
+		s,
+		events.NewFakeRecorder(10),
+		namespace,
+		"test-cluster-id",
+		"test-cluster-name",
+		alertmanagerEndpoint,
+		"hub-mtls-ca",
+		"hub-mtls-cert",
+		"observability-alertmanager-accessor",
+		true,
+		true,
+		false,
+	)
+
+	req := ctrl.Request{NamespacedName: types.NamespacedName{
+		Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+		Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+	}}
+
+	// 1. While marked unmanaged, the real Reconcile() entry point (not just the inner
+	// ReconcileCMOPlatformConfig func) must leave the policy-owned data untouched.
+	_, err := r.Reconcile(ctx, req)
+	require.NoError(t, err)
+
+	unmanagedCM := &corev1.ConfigMap{}
+	require.NoError(t, c.Get(ctx, client.ObjectKey{Name: cm.Name, Namespace: cm.Namespace}, unmanagedCM))
+	assert.Equal(t, policyManagedData, unmanagedCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey])
+
+	// 2. The watch predicate wired up in SetupWithManager must detect the unmanaged -> managed
+	// annotation transition and request a reconcile, even though .Data is otherwise unchanged.
+	managedCM := unmanagedCM.DeepCopy()
+	delete(managedCM.Annotations, observabilityendpoint.UnmanagedAnnotationKey)
+
+	pred := observabilityendpoint.ConfigMapDataChangedPredicate("", "")
+	assert.True(t, pred.UpdateFunc(event.UpdateEvent{ObjectOld: unmanagedCM, ObjectNew: managedCM}),
+		"removing the unmanaged annotation with unchanged Data must still trigger a reconcile")
+
+	// 3. Persist the annotation removal and re-run Reconcile() through the real entry point;
+	// MCOA must now resume applying its managed configuration alongside the policy's own data.
+	require.NoError(t, c.Update(ctx, managedCM))
+	_, err = r.Reconcile(ctx, req)
+	require.NoError(t, err)
+
+	finalCM := &corev1.ConfigMap{}
+	require.NoError(t, c.Get(ctx, client.ObjectKey{Name: cm.Name, Namespace: cm.Namespace}, finalCM))
+	finalYAML := finalCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
+	assert.Contains(t, finalYAML, "hub-am.example.com")
+	assert.Contains(t, finalYAML, "policy_owned")
 }

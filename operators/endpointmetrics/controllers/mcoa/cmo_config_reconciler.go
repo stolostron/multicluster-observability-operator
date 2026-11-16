@@ -89,6 +89,12 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 		return err
 	}
 
+	// Respect manual admin overrides: if the ConfigMap is marked unmanaged, do not reconcile/revert it.
+	if !isCreate && observabilityendpoint.IsUnmanaged(cm) {
+		r.Log.Info("cluster-monitoring-config marked as unmanaged, skipping reconciliation", "name", cm.Name, "namespace", cm.Namespace)
+		return nil
+	}
+
 	configYAML := cm.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
 	parsed := &cmomanifests.ClusterMonitoringConfiguration{}
 	if err := yaml.Unmarshal([]byte(configYAML), parsed); err != nil {
@@ -199,6 +205,12 @@ func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
 				uwlMonitoringConfigDataKey: defaultUWLConfigYAML,
 			},
 		}
+	}
+
+	// Respect manual admin overrides: if the ConfigMap is marked unmanaged, do not reconcile/revert it.
+	if !isCreate && observabilityendpoint.IsUnmanaged(cm) {
+		r.Log.Info("user-workload-monitoring-config marked as unmanaged, skipping reconciliation", "name", cm.Name, "namespace", cm.Namespace)
+		return nil
 	}
 
 	configYAML := cm.Data[uwlMonitoringConfigDataKey]
