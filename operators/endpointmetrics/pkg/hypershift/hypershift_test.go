@@ -204,6 +204,7 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 				assert.Equal(t, hypershiftEtcdSM.Spec.Endpoints[0].TLSConfig, sm.Spec.Endpoints[0].TLSConfig)
 				assert.Equal(t, hypershiftEtcdSM.Spec.Selector, sm.Spec.Selector)
 				assert.Equal(t, hypershiftEtcdSM.Spec.NamespaceSelector, sm.Spec.NamespaceSelector)
+				assert.Equal(t, new("etcd"), sm.Spec.Endpoints[0].RelabelConfigs[1].Replacement)
 				checkRelabelConfigs(t, sm)
 			}
 
@@ -216,6 +217,7 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 				assert.Equal(t, hypershiftApiServerSM.Spec.Endpoints[0].TLSConfig, sm.Spec.Endpoints[0].TLSConfig)
 				assert.Equal(t, hypershiftApiServerSM.Spec.Selector, sm.Spec.Selector)
 				assert.Equal(t, hypershiftApiServerSM.Spec.NamespaceSelector, sm.Spec.NamespaceSelector)
+				assert.Equal(t, new("apiserver"), sm.Spec.Endpoints[0].RelabelConfigs[1].Replacement)
 				checkRelabelConfigs(t, sm)
 			}
 		})

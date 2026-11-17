@@ -160,7 +160,7 @@ func (c *Client) RetrieveRecordingMetrics(
 			}
 			protMetricFam := &clientmodel.MetricFamily{
 				Type: clientmodel.MetricType_UNTYPED.Enum(),
-				Name: proto.String(name),
+				Name: new(name),
 			}
 			s.Metric.Range(func(l labels.Label) {
 				if l.Value == "" {
@@ -169,13 +169,13 @@ func (c *Client) RetrieveRecordingMetrics(
 					return
 				}
 				protMetric.Label = append(protMetric.Label, &clientmodel.LabelPair{
-					Name:  proto.String(l.Name),
-					Value: proto.String(l.Value),
+					Name:  new(l.Name),
+					Value: new(l.Value),
 				})
 			})
 
-			protMetric.TimestampMs = proto.Int64(s.T)
-			protMetric.Untyped.Value = proto.Float64(s.F)
+			protMetric.TimestampMs = new(s.T)
+			protMetric.Untyped.Value = new(s.F)
 
 			protMetricFam.Metric = append(protMetricFam.Metric, protMetric)
 			families = append(families, protMetricFam)

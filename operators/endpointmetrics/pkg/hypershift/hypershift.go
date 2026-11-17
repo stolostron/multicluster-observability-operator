@@ -221,7 +221,7 @@ func getEtcdServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 						{
 							TargetLabel: "job",
 							Action:      "replace",
-							Replacement: stringPtr("etcd"),
+							Replacement: new("etcd"),
 						},
 					},
 				},
@@ -305,7 +305,7 @@ func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 						{
 							TargetLabel: "job",
 							Action:      "replace",
-							Replacement: stringPtr("apiserver"),
+							Replacement: new("apiserver"),
 						},
 					},
 				},
@@ -330,8 +330,4 @@ func deleteServiceMonitor(ctx context.Context, c client.Client, name, namespace 
 	}
 
 	return nil
-}
-
-func stringPtr(s string) *string {
-	return &s
 }
