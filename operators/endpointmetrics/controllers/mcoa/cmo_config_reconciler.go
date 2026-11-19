@@ -89,7 +89,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOPlatformConfig(ctx context.Context) er
 		return err
 	}
 
-	// Respect manual admin overrides: if the ConfigMap is marked unmanaged, do not reconcile/revert it.
+	// Allow opt-out via the unmanaged annotation so admins/ACM Policies can own this ConfigMap.
 	if !isCreate && observabilityendpoint.IsUnmanaged(cm) {
 		r.Log.Info("cluster-monitoring-config marked as unmanaged, skipping reconciliation", "name", cm.Name, "namespace", cm.Namespace)
 		return nil
@@ -207,7 +207,7 @@ func (r *MCOAAgentReconciler) ReconcileCMOUWLConfig(ctx context.Context) error {
 		}
 	}
 
-	// Respect manual admin overrides: if the ConfigMap is marked unmanaged, do not reconcile/revert it.
+	// Allow opt-out via the unmanaged annotation so admins/ACM Policies can own this ConfigMap.
 	if !isCreate && observabilityendpoint.IsUnmanaged(cm) {
 		r.Log.Info("user-workload-monitoring-config marked as unmanaged, skipping reconciliation", "name", cm.Name, "namespace", cm.Namespace)
 		return nil
