@@ -2150,6 +2150,8 @@ func TestFormatMCOCapabilities(t *testing.T) {
 			"analytics": map[string]any{
 				"namespaceRightSizingRecommendation":      map[string]any{"enabled": true},
 				"virtualizationRightSizingRecommendation": map[string]any{"enabled": true},
+				"workloadRightSizingRecommendation":       map[string]any{"enabled": true},
+				"podRightSizingRecommendation":            map[string]any{"enabled": false},
 			},
 			"metrics": map[string]any{
 				"alerts":  map[string]any{"enabled": false},
@@ -2164,7 +2166,7 @@ func TestFormatMCOCapabilities(t *testing.T) {
 		},
 	}
 	out := formatMCOCapabilities(capabilities)
-	expectedPlatform := "    Platform: metrics=true, alerts=false, rightSizing(ns=true, virt=true)\n"
+	expectedPlatform := "    Platform: metrics=true, alerts=false, rightSizing(ns=true, virt=true, wl=true, pod=false)\n"
 	if !strings.Contains(out, expectedPlatform) {
 		t.Errorf("expected platform capabilities summary %q, got:\n%s", expectedPlatform, out)
 	}

@@ -11,6 +11,10 @@ spec:
           enabled: false
         virtualizationRightSizingRecommendation:
           enabled: false
+        workloadRightSizingRecommendation:
+          enabled: false
+        podRightSizingRecommendation:
+          enabled: false
   advanced:
     retentionConfig:
       blockDuration: 3h
