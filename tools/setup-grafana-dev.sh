@@ -55,6 +55,28 @@ deploy() {
     exit 1
   fi
 
+  oc apply -n "$obs_namespace" -f - <<'EOF'
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: grafana-dev-to-rbac-query-proxy
+spec:
+  podSelector:
+    matchLabels:
+      app: rbac-query-proxy
+      observability.open-cluster-management.io/name: observability
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: multicluster-observability-grafana-dev
+      ports:
+        - protocol: TCP
+          port: 8080
+EOF
+
   GROUP_ID=$(oc get pods "$POD_NAME" -n "$obs_namespace" -o jsonpath='{.spec.securityContext.fsGroup}')
   if [[ ${GROUP_ID} == "grafana" ]]; then
     GROUP_ID=472
@@ -166,6 +188,7 @@ clean() {
   oc delete pvc -n "$obs_namespace" grafana-dev
   oc delete oauthclient grafana-proxy-client-dev
   oc delete clusterrolebinding open-cluster-management:grafana-crb-dev
+  oc delete networkpolicy grafana-dev-to-rbac-query-proxy -n "$obs_namespace" --ignore-not-found
 }
 
 msg() {

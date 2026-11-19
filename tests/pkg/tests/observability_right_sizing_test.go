@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var _ = Describe("Right-sizing: defaults are enabled on fresh install", Ordered, func() {
+var _ = Describe("Right-sizing: independently enabled defaults", Ordered, func() {
 	mcoGVR := utils.NewMCOGVRV1BETA2()
 
 	BeforeAll(func() {
@@ -47,7 +47,7 @@ var _ = Describe("Right-sizing: defaults are enabled on fresh install", Ordered,
 		}
 	})
 
-	It("Should default analytics right-sizing flags to enabled in the MCO CR", func() {
+	It("Should default all right-sizing flags to enabled", func() {
 		By("Simulating a fresh-install state by removing right-sizing enabled fields (if present) and letting the operator default them")
 		Eventually(func() error {
 			mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -85,6 +85,26 @@ var _ = Describe("Right-sizing: defaults are enabled on fresh install", Ordered,
 			}
 			if !virtFound || !virtEnabled {
 				return fmt.Errorf("expected virtualizationRightSizingRecommendation.enabled to be defaulted to true (found=%v enabled=%v)", virtFound, virtEnabled)
+			}
+
+			for field, key := range map[string]string{
+				"workloadRightSizingRecommendation": "platformWorkloadRightSizing",
+				"podRightSizingRecommendation":      "platformPodRightSizing",
+			} {
+				enabled, found, err := unstructured.NestedBool(mco.Object, "spec", "capabilities", "platform", "analytics", field, "enabled")
+				if err != nil {
+					return err
+				}
+				if !found || !enabled {
+					return fmt.Errorf("expected %s.enabled to default to true", field)
+				}
+				value, err := getADCCustomVar(dynClient, "multicluster-observability-addon", MCO_NAMESPACE, key)
+				if err != nil {
+					return err
+				}
+				if value != "enabled" {
+					return fmt.Errorf("expected ADC %s=enabled, got %q", key, value)
+				}
 			}
 
 			return nil
@@ -574,16 +594,21 @@ func getADCCustomVar(dynClient dynamic.Interface, adcName, namespace, varName st
 
 var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsizing/g2)", Ordered, func() {
 	const (
-		adcName      = "multicluster-observability-addon"
-		adcNamespace = MCO_NAMESPACE
-		nsRSKey      = "platformNamespaceRightSizing"
-		virtRSKey    = "platformVirtualizationRightSizing"
-		delegatedKey = "rightSizingDelegated"
+		adcName       = "multicluster-observability-addon"
+		adcNamespace  = MCO_NAMESPACE
+		nsRSKey       = "platformNamespaceRightSizing"
+		virtRSKey     = "platformVirtualizationRightSizing"
+		workloadRSKey = "platformWorkloadRightSizing"
+		podRSKey      = "platformPodRightSizing"
+		delegatedKey  = "rightSizingDelegated"
 	)
 
 	var (
-		mcoGVR    = utils.NewMCOGVRV1BETA2()
-		policyGVR = schema.GroupVersionResource{Group: "policy.open-cluster-management.io", Version: "v1", Resource: "policies"}
+		mcoGVR             = utils.NewMCOGVRV1BETA2()
+		policyGVR          = schema.GroupVersionResource{Group: "policy.open-cluster-management.io", Version: "v1", Resource: "policies"}
+		configMapGVR       = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
+		prometheusRuleGVR  = schema.GroupVersionResource{Group: "monitoring.coreos.com", Version: "v1", Resource: "prometheusrules"}
+		persesDashboardGVR = schema.GroupVersionResource{Group: "perses.dev", Version: "v1alpha1", Resource: "persesdashboards"}
 	)
 
 	BeforeAll(func() {
@@ -616,12 +641,18 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 				"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled"); err != nil {
 				return err
 			}
+			for _, field := range []string{"workloadRightSizingRecommendation", "podRightSizingRecommendation"} {
+				if err := unstructured.SetNestedField(mco.Object, true,
+					"spec", "capabilities", "platform", "analytics", field, "enabled"); err != nil {
+					return err
+				}
+			}
 			_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
 			return err
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
-	Context("when both RS features are enabled", Ordered, func() {
+	Context("when all RS features are enabled", Ordered, func() {
 		It("Should always set rightSizingDelegated to 'true'", func() {
 			Eventually(func() error {
 				val, err := getADCCustomVar(dynClient, adcName, adcNamespace, delegatedKey)
@@ -635,7 +666,7 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 			}, 3*time.Minute, 10*time.Second).Should(Succeed())
 		})
 
-		It("Should set both ADC RS variables to 'enabled'", func() {
+		It("Should set all ADC RS variables to 'enabled'", func() {
 			Eventually(func() error {
 				nsVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, nsRSKey)
 				if err != nil {
@@ -650,6 +681,135 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 				}
 				if virtVal != "enabled" {
 					return fmt.Errorf("expected ADC %s=%q, got %q", virtRSKey, "enabled", virtVal)
+				}
+				workloadVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, workloadRSKey)
+				if err != nil {
+					return err
+				}
+				if workloadVal != "enabled" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", workloadRSKey, "enabled", workloadVal)
+				}
+				podVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, podRSKey)
+				if err != nil {
+					return err
+				}
+				if podVal != "enabled" {
+					return fmt.Errorf("expected ADC %s=enabled, got %q", podRSKey, podVal)
+				}
+				return nil
+			}, 3*time.Minute, 10*time.Second).Should(Succeed())
+		})
+
+		It("Should create separate workload and pod right-sizing resources", func() {
+			Eventually(func() error {
+				for _, name := range []string{"rs-workload-config", "rs-pod-config"} {
+					if _, err := dynClient.Resource(configMapGVR).Namespace(MCO_NAMESPACE).
+						Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
+						return fmt.Errorf("%s: %w", name, err)
+					}
+				}
+				for _, name := range []string{"acm-rs-workload-prometheus-rules", "acm-rs-pod-prometheus-rules"} {
+					if _, err := dynClient.Resource(prometheusRuleGVR).Namespace("openshift-monitoring").
+						Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
+						return fmt.Errorf("%s: %w", name, err)
+					}
+				}
+				for _, name := range []string{"acm-rs-workload-overview", "acm-rs-workload-detail", "acm-rs-pod-overview", "acm-rs-pod-detail"} {
+					if _, err := dynClient.Resource(persesDashboardGVR).Namespace("observability-analytics").
+						Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
+						return fmt.Errorf("PersesDashboard %s: %w", name, err)
+					}
+				}
+				return nil
+			}, 5*time.Minute, 10*time.Second).Should(Succeed())
+		})
+
+		It("Should deploy a pod-only detail dashboard without tables and with all query variables", func() {
+			Eventually(func() error {
+				dashboard, err := dynClient.Resource(persesDashboardGVR).Namespace("observability-analytics").
+					Get(context.TODO(), "acm-rs-pod-detail", metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				variables, found, err := unstructured.NestedSlice(dashboard.Object, "spec", "variables")
+				if err != nil || !found {
+					return fmt.Errorf("pod detail variables missing: %v", err)
+				}
+				names := []string{}
+				for _, variable := range variables {
+					v, ok := variable.(map[string]any)
+					if !ok {
+						return fmt.Errorf("invalid dashboard variable: %v", variable)
+					}
+					name, _, err := unstructured.NestedString(v, "spec", "name")
+					if err != nil {
+						return err
+					}
+					names = append(names, name)
+				}
+				for _, name := range []string{"days", "cluster", "namespace", "pod", "cpu_profile", "memory_profile"} {
+					if !slices.Contains(names, name) {
+						return fmt.Errorf("pod detail variable %s missing", name)
+					}
+				}
+				raw, err := json.Marshal(dashboard.Object["spec"])
+				if err != nil {
+					return err
+				}
+				if !strings.Contains(string(raw), "acm_rs:pod:") || strings.Contains(string(raw), "acm_rs:workload:") {
+					return fmt.Errorf("pod detail must query only pod-level right-sizing data")
+				}
+				if !strings.Contains(string(raw), "acm_rs:pod:info") {
+					return fmt.Errorf("pod detail selectors must include pods without resource samples")
+				}
+				panels, found, err := unstructured.NestedMap(dashboard.Object, "spec", "panels")
+				if err != nil || !found {
+					return fmt.Errorf("pod detail panels missing: %v", err)
+				}
+				for name, value := range panels {
+					panel, ok := value.(map[string]any)
+					if !ok {
+						return fmt.Errorf("invalid pod detail panel %s", name)
+					}
+					kind, found, err := unstructured.NestedString(panel, "spec", "plugin", "kind")
+					if err != nil || !found {
+						return fmt.Errorf("pod detail panel %s plugin kind missing: %v", name, err)
+					}
+					if kind == "Table" {
+						return fmt.Errorf("pod detail must not contain table panel %s", name)
+					}
+				}
+				return nil
+			}, 5*time.Minute, 10*time.Second).Should(Succeed())
+		})
+
+		It("Should forward workload and pod metrics through the legacy allowlist", func() {
+			Eventually(func() error {
+				cm, err := dynClient.Resource(configMapGVR).Namespace(MCO_NAMESPACE).
+					Get(context.TODO(), "observability-metrics-allowlist", metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				raw, found, err := unstructured.NestedString(cm.Object, "data", "metrics_list.yaml")
+				if err != nil || !found {
+					return fmt.Errorf("missing metrics_list.yaml: %v", err)
+				}
+				var allowlist struct {
+					Names []string `json:"names"`
+				}
+				if err := yaml.Unmarshal([]byte(raw), &allowlist); err != nil {
+					return err
+				}
+				if !slices.Contains(allowlist.Names, "acm_rs:pod:info") {
+					return fmt.Errorf("pod inventory is not forwarded")
+				}
+				for _, level := range []string{"workload", "pod"} {
+					for _, metric := range []string{"cpu_request", "cpu_limit", "cpu_usage", "cpu_recommendation", "memory_request", "memory_limit", "memory_usage", "memory_recommendation"} {
+						name := "acm_rs:" + level + ":" + metric
+						if !slices.Contains(allowlist.Names, name) {
+							return fmt.Errorf("metric %s is not forwarded", name)
+						}
+					}
 				}
 				return nil
 			}, 3*time.Minute, 10*time.Second).Should(Succeed())
@@ -714,7 +874,67 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 		})
 	})
 
-	Context("when both RS features are disabled", Ordered, func() {
+	for _, state := range []struct {
+		name          string
+		workload, pod bool
+	}{
+		{"workload only", true, false},
+		{"pod only", false, true},
+	} {
+		It("Should independently reconcile "+state.name, func() {
+			Eventually(func() error {
+				mco, err := dynClient.Resource(mcoGVR).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				for field, enabled := range map[string]bool{"workloadRightSizingRecommendation": state.workload, "podRightSizingRecommendation": state.pod} {
+					if err := unstructured.SetNestedField(mco.Object, enabled, "spec", "capabilities", "platform", "analytics", field, "enabled"); err != nil {
+						return err
+					}
+				}
+				_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
+				return err
+			}, 2*time.Minute, 10*time.Second).Should(Succeed())
+			Eventually(func() error {
+				for _, feature := range []struct {
+					level, key string
+					enabled    bool
+				}{{"workload", workloadRSKey, state.workload}, {"pod", podRSKey, state.pod}} {
+					value, err := getADCCustomVar(dynClient, adcName, adcNamespace, feature.key)
+					if err != nil {
+						return err
+					}
+					want := "disabled"
+					if feature.enabled {
+						want = "enabled"
+					}
+					if value != want {
+						return fmt.Errorf("expected %s=%s, got %s", feature.key, want, value)
+					}
+					for _, resource := range []struct {
+						gvr             schema.GroupVersionResource
+						namespace, name string
+					}{
+						{configMapGVR, MCO_NAMESPACE, "rs-" + feature.level + "-config"},
+						{prometheusRuleGVR, "openshift-monitoring", "acm-rs-" + feature.level + "-prometheus-rules"},
+						{persesDashboardGVR, "observability-analytics", "acm-rs-" + feature.level + "-overview"},
+						{persesDashboardGVR, "observability-analytics", "acm-rs-" + feature.level + "-detail"},
+					} {
+						_, err := dynClient.Resource(resource.gvr).Namespace(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
+						if feature.enabled && err != nil {
+							return fmt.Errorf("%s should exist: %w", resource.name, err)
+						}
+						if !feature.enabled && !apierrors.IsNotFound(err) {
+							return fmt.Errorf("%s should be deleted, got: %v", resource.name, err)
+						}
+					}
+				}
+				return nil
+			}, 5*time.Minute, 10*time.Second).Should(Succeed())
+		})
+	}
+
+	Context("when all RS features are disabled", Ordered, func() {
 		BeforeAll(func() {
 			By("Disabling both right-sizing features")
 			Eventually(func() error {
@@ -730,12 +950,18 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 					"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled"); err != nil {
 					return err
 				}
+				for _, field := range []string{"workloadRightSizingRecommendation", "podRightSizingRecommendation"} {
+					if err := unstructured.SetNestedField(mco.Object, false,
+						"spec", "capabilities", "platform", "analytics", field, "enabled"); err != nil {
+						return err
+					}
+				}
 				_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
 				return err
 			}, 2*time.Minute, 10*time.Second).Should(Succeed())
 		})
 
-		It("Should set both ADC RS variables to 'disabled'", func() {
+		It("Should set all ADC RS variables to 'disabled'", func() {
 			Eventually(func() error {
 				nsVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, nsRSKey)
 				if err != nil {
@@ -750,6 +976,20 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 				}
 				if virtVal != "disabled" {
 					return fmt.Errorf("expected ADC %s=%q, got %q", virtRSKey, "disabled", virtVal)
+				}
+				workloadVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, workloadRSKey)
+				if err != nil {
+					return err
+				}
+				if workloadVal != "disabled" {
+					return fmt.Errorf("expected ADC %s=%q, got %q", workloadRSKey, "disabled", workloadVal)
+				}
+				podVal, err := getADCCustomVar(dynClient, adcName, adcNamespace, podRSKey)
+				if err != nil {
+					return err
+				}
+				if podVal != "disabled" {
+					return fmt.Errorf("expected ADC %s=disabled, got %q", podRSKey, podVal)
 				}
 				return nil
 			}, 3*time.Minute, 10*time.Second).Should(Succeed())
@@ -783,6 +1023,12 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 			if err := unstructured.SetNestedField(mco.Object, true,
 				"spec", "capabilities", "platform", "analytics", "virtualizationRightSizingRecommendation", "enabled"); err != nil {
 				return err
+			}
+			for _, field := range []string{"workloadRightSizingRecommendation", "podRightSizingRecommendation"} {
+				if err := unstructured.SetNestedField(mco.Object, true,
+					"spec", "capabilities", "platform", "analytics", field, "enabled"); err != nil {
+					return err
+				}
 			}
 			_, err = dynClient.Resource(mcoGVR).Update(context.TODO(), mco, metav1.UpdateOptions{})
 			return err

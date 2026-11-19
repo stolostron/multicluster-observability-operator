@@ -115,7 +115,7 @@ data:
           "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "1 - node_cpu_seconds_total:mode_idle:avg_rate5m",
+              "expr": "1 - node_cpu_seconds_total:mode_idle:avg_rate5m{cluster=\"$cluster\"}",
               "format": "time_series",
               "instant": true,
               "intervalFactor": 1,

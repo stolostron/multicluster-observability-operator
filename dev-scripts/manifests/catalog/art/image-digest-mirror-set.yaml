@@ -1,0 +1,25 @@
+apiVersion: config.openshift.io/v1
+kind: ImageDigestMirrorSet
+metadata:
+  name: image-mirror-custom
+spec:
+  imageDigestMirrors:
+    - mirrors:
+        - registry.stage.redhat.io/rhacm2
+      source: registry.redhat.io/rhacm2
+    - mirrors:
+        - registry.stage.redhat.io/multicluster-engine
+      source: registry.redhat.io/multicluster-engine
+    - mirrors:
+        - registry.stage.redhat.io/openshift5/ose-aws-cluster-api-controllers-rhel9
+      source: registry.redhat.io/openshift5/ose-aws-cluster-api-controllers-rhel9
+    - mirrors:
+        - registry.stage.redhat.io/openshift5/ose-cluster-api-rhel9
+      source: registry.redhat.io/openshift5/ose-cluster-api-rhel9
+    - mirrors:
+        - registry.stage.redhat.io/openshift45ose-baremetal-cluster-api-controllers-rhel9
+      source: registry.redhat.io/openshift5/ose-baremetal-cluster-api-controllers-rhel9
+    - mirrors:
+        - registry.redhat.io/openshift5/ose-oauth-proxy
+      source: registry.access.redhat.com/openshift5/ose-oauth-proxy
+
