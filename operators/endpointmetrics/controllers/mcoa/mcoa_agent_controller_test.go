@@ -360,8 +360,9 @@ func TestMCOAAgentReconciler_Reconcile(t *testing.T) {
 // entry point must leave it untouched, and removing the annotation (even with .Data otherwise
 // unchanged) must be detected by the watch predicate and cause MCOA to resume reconciling it.
 func TestMCOAAgentReconciler_UnmanagedAnnotationTransition(t *testing.T) {
-	t.Parallel()
-
+	// Not parallel: this test reconciles a managed ConfigMap, incrementing the
+	// package-global cmoConfigReconcilesTotal counter that
+	// TestMCOAAgentReconciler_Reconcile asserts an exact delta against.
 	s := runtime.NewScheme()
 	require.NoError(t, corev1.AddToScheme(s))
 	addRhobsToScheme(t, s)
