@@ -65,14 +65,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
-                "pointSize": 5,
+                "pointSize": 3,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -125,10 +125,10 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "sum(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")) by (cluster)",
+              "expr": "sum(label_replace(avg_over_time(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}[5m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")) by (cluster)",
               "instant": false,
               "interval": "1m",
-              "legendFormat": "__auto",
+              "legendFormat": "{{cluster}}",
               "range": true,
               "refId": "A"
             }
@@ -222,7 +222,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")) by (cluster)",
+              "expr": "sum(label_replace(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}, \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")) by (cluster)",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
@@ -236,7 +236,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}[15m]))",
+              "expr": "sum(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"})",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -361,14 +361,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -421,9 +421,9 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace!=\"\"}) by (namespace))",
+              "expr": "topk(8, max_over_time((count by (namespace) ({__name__=\"$metric_name\", cluster=\"$cluster\", namespace!=\"\"}))[5m:]))",
               "instant": false,
-              "legendFormat": "__auto",
+              "legendFormat": "{{namespace}}",
               "range": true,
               "refId": "A"
             },
@@ -433,7 +433,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"\"})",
+              "expr": "max_over_time((count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"\"}))[5m:])",
               "hide": false,
               "instant": false,
               "legendFormat": "Non Namespaced",
@@ -488,7 +488,7 @@ data:
                     "value": [
                       {
                         "title": "",
-                        "url": "/d/${__dashboard.uid}﻿?var-metric_name=$metric_name&var-cluster=$cluster&﻿var-namespace=${__data.fields.namespace}"
+                        "url": "/d/${__dashboard.uid}\ufeff?var-metric_name=$metric_name&var-cluster=$cluster&\ufeffvar-namespace=${__data.fields.namespace}"
                       }
                     ]
                   }
@@ -692,14 +692,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -752,7 +752,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod!=\"\"}) by (pod))",
+              "expr": "topk(8, max_over_time((count by (pod) ({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod!=\"\"}))[5m:]))",
               "instant": false,
               "legendFormat": "{{pod}}",
               "range": true,
@@ -764,7 +764,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"\"})",
+              "expr": "max_over_time((count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"\"}))[5m:])",
               "hide": false,
               "instant": false,
               "legendFormat": "No Pod",
@@ -819,7 +819,7 @@ data:
                     "value": [
                       {
                         "title": "",
-                        "url": "/d/${__dashboard.uid}﻿?var-metric_name=$metric_name&var-cluster=$cluster&﻿var-namespace=$namespace$var-pod=${__data.fields.pod}"
+                        "url": "/d/${__dashboard.uid}\ufeff?var-metric_name=$metric_name&var-cluster=$cluster&\ufeffvar-namespace=$namespace$var-pod=${__data.fields.pod}"
                       }
                     ]
                   }
@@ -1141,7 +1141,7 @@ data:
       "timezone": "browser",
       "title": "Metric Name Cardinality / Cluster / Namespace / Pod",
       "uid": "aeotjz90jlkw0f",
-      "version": 19
+      "version": 22
     }
 kind: ConfigMap
 metadata:

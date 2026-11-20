@@ -45,11 +45,6 @@ const (
 	ageTier30dTo90d  = "30d_to_90d"
 	ageTier90dTo180d = "90d_to_180d"
 	ageTier180dPlus  = "180d_plus"
-
-	fileTypeChunks = "chunks"
-	fileTypeIndex  = "index"
-	fileTypeMeta   = "meta"
-	fileTypeOther  = "other"
 )
 
 var allAgeTiers = []string{
@@ -58,13 +53,6 @@ var allAgeTiers = []string{
 	ageTier30dTo90d,
 	ageTier90dTo180d,
 	ageTier180dPlus,
-}
-
-var allFileTypes = []string{
-	fileTypeChunks,
-	fileTypeIndex,
-	fileTypeMeta,
-	fileTypeOther,
 }
 
 // BlockSummary stores the immutable metadata of a single TSDB block in object storage
@@ -607,7 +595,6 @@ type storageKey struct {
 	tenantID          string
 	producer          string
 	resolution        string
-	fileType          string
 	ageTier           string
 	markedForDeletion string
 }
@@ -671,8 +658,8 @@ var (
 	)
 	descStorageBytes = prometheus.NewDesc(
 		"thanos_bucket_storage_bytes",
-		"Total bytes stored in the Thanos bucket by tenant, producer, resolution, file type, age tier, and deletion mark status.",
-		[]string{"tenant_id", "producer", "resolution", "file_type", "age_tier", "marked_for_deletion"}, nil,
+		"Total bytes stored in the Thanos bucket by tenant, producer, resolution, age tier, and deletion mark status.",
+		[]string{"tenant_id", "producer", "resolution", "age_tier", "marked_for_deletion"}, nil,
 	)
 	descBlocks = prometheus.NewDesc(
 		"thanos_bucket_blocks",
@@ -811,12 +798,8 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 		ageTier := classifyAgeTier(b.MinTime, b.MaxTime, nowMs)
 		delStr := strconv.FormatBool(b.MarkedForDeletion)
 
-		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, fileTypeChunks, ageTier, delStr}] += b.ChunkBytes
-		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, fileTypeIndex, ageTier, delStr}] += b.IndexBytes
-		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, fileTypeMeta, ageTier, delStr}] += b.MetaBytes
-		if b.OtherBytes > 0 {
-			storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, fileTypeOther, ageTier, delStr}] += b.OtherBytes
-		}
+		totalBytes := b.ChunkBytes + b.IndexBytes + b.MetaBytes + b.OtherBytes
+		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, ageTier, delStr}] += totalBytes
 
 		blocksByKey[blockCountKey{b.TenantID, b.Producer, b.Resolution, b.CompactionLevel, delStr}]++
 
@@ -864,11 +847,9 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 		for _, tier := range allAgeTiers {
 			tKey := tierGroupKey{resKey.tenantID, resKey.producer, resKey.resolution, tier}
 			spannedSecByTier[tKey] = 0
-			for _, ft := range allFileTypes[:3] { // chunks, index, meta
-				sKey := storageKey{resKey.tenantID, resKey.producer, resKey.resolution, ft, tier, "false"}
-				if _, ok := storageByKey[sKey]; !ok {
-					storageByKey[sKey] = 0
-				}
+			sKey := storageKey{resKey.tenantID, resKey.producer, resKey.resolution, tier, "false"}
+			if _, ok := storageByKey[sKey]; !ok {
+				storageByKey[sKey] = 0
 			}
 		}
 		accumulateStreamIntervalsByTier(resKey, intervalsByRes[resKey], spannedSecByTier)
@@ -879,7 +860,7 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 			descStorageBytes,
 			prometheus.GaugeValue,
 			float64(val),
-			k.tenantID, k.producer, k.resolution, k.fileType, k.ageTier, k.markedForDeletion,
+			k.tenantID, k.producer, k.resolution, k.ageTier, k.markedForDeletion,
 		)
 	}
 

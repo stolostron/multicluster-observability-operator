@@ -141,7 +141,7 @@ func TestInspectorIncrementalCacheAndMetrics(t *testing.T) {
 			"files": [
 				{"rel_path": "chunks/000001", "size_bytes": 50000},
 				{"rel_path": "index", "size_bytes": 10000},
-				{"rel_path": "meta.json"}
+				{"rel_path": "meta.json", "size_bytes": 500}
 			]
 		}
 	}`, ulid1, min1, max1)
@@ -161,7 +161,7 @@ func TestInspectorIncrementalCacheAndMetrics(t *testing.T) {
 			"files": [
 				{"rel_path": "chunks/000001", "size_bytes": 50000},
 				{"rel_path": "index", "size_bytes": 10000},
-				{"rel_path": "meta.json"}
+				{"rel_path": "meta.json", "size_bytes": 500}
 			]
 		}
 	}`, ulid2, min1, max1)
@@ -223,10 +223,10 @@ func TestInspectorIncrementalCacheAndMetrics(t *testing.T) {
 		t.Errorf("expected non-overlapping span 7200s, got output:\n%s", out)
 	}
 
-	// Verify chunk storage sums both blocks (50000 + 50000 = 100000).
-	wantChunks := `thanos_bucket_storage_bytes{age_tier="0_to_7d",file_type="chunks",marked_for_deletion="false",producer="receive",resolution="raw",tenant_id="tenant-a"} 100000`
-	if !strings.Contains(out, wantChunks) {
-		t.Errorf("expected chunk storage 100000, got output:\n%s", out)
+	// Verify total storage sums both blocks (60500 + 60500 = 121000).
+	wantStorage := `thanos_bucket_storage_bytes{age_tier="0_to_7d",marked_for_deletion="false",producer="receive",resolution="raw",tenant_id="tenant-a"} 121000`
+	if !strings.Contains(out, wantStorage) {
+		t.Errorf("expected storage 121000, got output:\n%s", out)
 	}
 
 	// Verify recent block series picks the tie-broken max (1250).
@@ -262,7 +262,8 @@ func TestInspectorIncrementalCacheAndMetrics(t *testing.T) {
 			"source": "receive",
 			"files": [
 				{"rel_path": "chunks/000001", "size_bytes": 40000},
-				{"rel_path": "index", "size_bytes": 8000}
+				{"rel_path": "index", "size_bytes": 8000},
+				{"rel_path": "meta.json", "size_bytes": 500}
 			]
 		}
 	}`, ulid4, min4, max4)
@@ -292,9 +293,10 @@ func TestInspectorIncrementalCacheAndMetrics(t *testing.T) {
 	if !strings.Contains(out2, wantSpan2) {
 		t.Errorf("expected contiguous span 14400s after ulid4 added, got:\n%s", out2)
 	}
-	wantDelChunks := `thanos_bucket_storage_bytes{age_tier="0_to_7d",file_type="chunks",marked_for_deletion="true",producer="receive",resolution="raw",tenant_id="tenant-a"} 50000`
-	if !strings.Contains(out2, wantDelChunks) {
-		t.Errorf("expected marked_for_deletion=true chunk bytes 50000, got:\n%s", out2)
+	// ulid2 is marked for deletion: 50000 chunks + 10000 index + 500 meta = 60500 bytes.
+	wantDelStorage := `thanos_bucket_storage_bytes{age_tier="0_to_7d",marked_for_deletion="true",producer="receive",resolution="raw",tenant_id="tenant-a"} 60500`
+	if !strings.Contains(out2, wantDelStorage) {
+		t.Errorf("expected marked_for_deletion=true storage bytes 60500, got:\n%s", out2)
 	}
 
 	// Third Sync: Simulate transient object store failure; verify error counter increments and cache is preserved.

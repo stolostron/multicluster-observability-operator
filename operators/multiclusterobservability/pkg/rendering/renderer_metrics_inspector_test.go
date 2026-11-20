@@ -123,11 +123,11 @@ func TestMetricsInspectorRendering(t *testing.T) {
 		t.Fatalf("MetricsInspectorResources failed: %v", err)
 	}
 
-	// With MCOA enabled, all 11 resources in manifests/base/metrics-inspector must be rendered:
+	// With MCOA enabled, all 12 resources in manifests/base/metrics-inspector must be rendered:
 	// 1 Deployment, 1 Service, 1 ServiceAccount, 1 ClusterRole, 1 ClusterRoleBinding,
-	// 1 ServiceMonitor, 1 ScrapeConfig, and 4 ConfigMaps (config + 3 cardinality dashboards).
-	if len(resources) != 11 {
-		t.Fatalf("expected 11 rendered metrics-inspector resources, got %d", len(resources))
+	// 1 ServiceMonitor, 1 ScrapeConfig, and 5 ConfigMaps (config + 4 cardinality/bucket dashboards).
+	if len(resources) != 12 {
+		t.Fatalf("expected 12 rendered metrics-inspector resources, got %d", len(resources))
 	}
 
 	findResource := func(kind, name string) *unstructured.Unstructured {
@@ -161,11 +161,12 @@ func TestMetricsInspectorRendering(t *testing.T) {
 		}
 	}
 
-	// 2. Validate the 3 cardinality Grafana dashboards and ScrapeConfig.
+	// 2. Validate the 4 cardinality/bucket Grafana dashboards and ScrapeConfig.
 	for _, dashName := range []string{
 		"grafana-dashboard-acm-metrics-cardinality-overview",
 		"grafana-dashboard-acm-metrics-cardinality-cluster",
 		"grafana-dashboard-acm-metrics-cardinality-name",
+		"grafana-dashboard-acm-metrics-thanos-bucket",
 	} {
 		if findResource("ConfigMap", dashName) == nil {
 			t.Errorf("expected dashboard ConfigMap %q to be rendered", dashName)
@@ -292,15 +293,15 @@ func TestMetricsInspectorRendering(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MetricsInspectorResources (legacy mode) failed: %v", err)
 	}
-	if len(legacyResources) != 10 {
-		t.Fatalf("expected 10 resources in legacy collector mode (no ScrapeConfig), got %d", len(legacyResources))
+	if len(legacyResources) != 11 {
+		t.Fatalf("expected 11 resources in legacy collector mode (no ScrapeConfig), got %d", len(legacyResources))
 	}
 	removalResources, err := renderer.MetricsInspectorResourcesForRemoval(t.Context(), namespace, labels)
 	if err != nil {
 		t.Fatalf("MetricsInspectorResourcesForRemoval failed: %v", err)
 	}
-	if len(removalResources) != 11 {
-		t.Fatalf("expected 11 resources in MetricsInspectorResourcesForRemoval, got %d", len(removalResources))
+	if len(removalResources) != 12 {
+		t.Fatalf("expected 12 resources in MetricsInspectorResourcesForRemoval, got %d", len(removalResources))
 	}
 }
 

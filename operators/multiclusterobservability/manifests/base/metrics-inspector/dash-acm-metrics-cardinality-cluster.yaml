@@ -65,14 +65,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
-                "pointSize": 2,
+                "pointSize": 3,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -150,7 +150,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, sum(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\", by_namespace!=\"\"}[15m]), \"namespace\", \"$1\", \"by_namespace\", \"(.*)\")) by (namespace))",
+              "expr": "topk(8, sum(label_replace(avg_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\", by_namespace!=\"\"}[5m]), \"namespace\", \"$1\", \"by_namespace\", \"(.*)\")) by (namespace))",
               "instant": false,
               "interval": "1m",
               "legendFormat": "{{namespace}}",
@@ -163,7 +163,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\", by_namespace=\"\"}[15m]))",
+              "expr": "sum(avg_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\", by_namespace=\"\"}[5m]))",
               "hide": false,
               "instant": false,
               "interval": "1m",
@@ -219,7 +219,7 @@ data:
                     "value": [
                       {
                         "title": "Namespace link",
-                        "url": "/d/${__dashboard.uid}?${__url_time_range}﻿&var-datasource=$datasource&var-cluster=$cluster&var-namespace=﻿${__value.raw}"
+                        "url": "/d/${__dashboard.uid}?${__url_time_range}\ufeff&var-datasource=$datasource&var-cluster=$cluster&var-namespace=\ufeff${__value.raw}"
                       }
                     ]
                   }
@@ -284,7 +284,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(label_replace(last_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"}[15m]), \"namespace\", \"$1\", \"by_namespace\", \"(.*)\")) by (namespace)",
+              "expr": "sum(label_replace(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"}, \"namespace\", \"$1\", \"by_namespace\", \"(.*)\")) by (namespace)",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
@@ -298,7 +298,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"}[15m]))",
+              "expr": "sum(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"})",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -422,14 +422,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -482,7 +482,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, count({__name__=~\".+\", namespace=\"$namespace\", cluster=\"$cluster\", pod!=\"\"}) by (pod))",
+              "expr": "topk(8, max_over_time((count by (pod) ({__name__=~\".+\", namespace=\"$namespace\", cluster=\"$cluster\", pod!=\"\"}))[5m:]))",
               "instant": false,
               "interval": "",
               "legendFormat": "{{pod}}",
@@ -495,7 +495,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "count({__name__=~\".+\", namespace=\"$namespace\", cluster=\"$cluster\", pod=\"\"})",
+              "expr": "max_over_time((count({__name__=~\".+\", namespace=\"$namespace\", cluster=\"$cluster\", pod=\"\"}))[5m:])",
               "hide": false,
               "instant": false,
               "interval": "",
@@ -754,14 +754,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -814,9 +814,9 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, count({__name__=~\".+\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"}) by (__name__))",
+              "expr": "topk(8, max_over_time((count by (metric_name) (label_replace({__name__=~\".+\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"}, \"metric_name\", \"$1\", \"__name__\", \"(.*)\")))[5m:]))",
               "instant": false,
-              "legendFormat": "{{__name__}}",
+              "legendFormat": "{{metric_name}}",
               "range": true,
               "refId": "A"
             }
@@ -867,7 +867,7 @@ data:
                     "value": [
                       {
                         "title": "Link",
-                        "url": "/d/${__dashboard.uid}﻿?﻿${__url_time_range}﻿&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=﻿$pod﻿&var-metric_name=${__value.raw}"
+                        "url": "/d/${__dashboard.uid}\ufeff?\ufeff${__url_time_range}\ufeff&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=\ufeff$pod\ufeff&var-metric_name=${__value.raw}"
                       }
                     ]
                   }
@@ -1206,7 +1206,7 @@ data:
       "timezone": "browser",
       "title": "Metrics Cardinality / Cluster / Namespace / Pod",
       "uid": "eeoqevt59fwn4c",
-      "version": 35
+      "version": 38
     }
 kind: ConfigMap
 metadata:
