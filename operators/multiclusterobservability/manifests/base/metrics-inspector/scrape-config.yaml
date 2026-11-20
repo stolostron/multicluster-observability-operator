@@ -14,16 +14,12 @@ spec:
   params:
     match[]:
     - '{__name__="thanos_bucket_blocks"}'
-    - '{__name__="thanos_bucket_cached_blocks"}'
-    - '{__name__="thanos_bucket_chunks"}'
+    - '{__name__="thanos_bucket_burn_rate_bytes_per_second"}'
     - '{__name__="thanos_bucket_configured_retention_seconds"}'
     - '{__name__="thanos_bucket_last_sync_duration_seconds"}'
     - '{__name__="thanos_bucket_last_sync_timestamp_seconds"}'
-    - '{__name__="thanos_bucket_newest_block_timestamp_seconds"}'
     - '{__name__="thanos_bucket_oldest_block_timestamp_seconds"}'
-    - '{__name__="thanos_bucket_recent_block_series"}'
-    - '{__name__="thanos_bucket_samples"}'
-    - '{__name__="thanos_bucket_spanned_seconds"}'
+    - '{__name__="thanos_bucket_projected_steady_state_bytes"}'
     - '{__name__="thanos_bucket_storage_bytes"}'
     - '{__name__="thanos_bucket_sync_errors_total"}'
     - '{__name__="thanos_bucket_syncs_total"}'

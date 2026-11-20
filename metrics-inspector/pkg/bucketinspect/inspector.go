@@ -35,21 +35,19 @@ const (
 
 	metaFilename         = "meta.json"
 	deletionMarkFilename = "deletion-mark.json"
-	indexFilename        = "index"
-	chunksDirname        = "chunks"
 
 	msPerDay = 86400 * 1000
+
+	// Thanos Compactor downsampling delay windows (hardcoded in upstream Thanos Compactor).
+	// Compactor never downsamples blocks younger than 40h to 5m, or younger than 14d to 1h.
+	thanosDownsampleDelay5mSec = 40 * 3600
+	thanosDownsampleDelay1hSec = 14 * 24 * 3600
 
 	ageTier0To7d     = "0_to_7d"
 	ageTier7dTo30d   = "7d_to_30d"
 	ageTier30dTo90d  = "30d_to_90d"
 	ageTier90dTo180d = "90d_to_180d"
 	ageTier180dPlus  = "180d_plus"
-
-	fileTypeChunks = "chunks"
-	fileTypeIndex  = "index"
-	fileTypeMeta   = "meta"
-	fileTypeOther  = "other"
 )
 
 var allAgeTiers = []string{
@@ -58,13 +56,6 @@ var allAgeTiers = []string{
 	ageTier30dTo90d,
 	ageTier90dTo180d,
 	ageTier180dPlus,
-}
-
-var allFileTypes = []string{
-	fileTypeChunks,
-	fileTypeIndex,
-	fileTypeMeta,
-	fileTypeOther,
 }
 
 // BlockSummary stores the immutable metadata of a single TSDB block in object storage
@@ -80,10 +71,7 @@ type BlockSummary struct {
 	NumSamples        uint64
 	NumSeries         uint64
 	NumChunks         uint64
-	ChunkBytes        int64
-	IndexBytes        int64
-	MetaBytes         int64
-	OtherBytes        int64
+	StorageBytes      int64
 	MarkedForDeletion bool
 }
 
@@ -211,15 +199,22 @@ func (ins *Inspector) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := ins.Sync(ctx); err != nil && ctx.Err() == nil {
+			syncTimeout := max(ins.interval, 15*time.Minute)
+			syncCtx, cancel := context.WithTimeout(ctx, syncTimeout)
+			if err := ins.Sync(syncCtx); err != nil && ctx.Err() == nil {
 				ins.logger.Warn("periodic thanos bucket inspection failed", "err", err)
 			}
+			cancel()
 		}
 	}
 }
 
 func (ins *Inspector) syncUntilReady(ctx context.Context) bool {
-	if err := ins.Sync(ctx); err == nil {
+	syncTimeout := max(ins.interval, 15*time.Minute)
+	syncCtx, cancel := context.WithTimeout(ctx, syncTimeout)
+	err := ins.Sync(syncCtx)
+	cancel()
+	if err == nil {
 		return true
 	} else if ctx.Err() == nil {
 		ins.logger.Warn("initial thanos bucket inspection failed; retrying", "err", err)
@@ -232,19 +227,16 @@ func (ins *Inspector) syncUntilReady(ctx context.Context) bool {
 		case <-ctx.Done():
 			return false
 		case <-ticker.C:
-			if err := ins.Sync(ctx); err == nil {
+			retryCtx, retryCancel := context.WithTimeout(ctx, syncTimeout)
+			retryErr := ins.Sync(retryCtx)
+			retryCancel()
+			if retryErr == nil {
 				return true
 			} else if ctx.Err() == nil {
-				ins.logger.Warn("initial thanos bucket inspection failed; retrying", "err", err)
+				ins.logger.Warn("initial thanos bucket inspection failed; retrying", "err", retryErr)
 			}
 		}
 	}
-}
-
-type discoveredBlockFiles struct {
-	hasMeta     bool
-	hasDeletion bool
-	relPaths    []string
 }
 
 // Sync performs a single incremental inspection pass against the Thanos object storage bucket.
@@ -255,27 +247,16 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 	start := time.Now()
 	ins.syncsTotal.Add(1)
 
-	// Group recursively listed object keys by top-level <ULID>.
-	discovered := make(map[string]*discoveredBlockFiles)
+	// List top-level bucket entries without recursion.
+	// In S3, GCS, Azure, and InMemBucket, this returns top-level block directory prefixes
+	// (e.g. "01K.../") rather than enumerating millions of chunk objects across all blocks.
+	discoveredULIDs := make(map[string]struct{})
 	err := ins.bkt.Iter(ctx, "", func(name string) error {
-		ulidStr, relPath, ok := splitBlockKey(name)
-		if !ok {
-			return nil
-		}
-		entry := discovered[ulidStr]
-		if entry == nil {
-			entry = &discoveredBlockFiles{}
-			discovered[ulidStr] = entry
-		}
-		entry.relPaths = append(entry.relPaths, relPath)
-		switch relPath {
-		case metaFilename:
-			entry.hasMeta = true
-		case deletionMarkFilename:
-			entry.hasDeletion = true
+		if ulidStr, ok := extractBlockULID(name); ok {
+			discoveredULIDs[ulidStr] = struct{}{}
 		}
 		return nil
-	}, objstore.WithRecursiveIter())
+	})
 	if err != nil {
 		ins.syncErrorsTotal.Add(1)
 		ins.lastSyncDurationNano.Store(time.Since(start).Nanoseconds())
@@ -284,29 +265,32 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 		return wrappedErr
 	}
 
-	// Identify which ULIDs have a valid meta.json and are not yet cached.
+	// 1. Identify missing ULIDs to fetch.
+	// 2. Identify cached ULIDs that are not yet marked for deletion to refresh deletion-mark status.
 	ins.mu.RLock()
 	var missingULIDs []string
-	for ulidStr, files := range discovered {
-		if !files.hasMeta {
-			continue
-		}
-		if _, cached := ins.blocks[ulidStr]; !cached {
+	var checkDeletionULIDs []string
+	for ulidStr := range discoveredULIDs {
+		if cached, ok := ins.blocks[ulidStr]; !ok {
 			missingULIDs = append(missingULIDs, ulidStr)
+		} else if !cached.MarkedForDeletion {
+			checkDeletionULIDs = append(checkDeletionULIDs, ulidStr)
 		}
 	}
 	ins.mu.RUnlock()
 	slices.Sort(missingULIDs)
+	slices.Sort(checkDeletionULIDs)
 
-	// Fetch meta.json only for newly discovered ULIDs using a bounded worker pool.
 	fetched := make(map[string]BlockSummary, len(missingULIDs))
 	var fetchMu sync.Mutex
 	var firstFetchErr error
 	var fetchErrors int
 
+	sem := make(chan struct{}, ins.concurrency)
+	var wg sync.WaitGroup
+
+	// Fetch meta.json and check deletion-mark.json for newly discovered ULIDs.
 	if len(missingULIDs) > 0 {
-		sem := make(chan struct{}, ins.concurrency)
-		var wg sync.WaitGroup
 	fetchLoop:
 		for _, u := range missingULIDs {
 			select {
@@ -321,6 +305,11 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 
 				rawMeta, err := ins.getObjectBytes(ctx, ulidStr+"/"+metaFilename)
 				if err != nil {
+					// If meta.json is not found (e.g. block upload incomplete or concurrently removed), skip.
+					if ins.bkt.IsObjNotFoundErr(err) {
+						ins.logger.Debug("block meta.json not found; skipping incomplete block", "ulid", ulidStr)
+						return
+					}
 					fetchMu.Lock()
 					fetchErrors++
 					if firstFetchErr == nil {
@@ -329,8 +318,13 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 					fetchMu.Unlock()
 					return
 				}
-				files := discovered[ulidStr]
-				summary, err := parseBlockSummary(ctx, ins.bkt, ulidStr, rawMeta, files)
+
+				hasDeletion, err := ins.bkt.Exists(ctx, ulidStr+"/"+deletionMarkFilename)
+				if err != nil {
+					ins.logger.Debug("failed to check deletion-mark.json for new block", "ulid", ulidStr, "err", err)
+				}
+
+				summary, err := parseBlockSummary(ctx, ins.bkt, ulidStr, rawMeta, hasDeletion)
 				if err != nil {
 					fetchMu.Lock()
 					fetchErrors++
@@ -350,25 +344,60 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 				)
 			}(u)
 		}
-		wg.Wait()
+	}
+
+	// Check deletion marks for existing cached blocks that are not yet marked for deletion.
+	newlyMarked := make(map[string]bool)
+	var newlyMarkedMu sync.Mutex
+
+	if len(checkDeletionULIDs) > 0 {
+	deletionLoop:
+		for _, u := range checkDeletionULIDs {
+			select {
+			case sem <- struct{}{}:
+			case <-ctx.Done():
+				break deletionLoop
+			}
+			wg.Add(1)
+			go func(ulidStr string) {
+				defer wg.Done()
+				defer func() { <-sem }()
+
+				hasDeletion, err := ins.bkt.Exists(ctx, ulidStr+"/"+deletionMarkFilename)
+				if err == nil && hasDeletion {
+					newlyMarkedMu.Lock()
+					newlyMarked[ulidStr] = true
+					newlyMarkedMu.Unlock()
+					ins.logger.Debug("detected existing block marked for deletion", "ulid", ulidStr)
+				}
+			}(u)
+		}
+	}
+
+	wg.Wait()
+
+	if err := ctx.Err(); err != nil {
+		ins.syncErrorsTotal.Add(1)
+		wrappedErr := fmt.Errorf("thanos bucket inspection aborted: %w", err)
+		ins.setReadyErr(wrappedErr)
+		return wrappedErr
 	}
 
 	// Reconcile the in-memory ULID cache:
 	// 1. Evict ULIDs no longer present in the bucket.
 	// 2. Insert newly fetched ULIDs.
-	// 3. Refresh MarkedForDeletion on all present ULIDs.
+	// 3. Mark existing blocks that now have deletion-mark.json.
 	ins.mu.Lock()
 	for existingULID := range ins.blocks {
-		files, exists := discovered[existingULID]
-		if !exists || !files.hasMeta {
+		if _, exists := discoveredULIDs[existingULID]; !exists {
 			delete(ins.blocks, existingULID)
 		}
 	}
 	maps.Copy(ins.blocks, fetched)
-	for ulidStr, summary := range ins.blocks {
-		if files, ok := discovered[ulidStr]; ok {
-			summary.MarkedForDeletion = files.hasDeletion
-			ins.blocks[ulidStr] = summary
+	for u := range newlyMarked {
+		if summary, ok := ins.blocks[u]; ok {
+			summary.MarkedForDeletion = true
+			ins.blocks[u] = summary
 		}
 	}
 	cachedCount := len(ins.blocks)
@@ -415,23 +444,20 @@ func (ins *Inspector) CachedBlocks() int {
 	return len(ins.blocks)
 }
 
-// splitBlockKey checks whether key has the form "<ULID>/<relPath>" where <ULID> is a valid
-// 26-character Crockford Base32 ULID.
-func splitBlockKey(key string) (ulidStr, relPath string, ok bool) {
-	trimmed := strings.TrimPrefix(key, "/")
-	slashIdx := strings.IndexByte(trimmed, '/')
-	if slashIdx != 26 {
-		return "", "", false
+// extractBlockULID extracts and validates a 26-character Crockford Base32 TSDB block ULID
+// from a top-level bucket entry (e.g. "01K6B9RVTWK2B1VSQ3R34BMHP7/" or "01K6B9RVTWK2B1VSQ3R34BMHP7").
+func extractBlockULID(name string) (string, bool) {
+	trimmed := strings.Trim(name, "/")
+	if slashIdx := strings.IndexByte(trimmed, '/'); slashIdx != -1 {
+		trimmed = trimmed[:slashIdx]
 	}
-	candidate := trimmed[:slashIdx]
-	rest := trimmed[slashIdx+1:]
-	if rest == "" {
-		return "", "", false
+	if len(trimmed) != 26 {
+		return "", false
 	}
-	if _, err := ulid.ParseStrict(candidate); err != nil {
-		return "", "", false
+	if _, err := ulid.ParseStrict(trimmed); err != nil {
+		return "", false
 	}
-	return candidate, rest, true
+	return trimmed, true
 }
 
 func parseBlockSummary(
@@ -439,7 +465,7 @@ func parseBlockSummary(
 	bkt objstore.BucketReader,
 	ulidStr string,
 	rawMeta []byte,
-	listed *discoveredBlockFiles,
+	markedForDeletion bool,
 ) (BlockSummary, error) {
 	var meta thanosBlockMeta
 	if err := json.Unmarshal(rawMeta, &meta); err != nil {
@@ -454,7 +480,7 @@ func parseBlockSummary(
 	producer := extractProducer(meta.Thanos.Labels, meta.Thanos.Source)
 	resolution := formatResolution(meta.Thanos.Downsample.Resolution)
 
-	var chunkBytes, indexBytes, metaBytes, otherBytes int64
+	var storageBytes int64
 	var hasMetaSize bool
 	for _, f := range meta.Thanos.Files {
 		if f.SizeBytes <= 0 {
@@ -463,28 +489,25 @@ func parseBlockSummary(
 		if f.RelPath == metaFilename {
 			hasMetaSize = true
 		}
-		classifyFileSize(f.RelPath, f.SizeBytes, &chunkBytes, &indexBytes, &metaBytes, &otherBytes)
+		storageBytes += f.SizeBytes
 	}
 
 	// Fall back to querying object attributes when thanos.files is unpopulated (e.g. older TSDB blocks).
-	var markedForDeletion bool
-	if listed != nil {
-		markedForDeletion = listed.hasDeletion
-		if chunkBytes == 0 && indexBytes == 0 && bkt != nil {
-			for _, relPath := range listed.relPaths {
-				if relPath == metaFilename {
-					continue
-				}
-				attrs, err := bkt.Attributes(ctx, ulidStr+"/"+relPath)
-				if err != nil || attrs.Size <= 0 {
-					continue
-				}
-				classifyFileSize(relPath, attrs.Size, &chunkBytes, &indexBytes, &metaBytes, &otherBytes)
+	// We only recursively iterate this single block directory, never the entire bucket.
+	if storageBytes == 0 && bkt != nil {
+		_ = bkt.Iter(ctx, ulidStr, func(rel string) error {
+			if strings.HasSuffix(rel, metaFilename) {
+				return nil
 			}
-		}
+			attrs, err := bkt.Attributes(ctx, rel)
+			if err == nil && attrs.Size > 0 {
+				storageBytes += attrs.Size
+			}
+			return nil
+		}, objstore.WithRecursiveIter())
 	}
 	if !hasMetaSize {
-		metaBytes += int64(len(rawMeta))
+		storageBytes += int64(len(rawMeta))
 	}
 
 	compactionLevel := meta.Compaction.Level
@@ -503,25 +526,9 @@ func parseBlockSummary(
 		NumSamples:        meta.Stats.NumSamples,
 		NumSeries:         meta.Stats.NumSeries,
 		NumChunks:         meta.Stats.NumChunks,
-		ChunkBytes:        chunkBytes,
-		IndexBytes:        indexBytes,
-		MetaBytes:         metaBytes,
-		OtherBytes:        otherBytes,
+		StorageBytes:      storageBytes,
 		MarkedForDeletion: markedForDeletion,
 	}, nil
-}
-
-func classifyFileSize(relPath string, size int64, chunkBytes, indexBytes, metaBytes, otherBytes *int64) {
-	switch {
-	case strings.HasPrefix(relPath, chunksDirname+"/"):
-		*chunkBytes += size
-	case relPath == indexFilename:
-		*indexBytes += size
-	case relPath == metaFilename || relPath == deletionMarkFilename:
-		*metaBytes += size
-	default:
-		*otherBytes += size
-	}
 }
 
 // extractProducer derives the originating component ("receive" or "ruler") from external labels
@@ -578,7 +585,7 @@ type timeInterval struct {
 // accumulateStreamIntervalsByTier merges overlapping intervals across an entire
 // (tenant_id, producer, resolution) stream in chronological order and attributes each
 // newly covered sub-interval to its block's ageTier. This guarantees that
-// sum by (tenant_id, producer, resolution) (thanos_bucket_spanned_seconds) equals the
+// the accumulated tier spans equal the
 // exact global non-overlapping union even when overlapping blocks straddle an age tier boundary.
 func accumulateStreamIntervalsByTier(resKey resolutionGroupKey, intervals []timeInterval, out map[tierGroupKey]float64) {
 	if len(intervals) == 0 {
@@ -603,11 +610,36 @@ func accumulateStreamIntervalsByTier(resKey resolutionGroupKey, intervals []time
 	}
 }
 
+// nonOverlappingSpannedSeconds computes the deduplicated non-overlapping coverage
+// in seconds across an arbitrary slice of timeIntervals.
+func nonOverlappingSpannedSeconds(intervals []timeInterval) float64 {
+	if len(intervals) == 0 {
+		return 0
+	}
+	sorted := slices.Clone(intervals)
+	slices.SortFunc(sorted, func(a, b timeInterval) int {
+		if c := cmp.Compare(a.minMs, b.minMs); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.maxMs, b.maxMs)
+	})
+
+	var totalSec float64
+	cursorMs := sorted[0].minMs
+	for _, iv := range sorted {
+		effectiveMin := max(iv.minMs, cursorMs)
+		if iv.maxMs > effectiveMin {
+			totalSec += float64(iv.maxMs-effectiveMin) / 1000.0
+			cursorMs = iv.maxMs
+		}
+	}
+	return totalSec
+}
+
 type storageKey struct {
 	tenantID          string
 	producer          string
 	resolution        string
-	fileType          string
 	ageTier           string
 	markedForDeletion string
 }
@@ -616,7 +648,6 @@ type blockCountKey struct {
 	tenantID          string
 	producer          string
 	resolution        string
-	compactionLevel   int
 	markedForDeletion string
 }
 
@@ -671,18 +702,13 @@ var (
 	)
 	descStorageBytes = prometheus.NewDesc(
 		"thanos_bucket_storage_bytes",
-		"Total bytes stored in the Thanos bucket by tenant, producer, resolution, file type, age tier, and deletion mark status.",
-		[]string{"tenant_id", "producer", "resolution", "file_type", "age_tier", "marked_for_deletion"}, nil,
+		"Total bytes stored in the Thanos bucket by tenant, producer, resolution, age tier, and deletion mark status.",
+		[]string{"tenant_id", "producer", "resolution", "age_tier", "marked_for_deletion"}, nil,
 	)
 	descBlocks = prometheus.NewDesc(
 		"thanos_bucket_blocks",
-		"Number of TSDB blocks in the Thanos bucket by tenant, producer, resolution, compaction level, and deletion mark status.",
-		[]string{"tenant_id", "producer", "resolution", "compaction_level", "marked_for_deletion"}, nil,
-	)
-	descSpannedSeconds = prometheus.NewDesc(
-		"thanos_bucket_spanned_seconds",
-		"Non-overlapping time span in seconds covered by active TSDB blocks in each age tier.",
-		[]string{"tenant_id", "producer", "resolution", "age_tier"}, nil,
+		"Number of TSDB blocks in the Thanos bucket by tenant, producer, resolution, and deletion mark status.",
+		[]string{"tenant_id", "producer", "resolution", "marked_for_deletion"}, nil,
 	)
 	descOldestBlockTimestampSecs = prometheus.NewDesc(
 		"thanos_bucket_oldest_block_timestamp_seconds",
@@ -694,19 +720,14 @@ var (
 		"Maximum maxTime (in Unix seconds) across active TSDB blocks.",
 		[]string{"tenant_id", "producer", "resolution"}, nil,
 	)
-	descSamples = prometheus.NewDesc(
-		"thanos_bucket_samples",
-		"Total samples stored across active TSDB blocks.",
+	descBurnRateBytesPerSec = prometheus.NewDesc(
+		"thanos_bucket_burn_rate_bytes_per_second",
+		"Storage ingestion or downsampled generation rate in bytes per second by tenant, producer, and resolution.",
 		[]string{"tenant_id", "producer", "resolution"}, nil,
 	)
-	descChunks = prometheus.NewDesc(
-		"thanos_bucket_chunks",
-		"Total chunks stored across active TSDB blocks.",
-		[]string{"tenant_id", "producer", "resolution"}, nil,
-	)
-	descRecentBlockSeries = prometheus.NewDesc(
-		"thanos_bucket_recent_block_series",
-		"Series count reported in meta.json of the most recent active raw TSDB block.",
+	descProjectedSteadyStateBytes = prometheus.NewDesc(
+		"thanos_bucket_projected_steady_state_bytes",
+		"Projected steady-state object storage usage in bytes across all retention tiers for the current active ingestion dynamic.",
 		[]string{"tenant_id", "producer"}, nil,
 	)
 )
@@ -724,12 +745,10 @@ func (ins *Inspector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- descCachedBlocks
 	ch <- descStorageBytes
 	ch <- descBlocks
-	ch <- descSpannedSeconds
 	ch <- descOldestBlockTimestampSecs
 	ch <- descNewestBlockTimestampSecs
-	ch <- descSamples
-	ch <- descChunks
-	ch <- descRecentBlockSeries
+	ch <- descBurnRateBytesPerSec
+	ch <- descProjectedSteadyStateBytes
 }
 
 // Collect implements prometheus.Collector.
@@ -796,29 +815,16 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 	intervalsByRes := make(map[resolutionGroupKey][]timeInterval)
 	oldestByRes := make(map[resolutionGroupKey]int64)
 	newestByRes := make(map[resolutionGroupKey]int64)
-	samplesByRes := make(map[resolutionGroupKey]uint64)
-	chunksByRes := make(map[resolutionGroupKey]uint64)
-
-	type recentCandidate struct {
-		level1    bool
-		maxTime   int64
-		numSeries uint64
-	}
-	recentByProducer := make(map[producerGroupKey]recentCandidate)
 	activeResGroups := make(map[resolutionGroupKey]struct{})
+	activeProducers := make(map[producerGroupKey]struct{})
 
 	for _, b := range blocks {
 		ageTier := classifyAgeTier(b.MinTime, b.MaxTime, nowMs)
 		delStr := strconv.FormatBool(b.MarkedForDeletion)
 
-		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, fileTypeChunks, ageTier, delStr}] += b.ChunkBytes
-		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, fileTypeIndex, ageTier, delStr}] += b.IndexBytes
-		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, fileTypeMeta, ageTier, delStr}] += b.MetaBytes
-		if b.OtherBytes > 0 {
-			storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, fileTypeOther, ageTier, delStr}] += b.OtherBytes
-		}
+		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, ageTier, delStr}] += b.StorageBytes
 
-		blocksByKey[blockCountKey{b.TenantID, b.Producer, b.Resolution, b.CompactionLevel, delStr}]++
+		blocksByKey[blockCountKey{b.TenantID, b.Producer, b.Resolution, delStr}]++
 
 		// Only active (non-deletion-marked) blocks participate in retention span, watermarks, and volume stats.
 		if b.MarkedForDeletion {
@@ -827,6 +833,8 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 
 		resKey := resolutionGroupKey{b.TenantID, b.Producer, b.Resolution}
 		activeResGroups[resKey] = struct{}{}
+		pKey := producerGroupKey{b.TenantID, b.Producer}
+		activeProducers[pKey] = struct{}{}
 
 		if b.MaxTime > b.MinTime {
 			intervalsByRes[resKey] = append(intervalsByRes[resKey], timeInterval{minMs: b.MinTime, maxMs: b.MaxTime, ageTier: ageTier})
@@ -838,23 +846,6 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 		if curNewest, exists := newestByRes[resKey]; !exists || b.MaxTime > curNewest {
 			newestByRes[resKey] = b.MaxTime
 		}
-
-		samplesByRes[resKey] += b.NumSamples
-		chunksByRes[resKey] += b.NumChunks
-
-		// Prefer CompactionLevel == 1 (uncompacted 2h raw blocks) so thanos_bucket_recent_block_series
-		// reflects a single 2h block's series count rather than a multi-day compacted block's union.
-		// Fall back to CompactionLevel > 1 only if no level-1 raw block exists for that producer.
-		if b.Resolution == "raw" {
-			pKey := producerGroupKey{b.TenantID, b.Producer}
-			isLevel1 := b.CompactionLevel == 1
-			cur, exists := recentByProducer[pKey]
-			if !exists ||
-				(isLevel1 && !cur.level1) ||
-				(isLevel1 == cur.level1 && (b.MaxTime > cur.maxTime || (b.MaxTime == cur.maxTime && b.NumSeries > cur.numSeries))) {
-				recentByProducer[pKey] = recentCandidate{level1: isLevel1, maxTime: b.MaxTime, numSeries: b.NumSeries}
-			}
-		}
 	}
 
 	spannedSecByTier := make(map[tierGroupKey]float64)
@@ -864,11 +855,9 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 		for _, tier := range allAgeTiers {
 			tKey := tierGroupKey{resKey.tenantID, resKey.producer, resKey.resolution, tier}
 			spannedSecByTier[tKey] = 0
-			for _, ft := range allFileTypes[:3] { // chunks, index, meta
-				sKey := storageKey{resKey.tenantID, resKey.producer, resKey.resolution, ft, tier, "false"}
-				if _, ok := storageByKey[sKey]; !ok {
-					storageByKey[sKey] = 0
-				}
+			sKey := storageKey{resKey.tenantID, resKey.producer, resKey.resolution, tier, "false"}
+			if _, ok := storageByKey[sKey]; !ok {
+				storageByKey[sKey] = 0
 			}
 		}
 		accumulateStreamIntervalsByTier(resKey, intervalsByRes[resKey], spannedSecByTier)
@@ -879,7 +868,7 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 			descStorageBytes,
 			prometheus.GaugeValue,
 			float64(val),
-			k.tenantID, k.producer, k.resolution, k.fileType, k.ageTier, k.markedForDeletion,
+			k.tenantID, k.producer, k.resolution, k.ageTier, k.markedForDeletion,
 		)
 	}
 
@@ -888,16 +877,7 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 			descBlocks,
 			prometheus.GaugeValue,
 			float64(val),
-			k.tenantID, k.producer, k.resolution, strconv.Itoa(k.compactionLevel), k.markedForDeletion,
-		)
-	}
-
-	for k, spannedSec := range spannedSecByTier {
-		ch <- prometheus.MustNewConstMetric(
-			descSpannedSeconds,
-			prometheus.GaugeValue,
-			math.Round(spannedSec),
-			k.tenantID, k.producer, k.resolution, k.ageTier,
+			k.tenantID, k.producer, k.resolution, k.markedForDeletion,
 		)
 	}
 
@@ -914,26 +894,171 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 			float64(newestByRes[k]/1000),
 			k.tenantID, k.producer, k.resolution,
 		)
-		ch <- prometheus.MustNewConstMetric(
-			descSamples,
-			prometheus.GaugeValue,
-			float64(samplesByRes[k]),
-			k.tenantID, k.producer, k.resolution,
-		)
-		ch <- prometheus.MustNewConstMetric(
-			descChunks,
-			prometheus.GaugeValue,
-			float64(chunksByRes[k]),
-			k.tenantID, k.producer, k.resolution,
-		)
 	}
 
-	for k, cand := range recentByProducer {
-		ch <- prometheus.MustNewConstMetric(
-			descRecentBlockSeries,
-			prometheus.GaugeValue,
-			float64(cand.numSeries),
-			k.tenantID, k.producer,
-		)
+	type downsampleSpec struct {
+		resolution   string
+		defaultRatio float64
+	}
+	downsampleSpecs := []downsampleSpec{
+		{resolution: "5m", defaultRatio: 0.5},
+		{resolution: "1h", defaultRatio: 0.05},
+	}
+
+	rawRet := ins.retention.RawSeconds
+	fiveMinRet := ins.retention.FiveMinSec
+	oneHourRet := ins.retention.OneHourSec
+	hasInfiniteRetention := rawRet <= 0 || fiveMinRet <= 0 || oneHourRet <= 0
+
+	sortedProducers := slices.Collect(maps.Keys(activeProducers))
+	slices.SortFunc(sortedProducers, func(a, b producerGroupKey) int {
+		if c := cmp.Compare(a.tenantID, b.tenantID); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.producer, b.producer)
+	})
+
+	for _, pKey := range sortedProducers {
+		// 1. Calculate active raw burn rate.
+		// Blocks younger than 24h contain duplicate receiver replicas (e.g. RF=3) and uncompacted
+		// 2h chunks before Thanos Compactor executes horizontal compaction and replica deduplication.
+		// Including uncompacted <24h data inflates the steady-state burn rate by ~45-50%.
+		// Therefore, we baseline the raw burn rate on the post-compaction window: 24h <= age < 7d.
+		// If the non-overlapping span in [24h, 7d) is insufficient (< 1h), we fall back to older
+		// post-24h blocks (age >= 24h), and only fall back to all raw blocks (including <24h)
+		// if no blocks older than 24h exist (e.g. Day 1 of a newly provisioned cluster).
+		newestRawMaxTimeMs := newestByRes[resolutionGroupKey{pKey.tenantID, pKey.producer, "raw"}]
+		var recentCompactedBytes, olderCompactedBytes, allRawBytes int64
+		var recentCompactedIntervals, olderCompactedIntervals, allRawIntervals []timeInterval
+
+		for _, b := range blocks {
+			if b.TenantID != pKey.tenantID || b.Producer != pKey.producer || b.Resolution != "raw" || b.MarkedForDeletion {
+				continue
+			}
+			allRawBytes += b.StorageBytes
+			if b.MaxTime > b.MinTime {
+				allRawIntervals = append(allRawIntervals, timeInterval{minMs: b.MinTime, maxMs: b.MaxTime})
+			}
+
+			midpointMs := b.MinTime + (b.MaxTime-b.MinTime)/2
+			ageFromNow := time.Duration(nowMs-midpointMs) * time.Millisecond
+			ageFromNewest := time.Duration(newestRawMaxTimeMs-midpointMs) * time.Millisecond
+
+			// Exclude uncompacted blocks younger than 24h relative to both wall-clock now and newest data.
+			if ageFromNow < 24*time.Hour || ageFromNewest < 24*time.Hour {
+				continue
+			}
+
+			if ageFromNow < 7*24*time.Hour {
+				recentCompactedBytes += b.StorageBytes
+				if b.MaxTime > b.MinTime {
+					recentCompactedIntervals = append(recentCompactedIntervals, timeInterval{minMs: b.MinTime, maxMs: b.MaxTime})
+				}
+			} else {
+				olderCompactedBytes += b.StorageBytes
+				if b.MaxTime > b.MinTime {
+					olderCompactedIntervals = append(olderCompactedIntervals, timeInterval{minMs: b.MinTime, maxMs: b.MaxTime})
+				}
+			}
+		}
+
+		var burnRateRaw float64
+		recentSpan := nonOverlappingSpannedSeconds(recentCompactedIntervals)
+		if recentSpan >= 3600 && recentCompactedBytes > 0 {
+			burnRateRaw = float64(recentCompactedBytes) / recentSpan
+		} else {
+			allCompactedBytes := recentCompactedBytes + olderCompactedBytes
+			allCompactedSpan := nonOverlappingSpannedSeconds(slices.Concat(recentCompactedIntervals, olderCompactedIntervals))
+			if allCompactedSpan >= 3600 && allCompactedBytes > 0 {
+				burnRateRaw = float64(allCompactedBytes) / allCompactedSpan
+			} else {
+				allRawSpan := nonOverlappingSpannedSeconds(allRawIntervals)
+				if allRawSpan >= 60 && allRawBytes > 0 {
+					burnRateRaw = float64(allRawBytes) / allRawSpan
+				}
+			}
+		}
+
+		burnRates := map[string]float64{"raw": burnRateRaw}
+		ratios := make(map[string]float64, len(downsampleSpecs))
+
+		for _, spec := range downsampleSpecs {
+			res := spec.resolution
+			ratio := spec.defaultRatio
+
+			// Match overlapping age tiers where both downsampled and raw blocks exist with >=1h of span.
+			var matchResBytes, matchRawBytes int64
+			var matchResSpan, matchRawSpan float64
+			for _, tier := range allAgeTiers {
+				rSpan := spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, res, tier}]
+				rwSpan := spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, "raw", tier}]
+				rBytes := storageByKey[storageKey{pKey.tenantID, pKey.producer, res, tier, "false"}]
+				rwBytes := storageByKey[storageKey{pKey.tenantID, pKey.producer, "raw", tier, "false"}]
+				if rSpan >= 3600 && rwSpan >= 3600 && rwBytes > 0 && rBytes > 0 {
+					matchResBytes += rBytes
+					matchResSpan += rSpan
+					matchRawBytes += rwBytes
+					matchRawSpan += rwSpan
+				}
+			}
+
+			if matchResSpan >= 3600 && matchRawSpan >= 3600 && matchRawBytes > 0 && matchResBytes > 0 {
+				ratio = (float64(matchResBytes) / matchResSpan) / (float64(matchRawBytes) / matchRawSpan)
+			} else {
+				// Fallback: evaluate ratio across all tiers if downsampled blocks exist.
+				var resTotalBytes int64
+				var resTotalSpan float64
+				for _, tier := range allAgeTiers {
+					resTotalBytes += storageByKey[storageKey{pKey.tenantID, pKey.producer, res, tier, "false"}]
+					resTotalSpan += spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, res, tier}]
+				}
+				if resTotalSpan >= 3600 && resTotalBytes > 0 && burnRateRaw > 0 {
+					ratio = (float64(resTotalBytes) / resTotalSpan) / burnRateRaw
+				}
+			}
+
+			if ratio <= 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
+				ratio = spec.defaultRatio
+			}
+			ratios[res] = ratio
+			burnRates[res] = burnRateRaw * ratio
+		}
+
+		// Fallback for burn rates if burnRateRaw was 0 but downsampled blocks exist.
+		if burnRateRaw == 0 {
+			for _, spec := range downsampleSpecs {
+				var resTotalBytes int64
+				var resTotalSpan float64
+				for _, tier := range allAgeTiers {
+					resTotalBytes += storageByKey[storageKey{pKey.tenantID, pKey.producer, spec.resolution, tier, "false"}]
+					resTotalSpan += spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, spec.resolution, tier}]
+				}
+				if resTotalSpan >= 3600 && resTotalBytes > 0 {
+					burnRates[spec.resolution] = float64(resTotalBytes) / resTotalSpan
+				}
+			}
+		}
+
+		for _, res := range []string{"raw", "5m", "1h"} {
+			ch <- prometheus.MustNewConstMetric(
+				descBurnRateBytesPerSec,
+				prometheus.GaugeValue,
+				burnRates[res],
+				pKey.tenantID, pKey.producer, res,
+			)
+		}
+		if !hasInfiniteRetention {
+			effective5mRet := max(0, fiveMinRet-thanosDownsampleDelay5mSec)
+			effective1hRet := max(0, oneHourRet-thanosDownsampleDelay1hSec)
+			projectedSteadyState := burnRates["raw"]*rawRet +
+				burnRates["5m"]*effective5mRet +
+				burnRates["1h"]*effective1hRet
+			ch <- prometheus.MustNewConstMetric(
+				descProjectedSteadyStateBytes,
+				prometheus.GaugeValue,
+				projectedSteadyState,
+				pKey.tenantID, pKey.producer,
+			)
+		}
 	}
 }

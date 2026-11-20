@@ -123,11 +123,11 @@ func TestMetricsInspectorRendering(t *testing.T) {
 		t.Fatalf("MetricsInspectorResources failed: %v", err)
 	}
 
-	// With MCOA enabled, all 11 resources in manifests/base/metrics-inspector must be rendered:
+	// With MCOA enabled, all 12 resources in manifests/base/metrics-inspector must be rendered:
 	// 1 Deployment, 1 Service, 1 ServiceAccount, 1 ClusterRole, 1 ClusterRoleBinding,
-	// 1 ServiceMonitor, 1 ScrapeConfig, and 4 ConfigMaps (config + 3 cardinality dashboards).
-	if len(resources) != 11 {
-		t.Fatalf("expected 11 rendered metrics-inspector resources, got %d", len(resources))
+	// 1 ServiceMonitor, 1 ScrapeConfig, and 5 ConfigMaps (config + 4 cardinality/bucket dashboards).
+	if len(resources) != 12 {
+		t.Fatalf("expected 12 rendered metrics-inspector resources, got %d", len(resources))
 	}
 
 	findResource := func(kind, name string) *unstructured.Unstructured {
@@ -161,11 +161,12 @@ func TestMetricsInspectorRendering(t *testing.T) {
 		}
 	}
 
-	// 2. Validate the 3 cardinality Grafana dashboards and ScrapeConfig.
+	// 2. Validate the 4 metrics-inspector Grafana dashboards and ScrapeConfig.
 	for _, dashName := range []string{
-		"grafana-dashboard-acm-metrics-cardinality-overview",
-		"grafana-dashboard-acm-metrics-cardinality-cluster",
-		"grafana-dashboard-acm-metrics-cardinality-name",
+		"grafana-dashboard-acm-metrics-inspector-overview",
+		"grafana-dashboard-acm-metrics-inspector-cluster",
+		"grafana-dashboard-acm-metrics-inspector-name",
+		"grafana-dashboard-acm-metrics-thanos-bucket",
 	} {
 		if findResource("ConfigMap", dashName) == nil {
 			t.Errorf("expected dashboard ConfigMap %q to be rendered", dashName)
@@ -230,7 +231,7 @@ func TestMetricsInspectorRendering(t *testing.T) {
 		"--tls.server.key-file=/var/metrics-inspector/server-certs/tls.key",
 		"--tls.client-ca-file=/var/metrics-inspector/client-ca/ca.crt",
 		"--remote-write.interval=60s",
-		"--remote-write.initial-delay=6m",
+		"--remote-write.initial-delay=10m",
 		"--objstore.config-file=/etc/metrics-inspector/objstore/thanos.yaml",
 		"--bucket-inspect.interval=15m",
 		"--retention.resolution-raw=14d",
@@ -292,15 +293,15 @@ func TestMetricsInspectorRendering(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MetricsInspectorResources (legacy mode) failed: %v", err)
 	}
-	if len(legacyResources) != 10 {
-		t.Fatalf("expected 10 resources in legacy collector mode (no ScrapeConfig), got %d", len(legacyResources))
+	if len(legacyResources) != 11 {
+		t.Fatalf("expected 11 resources in legacy collector mode (no ScrapeConfig), got %d", len(legacyResources))
 	}
 	removalResources, err := renderer.MetricsInspectorResourcesForRemoval(t.Context(), namespace, labels)
 	if err != nil {
 		t.Fatalf("MetricsInspectorResourcesForRemoval failed: %v", err)
 	}
-	if len(removalResources) != 11 {
-		t.Fatalf("expected 11 resources in MetricsInspectorResourcesForRemoval, got %d", len(removalResources))
+	if len(removalResources) != 12 {
+		t.Fatalf("expected 12 resources in MetricsInspectorResourcesForRemoval, got %d", len(removalResources))
 	}
 }
 
@@ -322,6 +323,33 @@ func TestResolveMetricsInspectorMaxItems(t *testing.T) {
 	for _, tc := range cases {
 		if got := resolveMetricsInspectorMaxItems(tc.size); got != tc.want {
 			t.Errorf("resolveMetricsInspectorMaxItems(%q) = %d, want %d", tc.size, got, tc.want)
+		}
+	}
+}
+
+func TestMetricsInspectorResourceRequests(t *testing.T) {
+	cases := []struct {
+		size       mcov1beta2.TShirtSize
+		wantCPU    string
+		wantMemory string
+	}{
+		{size: mcoconfig.Default, wantCPU: "100m", wantMemory: "256Mi"},
+		{size: mcoconfig.Minimal, wantCPU: "100m", wantMemory: "256Mi"},
+		{size: mcoconfig.Small, wantCPU: "250m", wantMemory: "512Mi"},
+		{size: mcoconfig.Medium, wantCPU: "500m", wantMemory: "1Gi"},
+		{size: mcoconfig.Large, wantCPU: "1", wantMemory: "2Gi"},
+		{size: mcoconfig.XLarge, wantCPU: "1500m", wantMemory: "3Gi"},
+		{size: mcoconfig.TwoXLarge, wantCPU: "2", wantMemory: "4Gi"},
+		{size: mcoconfig.FourXLarge, wantCPU: "4", wantMemory: "6Gi"},
+	}
+	for _, tc := range cases {
+		cpu := mcoconfig.MetricsInspectorCPURequest[tc.size]
+		if cpu != tc.wantCPU {
+			t.Errorf("MetricsInspectorCPURequest[%q] = %q, want %q", tc.size, cpu, tc.wantCPU)
+		}
+		mem := mcoconfig.MetricsInspectorMemoryRequest[tc.size]
+		if mem != tc.wantMemory {
+			t.Errorf("MetricsInspectorMemoryRequest[%q] = %q, want %q", tc.size, mem, tc.wantMemory)
 		}
 	}
 }

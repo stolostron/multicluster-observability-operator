@@ -399,9 +399,9 @@ var (
 		Small:      "512Mi",
 		Medium:     "1Gi",
 		Large:      "2Gi",
-		XLarge:     "2Gi",
+		XLarge:     "3Gi",
 		TwoXLarge:  "4Gi",
-		FourXLarge: "8Gi",
+		FourXLarge: "6Gi",
 	}
 )
 

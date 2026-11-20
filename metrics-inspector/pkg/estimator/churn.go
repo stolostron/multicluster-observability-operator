@@ -16,11 +16,24 @@ import (
 //
 //	|A Δ B| / |A ∪ B| = (2*|A ∪ B| - |A| - |B|) / |A ∪ B|
 //
-// Returns 0 when either sketch is nil or when their union estimate is 0.
+// Returns 0 when either sketch is nil, when either sketch has an estimate of 0,
+// or when their union estimate is 0. A non-zero baseline in both windows is required
+// because churn measures turnover within an active population; metrics newly introduced,
+// fully retired, or pulsed at intervals equal to or exceeding the sliding window
+// (e.g. periodic 15m/1d recording rules) do not represent series turnover.
 func CalculateChurnRatio(curr, prev *hll.Sketch) float64 {
 	if curr == nil || prev == nil {
 		return 0
 	}
+	currEst := curr.Estimate()
+	prevEst := prev.Estimate()
+	// Both windows must have an active population to measure turnover.
+	// If either window is empty, we have no valid baseline (first-seen appearance,
+	// clean metric decommission, or low-frequency periodic batch pulse).
+	if currEst == 0 || prevEst == 0 {
+		return 0
+	}
+
 	union := curr.Clone()
 	defer union.Release()
 	if err := union.Merge(prev); err != nil {
@@ -30,7 +43,7 @@ func CalculateChurnRatio(curr, prev *hll.Sketch) float64 {
 	if unionEst == 0 {
 		return 0
 	}
-	churn := float64(2*unionEst) - float64(prev.Estimate()) - float64(curr.Estimate())
+	churn := float64(2*unionEst) - float64(prevEst) - float64(currEst)
 	rate := churn / float64(unionEst)
 	if rate < 0 {
 		return 0

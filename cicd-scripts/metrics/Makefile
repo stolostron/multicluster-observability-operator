@@ -7,11 +7,12 @@ HCP_DASH_DIR = $(DAHSBOARDS_DIR)/hcp-mcoa
 ALERTS_DASH_DIR = $(DAHSBOARDS_DIR)/alerts
 VIRTUALIZATION_DASH_DIR = $(DAHSBOARDS_DIR)/virtualization
 ANALYTICS_DASH_DIR = $(DAHSBOARDS_DIR)/analytics
+INSPECTOR_DASH_DIR = ../../operators/multiclusterobservability/manifests/base/metrics-inspector
 
 TMPDIR := $(shell mktemp -d)
 
-.PHONY: check-metrics check-platform-metrics check-hcp-metrics check-uwl-hcp-etcd-metrics check-uwl-hcp-apiserver-metrics check-alerts-metrics check-virtualization-metrics check-analytics-metrics clean-tmpdir
-check-metrics: check-platform-metrics check-hcp-metrics check-uwl-hcp-etcd-metrics check-uwl-hcp-apiserver-metrics check-alerts-metrics check-virtualization-metrics check-analytics-metrics clean-tmpdir
+.PHONY: check-metrics check-platform-metrics check-hcp-metrics check-uwl-hcp-etcd-metrics check-uwl-hcp-apiserver-metrics check-alerts-metrics check-virtualization-metrics check-analytics-metrics check-metrics-inspector-metrics clean-tmpdir
+check-metrics: check-platform-metrics check-hcp-metrics check-uwl-hcp-etcd-metrics check-uwl-hcp-apiserver-metrics check-alerts-metrics check-virtualization-metrics check-analytics-metrics check-metrics-inspector-metrics clean-tmpdir
 
 check-platform-metrics: 
 	@echo "--> Checking platform metrics:"
@@ -82,6 +83,16 @@ check-analytics-metrics:
 		--dashboard-metrics=$$(cat $(TMPDIR)/dash-metrics) \
 		--additional-scrape-configs=$(PLATFORM_DASH_DIR)/scrape-config.yaml
 	@rm -d $(TMPDIR)/dash-metrics
+
+check-metrics-inspector-metrics: 
+	@echo "--> Checking metrics inspector metrics:"
+	@$(CURDIR)/scripts/extract-dashboards-metrics.sh -d $(INSPECTOR_DASH_DIR) | tr '\n' ',' > $(TMPDIR)/dash-metrics
+	@go run cmd/dashcheck/main.go --scrape-configs=$(INSPECTOR_DASH_DIR)/scrape-config.yaml \
+		--dashboard-metrics=$$(cat $(TMPDIR)/dash-metrics) \
+		--ignored-dashboard-metrics=cardinality_estimate,cardinality_churn_ratio,kube_pod_info \
+		--ignored-scrapeconfig-metrics=thanos_bucket_last_sync_timestamp_seconds,thanos_bucket_sync_errors_total,thanos_bucket_syncs_total,cardinality_estimator_deduplicated_series_total,cardinality_estimator_ingested_series_total,cardinality_estimator_push_errors_total,cardinality_estimator_write_requests_total,cardinality_estimator_last_push_timestamp_seconds,cardinality_estimator_pushed_series_total,cardinality_estimator_push_success_total,cardinality_estimator_write_errors_total
+	@rm -d $(TMPDIR)/dash-metrics
+
 clean-tmpdir:
 	@if [ -n "$(TMPDIR)" ] && [ -d "$(TMPDIR)" ]; then \
 		rm -r "$(TMPDIR)"; \

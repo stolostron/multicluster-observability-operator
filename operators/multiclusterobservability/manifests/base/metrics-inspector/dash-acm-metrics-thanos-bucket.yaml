@@ -1,0 +1,1370 @@
+apiVersion: v1
+data:
+  acm-metrics-thanos-bucket.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": false,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": true,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 12,
+          "panels": [
+            {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 14,
+                "w": 24,
+                "x": 0,
+                "y": 1
+              },
+              "id": 13,
+              "options": {
+                "code": {
+                  "language": "plaintext",
+                  "showLineNumbers": false,
+                  "showMiniMap": false
+                },
+                "content": "### **\ud83e\udea3 Understanding Thanos Object Storage Architecture**\n\nThis dashboard visualizes the capacity, growth trajectory, and retention health of the Thanos object storage bucket. In Red Hat Advanced Cluster Management (RHACM), all historical observability metrics forwarded by managed clusters are packaged and archived into this bucket for long-term queryability.\n\n---\n\n#### **\ud83c\udfd7\ufe0f How Metrics Reach the Bucket**\n\n* **2-Hour TSDB Blocks:** Incoming metrics are initially processed in-memory and on fast local NVMe/SSD disks by **Thanos Receive** (or Prometheus Sidecar). Every **2 hours**, the TSDB head is cut into an immutable 2-hour TSDB **block** and uploaded to object storage.\n* **What is a Block?** A block is an immutable directory in object storage named after a UUID (ULID). It contains:\n  * **`chunks/`**: Compressed raw metric sample values.\n  * **`index`**: Inverted index mapping series label pairs (`cluster=\"prod\"`, `__name__=\"node_cpu_seconds_total\"`) to chunk locations.\n  * **`meta.json`**: Metadata describing the block's time range (`minTime` to `maxTime`), compaction level, resolution tier, and stats.\n* **Thanos Compactor:** A background controller that continuously inspects the bucket to:\n  * **Compact:** Merge multiple contiguous 2-hour blocks into larger 8-hour, 2-day, or 2-week blocks to deduplicate index entries and optimize query speed.\n  * **Downsample:** Create low-resolution copies of old data (**5m** and **1h** downsampling) to keep long-term historical queries fast.\n  * **Enforce Retention:** Mark expired blocks with `deletion-mark.json` and delete them after the grace period.\n\n---\n\n#### **\ud83d\udcca Core Metrics & Concepts Explained**\n\n* **Resolution Tiers (`resolution`):**\n  * **`raw` (Full Fidelity):** Unmodified 2-hour blocks containing every collected sample. Essential for high-resolution troubleshooting over recent days. Typically retained for short-to-medium durations (e.g., 14\u201330 days).\n  * **`5m` (5-Minute Downsampled):** Precomputed aggregates (min, max, sum, count, counter) calculated for every 5-minute interval. Enables fast dashboard rendering across weeks without downloading millions of individual raw points.\n  * **`1h` (1-Hour Downsampled):** Aggregates computed for every 1-hour interval. Retained for long-term capacity planning and multi-month / multi-year audit compliance with minimal storage overhead.\n* **Storage Footprint by Age Tier:**\n  * Categorizes data into age buckets (`0-7d`, `7-30d`, `30-90d`, `90-180d`, `180d+`). In healthy systems, the newest tiers dominate the raw footprint, while older tiers flatten out into compact downsampled data.\n* **Storage Burn Rate:**\n  * The rate of storage growth (GiB/day or bytes/sec) entering the bucket. Calculated from the volume and non-overlapping time span of active raw blocks in the post-compaction window (**24h to 7 days old**). Data younger than 24 hours is intentionally excluded from the burn rate baseline because newly cut 2-hour blocks contain duplicate receiver replicas (e.g., replication factor = 3) and unmerged index postings before Thanos Compactor performs horizontal compaction and replica deduplication. Filtering out this initial 24-hour window yields the true post-compaction storage burn rate, avoiding an artificial 2×–3× inflation in long-term projections.\n* **Steady-State Capacity Forecast & Limitations:**\n  * **What it represents:** When metrics collection begins, bucket storage grows continuously until data reaches configured retention limits. Once reached, Thanos Compactor purges expired blocks at the same rate new blocks arrive, reaching equilibrium. The steady-state projection models total storage once all retention tiers reach equilibrium:\n    * `Steady-State Capacity = (Burn Rate[raw] \u00d7 Retention[raw]) + (Burn Rate[5m] \u00d7 Retention[5m]) + (Burn Rate[1h] \u00d7 Retention[1h])`\n  * **How it is calculated:** The raw burn rate is measured from active compacted blocks in the **24h to 7 day window** (falling back to older compacted blocks or all raw blocks on Day 1 of a cluster). Downsampled burn rates (`5m` and `1h`) are determined using **empirical downsampling ratios** measured directly from overlapping historical blocks in the bucket (or baseline defaults if downsampling is brand new).\n  * **Infinite Retention (0d):** If any resolution tier is configured with 0d retention (infinite retention in Thanos), steady-state storage is mathematically unbounded. In this case, metrics-inspector omits the projection metric, and the **Steady-State Capacity Forecast** panel displays **Infinite / Unbounded**.\n  * **Impact of Recent Bursts:** Because the raw burn rate is derived from the recent 24h to 7 day window, a sustained cardinality burst (e.g., heavy pod churn, temporary debug metrics, or incident flapping) will elevate the burn rate once compacted (~24h after upload). Extrapolating this across full long-term retentions (e.g., 90d or 365d) can cause a **magnified temporary increase in the projected steady-state**.\n  * **Lag in Reflecting Pruning:** When metrics are dropped or allowlists are tightened, the projection reflects the reduction after 24 hours (when new smaller blocks enter the post-compaction baseline) and fully stabilizes over 7 days as older high-volume blocks shift out of the 7-day window.\n  * **Fleet Sizing Assumption:** The projection assumes the current fleet size, scrape intervals, and metric volume remain constant. As you onboard additional managed clusters, the steady-state projection will scale proportionally.\n* **Retention Pruning Queue & Deletion Marks:**\n  * When a block exceeds its retention policy, Thanos Compactor writes a `deletion-mark.json` marker. Blocks in this state are hidden from queries and slated for hard deletion after a safety delay (default 48h). A growing deletion queue without deletions suggests compactor permissions or deletion stalls.\n\n---\n\n#### **\ud83d\udd0d Quick Triage Checklist**\n\n1. **Is storage growing faster than expected?** Check **Raw Storage Burn Rate** and compare it with the **Metric Cardinality** dashboard to find churn or high-frequency series.\n2. **Has retention stabilized?** Check **Retention & Saturation Status by Resolution Tier**. If the age span is approaching the retention limit, storage will soon level off.\n3. **Are downsampling and compaction healthy?** Verify that **5m** and **1h** tiers exist in **Storage Footprint by Resolution Tier** and that **TSDB Blocks Active vs Deletion Marks** shows steady block consolidation without compaction failures.",
+                "mode": "markdown"
+              },
+              "pluginVersion": "11.6.1",
+              "title": "",
+              "type": "text"
+            }
+          ],
+          "title": "Dashboard Guide (Click to Expand)",
+          "type": "row"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 1
+          },
+          "id": 100,
+          "title": "Capacity & Ingestion Overview",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Total disk space occupied by all TSDB blocks in object storage.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 2
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes))",
+              "legendFormat": "Total Storage",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Total Bucket Storage",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Total count of TSDB blocks across all resolution tiers.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 2
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_blocks))",
+              "legendFormat": "Total Blocks",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Total Stored Blocks",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Current post-compaction raw ingestion rate in bytes/sec computed by metrics-inspector based on active blocks in the 24h\u20137d age tier (excluding uncompacted <24h receiver replicas, falling back to older compacted blocks or all raw blocks if fresh).",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "Bps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 2
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_burn_rate_bytes_per_second{resolution=\"raw\"}))",
+              "legendFormat": "Raw Ingestion Rate",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Raw Storage Burn Rate",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Projected total object storage footprint at steady-state equilibrium across all configured retention tiers, computed by metrics-inspector using active raw ingestion and empirical downsampling storage ratios. Displays 'Infinite / Unbounded' if any retention tier is configured with infinite retention (0d).",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "noValue": "Infinite / Unbounded",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "purple",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 2
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_projected_steady_state_bytes))",
+              "legendFormat": "Steady-State Forecast",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Steady-State Capacity Forecast",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 6
+          },
+          "id": 101,
+          "title": "Retention & Saturation Status",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Retention and saturation status across resolution tiers. Compares the age of the oldest stored block (minTime) against the configured retention limit. Saturation represents the percentage of the retention window currently populated with blocks.\n\n**Why Oldest Block Age can exceed configured retention (>100% saturation):**\n\n- **TSDB Block Atomicity:** Blocks are immutable. Thanos Compactor only prunes a block when its entire time window has expired (`block.MaxTime < now - retention`). Partial block pruning is not supported.\n\n- **Compaction Block Spans:** Horizontally compacted blocks can span up to 2 weeks (compaction level 6). A block spanning `[T_min, T_max]` cannot be deleted until `T_max` expires (`now - retention`). Consequently, its oldest samples (`T_min`) remain active in the bucket for up to *(retention + block_span)* (e.g., 6d retention + 14d span = up to ~20 days).\n\n- **Deletion Delay:** Expired blocks are first flagged with deletion marks and retained for `--delete-delay` (typically 48h\u201350h) before physical deletion to allow running queries to finish cleanly.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Resolution Tier"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "raw": {
+                            "text": "Raw Metrics (raw)"
+                          },
+                          "5m": {
+                            "text": "5m Downsampled (5m)"
+                          },
+                          "1h": {
+                            "text": "1h Downsampled (1h)"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 240
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Oldest Block Age"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "days"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "0 days"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Configured Retention"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "days"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Saturation Status"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "basic",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "blue",
+                          "value": null
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 0.8
+                        },
+                        {
+                          "color": "green",
+                          "value": 1.0
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Pending Deletion"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "0"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 18,
+            "x": 0,
+            "y": 7
+          },
+          "id": 5,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Configured Retention"
+              }
+            ]
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "((time() - min by (resolution) (thanos_bucket_oldest_block_timestamp_seconds)) or on (resolution) (0 * max by (resolution) (thanos_bucket_configured_retention_seconds))) / 86400",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Oldest Block Age"
+            },
+            {
+              "editorMode": "code",
+              "expr": "max by (resolution) (thanos_bucket_configured_retention_seconds) / 86400",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Configured Retention"
+            },
+            {
+              "editorMode": "code",
+              "expr": "clamp_min((time() - min by (resolution) (thanos_bucket_oldest_block_timestamp_seconds)) / max by (resolution) (thanos_bucket_configured_retention_seconds > 0), 0) or on (resolution) (0 * max by (resolution) (thanos_bucket_configured_retention_seconds))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Saturation Status"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum by (resolution) (max without (pod, instance) (thanos_bucket_blocks{marked_for_deletion=\"true\"})) or on (resolution) (0 * max by (resolution) (thanos_bucket_configured_retention_seconds))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Pending Deletion"
+            }
+          ],
+          "title": "Retention & Saturation Status by Resolution Tier",
+          "transformations": [
+            {
+              "id": "joinByField",
+              "options": {
+                "byField": "resolution",
+                "mode": "outer"
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #(.*)",
+                "renamePattern": "$1"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Time 1": true,
+                  "Time 2": true,
+                  "Time 3": true
+                },
+                "includeByName": {},
+                "indexByName": {
+                  "Configured Retention": 2,
+                  "Oldest Block Age": 1,
+                  "Pending Deletion": 4,
+                  "Saturation Status": 3,
+                  "resolution": 0
+                },
+                "renameByName": {
+                  "resolution": "Resolution Tier"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Total TSDB blocks and byte volume marked for deletion and awaiting physical purge by Thanos Compactor after the deletion delay period (typically 48h\u201350h).",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 50
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Blocks Pending Deletion"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Storage Pending Deletion"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 7
+          },
+          "id": 6,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_blocks{marked_for_deletion=\"true\"})) or vector(0)",
+              "legendFormat": "Blocks Pending Deletion",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{marked_for_deletion=\"true\"})) or vector(0)",
+              "legendFormat": "Storage Pending Deletion",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Retention Pruning Queue",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 13
+          },
+          "id": 102,
+          "title": "Storage Footprint Breakdown",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Total storage bytes grouped by resolution tier (raw, 5m downsampled, 1h downsampled). Explicit zero values indicate tiers where downsampling has not yet produced blocks.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "min": 0,
+              "unit": "bytes"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Raw Metrics (raw)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "5m Downsampled (5m)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#FF9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "1h Downsampled (1h)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#B877D9",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 0,
+            "y": 14
+          },
+          "id": 7,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{resolution=\"raw\"})) or vector(0)",
+              "legendFormat": "Raw Metrics (raw)",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{resolution=\"5m\"})) or vector(0)",
+              "legendFormat": "5m Downsampled (5m)",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{resolution=\"1h\"})) or vector(0)",
+              "legendFormat": "1h Downsampled (1h)",
+              "range": true,
+              "refId": "C"
+            }
+          ],
+          "title": "Storage Footprint by Resolution Tier",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Total storage bytes grouped by block age tier, sorted chronologically from recent (< 7 days) to old (180+ days).",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "min": 0,
+              "unit": "bytes"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "0 - 7 days"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73BF69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "7 - 30 days"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#FADE2A",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "30 - 90 days"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#FF9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "90 - 180 days"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#F2495C",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "180+ days"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#8F3BB8",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 8,
+            "y": 14
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true,
+              "sortBy": "Last *",
+              "sortDesc": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{age_tier=\"0_to_7d\"})) or vector(0)",
+              "legendFormat": "0 - 7 days",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{age_tier=\"7d_to_30d\"})) or vector(0)",
+              "legendFormat": "7 - 30 days",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{age_tier=\"30d_to_90d\"})) or vector(0)",
+              "legendFormat": "30 - 90 days",
+              "range": true,
+              "refId": "C"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{age_tier=\"90d_to_180d\"})) or vector(0)",
+              "legendFormat": "90 - 180 days",
+              "range": true,
+              "refId": "D"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{age_tier=\"180d_plus\"})) or vector(0)",
+              "legendFormat": "180+ days",
+              "range": true,
+              "refId": "E"
+            }
+          ],
+          "title": "Storage Footprint by Age Tier",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Total storage bytes grouped by ingestion source: managed clusters forwarded via Thanos Receive versus recording/alerting rules evaluated on the Hub by Thanos Ruler.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "min": 0,
+              "unit": "bytes"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Managed Clusters (receive)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Hub Rules (ruler)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#FADE2A",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 16,
+            "y": 14
+          },
+          "id": 11,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true,
+              "sortBy": "Last *",
+              "sortDesc": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{producer=\"receive\"})) or vector(0)",
+              "legendFormat": "Managed Clusters (receive)",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(max without (pod, instance) (thanos_bucket_storage_bytes{producer=\"ruler\"})) or vector(0)",
+              "legendFormat": "Hub Rules (ruler)",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Storage Footprint by Ingestion Source",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 24
+          },
+          "id": 103,
+          "title": "Block Compaction & Inspector Operations",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Count of active TSDB blocks versus blocks marked for deletion pending compaction sweep.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "min": 0,
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 25
+          },
+          "id": 9,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum by (resolution) (max without (pod, instance) (thanos_bucket_blocks{marked_for_deletion=\"false\"}))",
+              "legendFormat": "{{resolution}} (active)",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum by (resolution) (max without (pod, instance) (thanos_bucket_blocks{marked_for_deletion=\"true\"}))",
+              "legendFormat": "{{resolution}} (marked for deletion)",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "TSDB Blocks Active vs Deletion Marks",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Duration of the metadata sync cycle against the object storage bucket.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "min": 0,
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 25
+          },
+          "id": 10,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "mean",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "max without (pod, instance) (thanos_bucket_last_sync_duration_seconds)",
+              "legendFormat": "Sync Duration",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Bucket Inspector Sync Duration",
+          "type": "timeseries"
+        }
+      ],
+      "preload": false,
+      "schemaVersion": 41,
+      "tags": [],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Thanos Bucket Store Capacity & Retention",
+      "uid": "knb70j1qtaxadb",
+      "version": 8
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-acm-metrics-thanos-bucket
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: Metrics Inspector

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"strings"
@@ -339,6 +340,25 @@ func (c *GrafanaDashboardController) shouldEnqueue(oldCm, newCm *corev1.ConfigMa
 	if newCm == nil {
 		return false
 	}
+
+	// Ignore periodic informer cache resync events when the ConfigMap has not changed.
+	// In client-go, a periodic resync delivers a synthetic Update event where
+	// old and new refer to the identical cached object or share the same non-empty ResourceVersion.
+	if oldCm != nil && (oldCm == newCm || (oldCm.ResourceVersion != "" && oldCm.ResourceVersion == newCm.ResourceVersion)) {
+		return false
+	}
+
+	// If both states represent desired dashboards, check if any dashboard-relevant configuration changed.
+	// Avoid unnecessary Grafana API updates and version increments if data, target folder, and home dashboard settings are identical.
+	if oldCm != nil && isDesiredDashboardConfigmap(oldCm) && isDesiredDashboardConfigmap(newCm) {
+		if maps.Equal(oldCm.Data, newCm.Data) &&
+			getDashboardCustomFolderTitle(oldCm) == getDashboardCustomFolderTitle(newCm) &&
+			oldCm.Annotations[SetHomeDashboardKey] == newCm.Annotations[SetHomeDashboardKey] &&
+			oldCm.Labels[HomeDashboardUIDKey] == newCm.Labels[HomeDashboardUIDKey] {
+			return false
+		}
+	}
+
 	// Enqueue if the new state is a desired dashboard
 	if isDesiredDashboardConfigmap(newCm) {
 		return true

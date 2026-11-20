@@ -460,6 +460,22 @@ func TestCalculateChurnRatio(t *testing.T) {
 	if r := CalculateChurnRatio(s1, s3); math.Abs(r-1.0) > 0.05 {
 		t.Fatalf("expected ~1.0 churn for disjoint sketches, got %.4f", r)
 	}
+
+	// Empty baseline or empty current window -> 0 churn (turnover requires active population in both)
+	sEmpty := hll.MustNewByPrecision(14)
+	defer sEmpty.Release()
+	if r := CalculateChurnRatio(s1, sEmpty); r != 0 {
+		t.Fatalf("expected 0 churn when previous window is empty, got %.4f", r)
+	}
+	if r := CalculateChurnRatio(sEmpty, s1); r != 0 {
+		t.Fatalf("expected 0 churn when current window is empty, got %.4f", r)
+	}
+	if r := CalculateChurnRatio(sEmpty, sEmpty); r != 0 {
+		t.Fatalf("expected 0 churn when both windows are empty, got %.4f", r)
+	}
+	if r := CalculateChurnRatio(nil, s1); r != 0 {
+		t.Fatalf("expected 0 churn for nil sketch, got %.4f", r)
+	}
 }
 
 func TestEngineIngestAndEvaluate(t *testing.T) {

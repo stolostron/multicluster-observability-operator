@@ -7,6 +7,7 @@ resources:
 - service_monitor.yaml
 - deployment.yaml
 - scrape-config.yaml
-- dash-acm-metrics-cardinality-cluster.yaml
-- dash-acm-metrics-cardinality-overview.yaml
-- dash-acm-metrics-cardinality-name.yaml
+- dash-acm-metrics-inspector-cluster.yaml
+- dash-acm-metrics-inspector-overview.yaml
+- dash-acm-metrics-inspector-name.yaml
+- dash-acm-metrics-thanos-bucket.yaml

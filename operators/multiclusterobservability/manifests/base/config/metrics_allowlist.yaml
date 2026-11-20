@@ -248,16 +248,12 @@ data:
       - prometheus_operator_reconcile_errors_total
       - prometheus_operator_reconcile_operations_total
       - thanos_bucket_blocks
-      - thanos_bucket_cached_blocks
-      - thanos_bucket_chunks
+      - thanos_bucket_burn_rate_bytes_per_second
       - thanos_bucket_configured_retention_seconds
       - thanos_bucket_last_sync_duration_seconds
       - thanos_bucket_last_sync_timestamp_seconds
-      - thanos_bucket_newest_block_timestamp_seconds
       - thanos_bucket_oldest_block_timestamp_seconds
-      - thanos_bucket_recent_block_series
-      - thanos_bucket_samples
-      - thanos_bucket_spanned_seconds
+      - thanos_bucket_projected_steady_state_bytes
       - thanos_bucket_storage_bytes
       - thanos_bucket_sync_errors_total
       - thanos_bucket_syncs_total
