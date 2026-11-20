@@ -36,7 +36,9 @@ const (
 	GrafanaMCOADashboardPath = grafanaLink
 
 	// AODC CustomizedVariable Names
+	nameOpenShiftLoggingChannel       = "openshiftLoggingChannel"
 	namePlatformLogsCollection        = "platformLogsCollection"
+	namePlatformLogsDefault           = "platformLogsDefault"
 	namePlatformIncidentDetection     = "platformIncidentDetection"
 	uipluginsCRDFQDN                  = "uiplugins.v1alpha1.observability.openshift.io"
 	namePlatformMetricsCollection     = "platformMetricsCollection"
@@ -291,6 +293,11 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 	}
 
 	cs := r.cr.Spec.Capabilities
+	managedLogging := mcoconfig.IsManagedLoggingEnabled(r.cr.Annotations)
+	if managedLogging {
+		appendCustomVar(aodc, namePlatformLogsDefault, "true")
+		appendCustomVar(aodc, nameOpenShiftLoggingChannel, "stable-6.7")
+	}
 
 	// Platform metrics uses controller-side defaulting — can be enabled even when cs is nil.
 	if MCOAPlatformMetricsEnabled(r.cr) {
@@ -312,7 +319,7 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 
 	if cs != nil {
 		if cs.Platform != nil {
-			if cs.Platform.Logs.Collection.Enabled {
+			if cs.Platform.Logs.Collection.Enabled && !managedLogging {
 				fqdn := mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName)
 				appendCustomVar(aodc, namePlatformLogsCollection, fqdn)
 			}
@@ -462,6 +469,9 @@ func RightSizingEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 // In ACM 5.0 GA, right-sizing is always MCOA-based — use RightSizingEnabled
 // separately to check whether the RS feature itself is active.
 func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+	if mcoconfig.MCOALoggingEnabled(cr) {
+		return true
+	}
 	if MCOAPlatformMetricsEnabled(cr) {
 		return true
 	}
@@ -471,9 +481,7 @@ func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 	}
 	mcoaEnabled := false
 	if cr.Spec.Capabilities.Platform != nil {
-		mcoaEnabled = mcoaEnabled ||
-			cr.Spec.Capabilities.Platform.Logs.Collection.Enabled ||
-			cr.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled
+		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled
 	}
 	if cr.Spec.Capabilities.UserWorkloads != nil {
 		mcoaEnabled = mcoaEnabled || cr.Spec.Capabilities.UserWorkloads.Logs.Collection.ClusterLogForwarder.Enabled

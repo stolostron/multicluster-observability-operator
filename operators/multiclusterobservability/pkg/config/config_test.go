@@ -415,6 +415,39 @@ func TestIsPaused(t *testing.T) {
 	}
 }
 
+func TestMCOALoggingEnabled(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		annotation   string
+		platformLogs bool
+		want         bool
+	}{
+		{name: "disabled"},
+		{name: "user defined CLF", platformLogs: true, want: true},
+		{name: "managed logging", annotation: "true", want: true},
+		{name: "managed logging and CLF", annotation: "true", platformLogs: true, want: true},
+		{name: "false annotation", annotation: "false"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+					AnnotationMCOManagedLogging: tc.annotation,
+				}},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{Capabilities: &mcov1beta2.CapabilitiesSpec{
+					Platform: &mcov1beta2.PlatformCapabilitiesSpec{Logs: mcov1beta2.PlatformLogsSpec{
+						Collection: mcov1beta2.PlatformLogsCollectionSpec{Enabled: tc.platformLogs},
+					}},
+				}},
+			}
+			assert.Equal(t, tc.want, MCOALoggingEnabled(mco))
+		})
+	}
+	assert.False(t, MCOALoggingEnabled(nil))
+	assert.True(t, MCOALoggingEnabled(&mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{AnnotationMCOManagedLogging: "true"}},
+	}))
+}
+
 func NewFakeClient(mco *mcov1beta2.MultiClusterObservability,
 	obs *observatoriumv1alpha1.Observatorium,
 ) client.Client {

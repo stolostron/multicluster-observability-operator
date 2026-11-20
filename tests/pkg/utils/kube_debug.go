@@ -16,15 +16,18 @@ import (
 	"time"
 	"unicode/utf8"
 
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	goyaml "gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -42,6 +45,8 @@ const (
 	maxContainerLogLineLength     = 1000
 	maxTailLines                  = 20
 	maxPrecedingErrorLines        = 30
+	localWorkAgentNamespace       = "open-cluster-management-agent"
+	loggingNamespace              = "openshift-logging"
 	DebugDumpStartMarker          = "==================== [DEBUG DUMP START] ===================="
 	DebugDumpEndMarker            = "==================== [DEBUG DUMP END] ======================"
 	SectionMCOCR                  = "---------- [SECTION: MCO CR] ----------"
@@ -49,8 +54,11 @@ const (
 	SectionManagedClusterAddOns   = "---------- [SECTION: ManagedClusterAddOns] ----------"
 	SectionClusterManagementAddOn = "---------- [SECTION: ClusterManagementAddOn] ----------"
 	SectionManifestWorks          = "---------- [SECTION: Observability ManifestWorks] ----------"
+	SectionAppliedManifestWorks   = "---------- [SECTION: Observability AppliedManifestWorks] ----------"
 	SectionAddOnDeploymentConfigs = "---------- [SECTION: AddOnDeploymentConfigs] ----------"
 	SectionHubWorkloads           = "---------- [SECTION: Hub Workloads & Pods] ----------"
+	SectionHubLoggingCleanup      = "---------- [SECTION: Hub Logging Namespace Cleanup] ----------"
+	SectionLocalWorkAgent         = "---------- [SECTION: Local-Cluster Work Agent] ----------"
 	SectionSpokeWorkloads         = "---------- [SECTION: Spoke Workloads & Pods] ----------"
 	SectionWarningEvents          = "---------- [SECTION: Recent Warning Events] ----------"
 	statusUnknown                 = "Unknown"
@@ -233,6 +241,15 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 
 	klog.Info(SectionManifestWorks)
 	printManifestWorks(hubDynClient)
+	// local-cluster applies its ManifestWorks on the hub, so its AppliedManifestWorks are here too.
+	klog.Info(SectionAppliedManifestWorks)
+	printAppliedManifestWorks(hubDynClient)
+	if isMCOA {
+		// A local-cluster AppliedManifestWork can remain deleting while its hub-side
+		// openshift-logging Namespace is still finalizing.
+		klog.Info(SectionHubLoggingCleanup)
+		logLoggingNamespaceDebugInfo(hubClient, hubDynClient, "Hub")
+	}
 
 	if isMCOA {
 		klog.Info(SectionAddOnDeploymentConfigs)
@@ -261,6 +278,9 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 		CheckJobsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE)
 		CheckPodsInNamespace(hubClient, MCO_AGENT_ADDON_NAMESPACE, []string{"endpoint-monitoring-operator", "prom-agent", "observability-monitoring-cleanup"}, map[string]string{})
 		printMCOACustomResources(hubDynClient, MCO_AGENT_ADDON_NAMESPACE)
+		// The local-cluster work agent finalizes addon ManifestWorks after their resources are removed.
+		klog.Info(SectionLocalWorkAgent)
+		logLocalWorkAgentPods(hubClient)
 	}
 
 	// Section 5: Recent Warning Events
@@ -269,7 +289,7 @@ func LogFailingTestStandardDebugInfo(opt TestOptions, isMCOA bool) {
 	if isMCOA {
 		warningNamespaces = append(warningNamespaces, MCO_AGENT_ADDON_NAMESPACE)
 	}
-	printRecentWarningEvents(hubClient, "Hub", warningNamespaces, 20*time.Minute, 20)
+	printRecentWarningEvents(hubClient, "Hub", warningNamespaces, 20)
 
 	// Section 6: Spoke Clusters
 	inspectedClusters := make(map[string]bool)
@@ -2003,8 +2023,8 @@ func formatRecentWarningEvents(clientset kubernetes.Interface, namespaces []stri
 	return sb.String(), nil
 }
 
-func printRecentWarningEvents(clientset kubernetes.Interface, contextLabel string, namespaces []string, window time.Duration, maxEvents int) {
-	out, err := formatRecentWarningEvents(clientset, namespaces, window, maxEvents, contextLabel)
+func printRecentWarningEvents(clientset kubernetes.Interface, contextLabel string, namespaces []string, maxEvents int) {
+	out, err := formatRecentWarningEvents(clientset, namespaces, 20*time.Minute, maxEvents, contextLabel)
 	if err != nil {
 		klog.Errorf("Failed to format recent warning events for %s: %v", contextLabel, err)
 		return
@@ -2572,6 +2592,522 @@ func printManifestWorks(client dynamic.Interface) {
 	klog.Info(out)
 }
 
+func formatAppliedManifestWorks(items []unstructured.Unstructured) string {
+	var sb strings.Builder
+	for _, obj := range items {
+		workName, _, _ := unstructured.NestedString(obj.Object, "spec", "manifestWorkName")
+		if !strings.Contains(workName, "observability") {
+			continue
+		}
+
+		if sb.Len() == 0 {
+			sb.WriteString("Observability AppliedManifestWorks:\n")
+		}
+		deleting := statusNo
+		deletionTimestamp := "-"
+		if ts := obj.GetDeletionTimestamp(); ts != nil {
+			deleting = statusYes
+			deletionTimestamp = ts.Format(time.RFC3339)
+		}
+		// OCM removes entries from appliedResources as deletion completes, so remaining entries
+		// identify the resources the work agent is still tracking during finalization.
+		resources, _, _ := unstructured.NestedSlice(obj.Object, "status", "appliedResources")
+		_, _ = fmt.Fprintf(&sb, "  - %s: ManifestWork=%s, deleting=%s (%s), finalizers=%v, status.appliedResources=%d\n",
+			obj.GetName(), workName, deleting, deletionTimestamp, obj.GetFinalizers(), len(resources))
+
+		for _, resource := range resources {
+			meta, ok := resource.(map[string]any)
+			if !ok {
+				continue
+			}
+			group, _, _ := unstructured.NestedString(meta, "group")
+			version, _, _ := unstructured.NestedString(meta, "version")
+			resourceName, _, _ := unstructured.NestedString(meta, "resource")
+			namespace, _, _ := unstructured.NestedString(meta, "namespace")
+			name, _, _ := unstructured.NestedString(meta, "name")
+			uid, _, _ := unstructured.NestedString(meta, "uid")
+			if group == "" {
+				group = "core"
+			}
+			if namespace == "" {
+				namespace = "<cluster>"
+			}
+			_, _ = fmt.Fprintf(&sb, "      %s/%s %s %s/%s (uid=%s)\n",
+				group, version, resourceName, namespace, name, uid)
+		}
+	}
+	return sb.String()
+}
+
+func printAppliedManifestWorks(client dynamic.Interface) {
+	objs, err := client.Resource(NewOCMAppliedManifestworksGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to list AppliedManifestWorks on the hub: %v", err)
+		return
+	}
+
+	out := formatAppliedManifestWorks(objs.Items)
+	if out == "" {
+		klog.V(1).Info("No observability AppliedManifestWorks found on the hub")
+		return
+	}
+	klog.Info(out)
+}
+
+func formatNamespaceDeletionStatus(namespace corev1.Namespace) string {
+	deleting := "-"
+	if namespace.DeletionTimestamp != nil {
+		deleting = namespace.DeletionTimestamp.Format(time.RFC3339)
+	}
+
+	var out strings.Builder
+	_, _ = fmt.Fprintf(&out, "Namespace %s: uid=%s, phase=%s, deleting=%s, metadata.finalizers=%v, spec.finalizers=%v\n",
+		namespace.Name, namespace.UID, namespace.Status.Phase, deleting,
+		namespace.Finalizers, namespace.Spec.Finalizers)
+	for _, condition := range namespace.Status.Conditions {
+		_, _ = fmt.Fprintf(&out, "  %s=%s (%s: %s)\n", condition.Type, condition.Status,
+			condition.Reason, truncateLogLine(condition.Message, 1000))
+	}
+	return out.String()
+}
+
+func logLoggingNamespaceDebugInfo(client kubernetes.Interface, dynClient dynamic.Interface, clusterName string) {
+	namespace, err := client.CoreV1().Namespaces().Get(context.TODO(), loggingNamespace, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			klog.Infof("Namespace %s on %s: not found", loggingNamespace, clusterName)
+		} else {
+			klog.Errorf("Failed to inspect Namespace %s on %s: %v", loggingNamespace, clusterName, err)
+		}
+	} else {
+		klog.Info(formatNamespaceDeletionStatus(*namespace))
+		CheckDeploymentsInNamespace(client, loggingNamespace)
+		CheckStatefulSetsInNamespace(client, loggingNamespace)
+		CheckDaemonSetsInNamespace(client, loggingNamespace)
+		CheckJobsInNamespace(client, loggingNamespace)
+		logLoggingNamespacePods(client)
+		klog.Info(formatLoggingNamespaceInventory(dynClient))
+	}
+	klog.Info(formatLoggingResources(dynClient, clusterName))
+	if clusterName == "Hub" {
+		klog.Info(formatLokiOperatorResources(dynClient))
+		logLokiOperatorPods(client)
+		LogObjectEvents(client, loggingNamespace, "LokiStack", managedLokiStackName)
+	}
+	logLoggingNodeResources(client, clusterName)
+	LogObjectEvents(client, loggingNamespace, "Subscription", clusterLoggingSubscriptionName)
+	printRecentWarningEvents(client, clusterName+" logging", []string{loggingNamespace}, 15)
+}
+
+func isPodReady(pod corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady {
+			return condition.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func needsLoggingPodDiagnostics(pod corev1.Pod) bool {
+	return pod.DeletionTimestamp != nil || pod.Status.Phase != corev1.PodRunning || !isPodReady(pod)
+}
+
+func formatLoggingPodStatuses(pods []corev1.Pod) string {
+	if len(pods) == 0 {
+		return "No pods found in namespace " + loggingNamespace
+	}
+
+	sorted := slices.Clone(pods)
+	slices.SortFunc(sorted, func(a, b corev1.Pod) int { return strings.Compare(a.Name, b.Name) })
+	var out strings.Builder
+	out.WriteString("Pods in namespace " + loggingNamespace + ":\n")
+	writer := tabwriter.NewWriter(&out, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "NAME\tPHASE\tREADY\tRESTARTS\tNODE\tREASON\tDELETING\tFINALIZERS")
+	for _, pod := range sorted {
+		readyContainers := 0
+		var restarts int32
+		for _, container := range pod.Status.ContainerStatuses {
+			if container.Ready {
+				readyContainers++
+			}
+			restarts += container.RestartCount
+		}
+		for _, container := range pod.Status.InitContainerStatuses {
+			restarts += container.RestartCount
+		}
+		reason := pod.Status.Reason
+		if reason == "" {
+			reason = "-"
+		}
+		deleting := "-"
+		if pod.DeletionTimestamp != nil {
+			deleting = pod.DeletionTimestamp.Format(time.RFC3339)
+		}
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%d/%d (PodReady=%t)\t%d\t%s\t%s\t%s\t%v\n",
+			pod.Name, pod.Status.Phase, readyContainers, len(pod.Spec.Containers), isPodReady(pod),
+			restarts, pod.Spec.NodeName, reason, deleting, pod.Finalizers)
+	}
+	_ = writer.Flush()
+	return out.String()
+}
+
+func logLoggingNamespacePods(client kubernetes.Interface) {
+	pods, err := client.CoreV1().Pods(loggingNamespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list pods in namespace %s: %v", loggingNamespace, err)
+		return
+	}
+	klog.Info(formatLoggingPodStatuses(pods.Items))
+	klog.Info(formatLoggingPodResources(pods.Items))
+	for _, pod := range pods.Items {
+		if needsLoggingPodDiagnostics(pod) {
+			LogPodStatus(pod)
+			LogObjectEvents(client, loggingNamespace, "Pod", pod.Name)
+			LogPodLogs(client, loggingNamespace, pod)
+		} else if strings.Contains(pod.Name, "cluster-logging-operator") {
+			LogPodLogs(client, loggingNamespace, pod)
+		}
+	}
+}
+
+func formatCPUAndMemory(resources corev1.ResourceList) string {
+	cpu, memory := "-", "-"
+	if quantity, found := resources[corev1.ResourceCPU]; found {
+		cpu = quantity.String()
+	}
+	if quantity, found := resources[corev1.ResourceMemory]; found {
+		memory = quantity.String()
+	}
+	return fmt.Sprintf("cpu=%s memory=%s", cpu, memory)
+}
+
+func podResourceRequests(pod corev1.Pod) (resource.Quantity, resource.Quantity) {
+	var cpu, memory resource.Quantity
+	for _, container := range pod.Spec.Containers {
+		cpu.Add(container.Resources.Requests[corev1.ResourceCPU])
+		memory.Add(container.Resources.Requests[corev1.ResourceMemory])
+	}
+	var initCPU, initMemory, sidecarCPU, sidecarMemory resource.Quantity
+	for _, container := range pod.Spec.InitContainers {
+		currentCPU, currentMemory := sidecarCPU.DeepCopy(), sidecarMemory.DeepCopy()
+		currentCPU.Add(container.Resources.Requests[corev1.ResourceCPU])
+		currentMemory.Add(container.Resources.Requests[corev1.ResourceMemory])
+		if currentCPU.Cmp(initCPU) > 0 {
+			initCPU = currentCPU
+		}
+		if currentMemory.Cmp(initMemory) > 0 {
+			initMemory = currentMemory
+		}
+		if container.RestartPolicy != nil && *container.RestartPolicy == corev1.ContainerRestartPolicyAlways {
+			sidecarCPU = currentCPU
+			sidecarMemory = currentMemory
+		}
+	}
+	cpu.Add(sidecarCPU)
+	memory.Add(sidecarMemory)
+	if initCPU.Cmp(cpu) > 0 {
+		cpu = initCPU
+	}
+	if initMemory.Cmp(memory) > 0 {
+		memory = initMemory
+	}
+	cpu.Add(pod.Spec.Overhead[corev1.ResourceCPU])
+	memory.Add(pod.Spec.Overhead[corev1.ResourceMemory])
+	return cpu, memory
+}
+
+func formatLoggingPodResources(pods []corev1.Pod) string {
+	if len(pods) == 0 {
+		return "No logging pod resource requests to report"
+	}
+	sorted := slices.Clone(pods)
+	slices.SortFunc(sorted, func(a, b corev1.Pod) int { return strings.Compare(a.Name, b.Name) })
+	var out strings.Builder
+	out.WriteString("Logging pod resource requests, limits and PVCs:\n")
+	for _, pod := range sorted {
+		cpu, memory := podResourceRequests(pod)
+		var claims []string
+		for _, volume := range pod.Spec.Volumes {
+			if volume.PersistentVolumeClaim != nil {
+				claims = append(claims, volume.PersistentVolumeClaim.ClaimName)
+			}
+		}
+		grace := "default"
+		if pod.Spec.TerminationGracePeriodSeconds != nil {
+			grace = fmt.Sprintf("%ds", *pod.Spec.TerminationGracePeriodSeconds)
+		}
+		fmt.Fprintf(&out, "  %s: node=%s phase=%s qos=%s priority=%d grace=%s effectiveRequests=cpu=%s memory=%s PVCs=%v\n",
+			pod.Name, pod.Spec.NodeName, pod.Status.Phase, pod.Status.QOSClass, pod.Spec.Priority,
+			grace, cpu.String(), memory.String(), claims)
+		for _, container := range pod.Spec.InitContainers {
+			fmt.Fprintf(&out, "    init %s: requests=(%s) limits=(%s)\n", container.Name,
+				formatCPUAndMemory(container.Resources.Requests), formatCPUAndMemory(container.Resources.Limits))
+		}
+		for _, container := range pod.Spec.Containers {
+			fmt.Fprintf(&out, "    %s: requests=(%s) limits=(%s)\n", container.Name,
+				formatCPUAndMemory(container.Resources.Requests), formatCPUAndMemory(container.Resources.Limits))
+		}
+	}
+	return out.String()
+}
+
+func formatLoggingNodeResources(nodes []corev1.Node, pods []corev1.Pod, clusterName string) string {
+	type reservations struct {
+		cpu    resource.Quantity
+		memory resource.Quantity
+		pods   int
+	}
+	byNode := make(map[string]*reservations, len(nodes))
+	for _, pod := range pods {
+		if pod.Spec.NodeName == "" || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+			continue
+		}
+		reserved := byNode[pod.Spec.NodeName]
+		if reserved == nil {
+			reserved = &reservations{}
+			byNode[pod.Spec.NodeName] = reserved
+		}
+		cpu, memory := podResourceRequests(pod)
+		reserved.cpu.Add(cpu)
+		reserved.memory.Add(memory)
+		reserved.pods++
+	}
+	sorted := slices.Clone(nodes)
+	slices.SortFunc(sorted, func(a, b corev1.Node) int { return strings.Compare(a.Name, b.Name) })
+	var out strings.Builder
+	fmt.Fprintf(&out, "Node resource reservations on %s (all active scheduled pods):\n", clusterName)
+	for _, node := range sorted {
+		reserved := byNode[node.Name]
+		if reserved == nil {
+			reserved = &reservations{}
+		}
+		allocCPU := node.Status.Allocatable[corev1.ResourceCPU]
+		allocMemory := node.Status.Allocatable[corev1.ResourceMemory]
+		allocPods := node.Status.Allocatable[corev1.ResourcePods]
+		fmt.Fprintf(&out, "  %s: CPU requests=%dm/%dm, memory requests=%dMi/%dMi, pods=%d/%d\n",
+			node.Name, reserved.cpu.MilliValue(), allocCPU.MilliValue(),
+			reserved.memory.Value()/(1024*1024), allocMemory.Value()/(1024*1024),
+			reserved.pods, allocPods.Value())
+	}
+	return out.String()
+}
+
+func logLoggingNodeResources(client kubernetes.Interface, clusterName string) {
+	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list nodes for logging resource reservations on %s: %v", clusterName, err)
+		return
+	}
+	pods, err := client.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list pods for logging resource reservations on %s: %v", clusterName, err)
+		return
+	}
+	klog.Info(formatLoggingNodeResources(nodes.Items, pods.Items, clusterName))
+}
+
+func logLokiOperatorPods(client kubernetes.Interface) {
+	pods, err := client.CoreV1().Pods(mcoconfig.LokiOperatorNamespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list Loki Operator pods: %v", err)
+		return
+	}
+	for _, pod := range pods.Items {
+		if !strings.Contains(pod.Name, "loki-operator") {
+			continue
+		}
+		klog.Infof("Loki Operator pod %s/%s: phase=%s ready=%t deleting=%t", pod.Namespace, pod.Name,
+			pod.Status.Phase, isPodReady(pod), pod.DeletionTimestamp != nil)
+		if needsLoggingPodDiagnostics(pod) {
+			LogPodStatus(pod)
+			LogObjectEvents(client, pod.Namespace, "Pod", pod.Name)
+		}
+		LogPodLogs(client, pod.Namespace, pod)
+	}
+}
+
+func formatLoggingNamespaceInventory(client dynamic.Interface) string {
+	resources := []struct {
+		kind string
+		gvr  schema.GroupVersionResource
+	}{
+		{"ReplicaSet", schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "replicasets"}},
+		{"Service", schema.GroupVersionResource{Version: "v1", Resource: "services"}},
+		{"ServiceAccount", schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}},
+		{"ConfigMap", schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}},
+		{"Secret", schema.GroupVersionResource{Version: "v1", Resource: "secrets"}},
+		{"PersistentVolumeClaim", schema.GroupVersionResource{Version: "v1", Resource: "persistentvolumeclaims"}},
+		{"ResourceQuota", schema.GroupVersionResource{Version: "v1", Resource: "resourcequotas"}},
+		{"NetworkPolicy", schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"}},
+		{"PodDisruptionBudget", schema.GroupVersionResource{Group: "policy", Version: "v1", Resource: "poddisruptionbudgets"}},
+		{"Role", schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"}},
+		{"RoleBinding", schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"}},
+		{"ServiceMonitor", schema.GroupVersionResource{Group: "monitoring.coreos.com", Version: "v1", Resource: "servicemonitors"}},
+	}
+
+	var out strings.Builder
+	out.WriteString("Other resources in namespace " + loggingNamespace + ":\n")
+	for _, resource := range resources {
+		list, err := client.Resource(resource.gvr).Namespace(loggingNamespace).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			_, _ = fmt.Fprintf(&out, "  %s: list failed: %v\n", resource.kind, err)
+			continue
+		}
+		if len(list.Items) == 0 {
+			_, _ = fmt.Fprintf(&out, "  %s: none\n", resource.kind)
+			continue
+		}
+		slices.SortFunc(list.Items, func(a, b unstructured.Unstructured) int { return strings.Compare(a.GetName(), b.GetName()) })
+		_, _ = fmt.Fprintf(&out, "  %s (%d):\n", resource.kind, len(list.Items))
+		for _, item := range list.Items {
+			_, _ = fmt.Fprintf(&out, "    %s%s\n", item.GetName(), formatLoggingInventoryItemDetails(resource.kind, item))
+		}
+	}
+	return out.String()
+}
+
+func formatLoggingInventoryItemDetails(kind string, item unstructured.Unstructured) string {
+	var details []string
+	if deletionTimestamp := item.GetDeletionTimestamp(); deletionTimestamp != nil {
+		details = append(details, "deleting="+deletionTimestamp.Format(time.RFC3339))
+	}
+	if finalizers := item.GetFinalizers(); len(finalizers) > 0 {
+		details = append(details, fmt.Sprintf("finalizers=%v", finalizers))
+	}
+	switch kind {
+	case "ReplicaSet":
+		ready, _, _ := unstructured.NestedInt64(item.Object, "status", "readyReplicas")
+		desired, _, _ := unstructured.NestedInt64(item.Object, "spec", "replicas")
+		details = append(details, fmt.Sprintf("ready=%d/%d", ready, desired))
+	case "PersistentVolumeClaim":
+		phase, _, _ := unstructured.NestedString(item.Object, "status", "phase")
+		details = append(details, "phase="+phase)
+		for _, field := range []struct {
+			label string
+			path  []string
+		}{
+			{label: "storageClass", path: []string{"spec", "storageClassName"}},
+			{label: "volume", path: []string{"spec", "volumeName"}},
+			{label: "requested", path: []string{"spec", "resources", "requests", "storage"}},
+			{label: "capacity", path: []string{"status", "capacity", "storage"}},
+		} {
+			if value, found, _ := unstructured.NestedString(item.Object, field.path...); found {
+				details = append(details, field.label+"="+value)
+			}
+		}
+	case "ResourceQuota":
+		used, _, _ := unstructured.NestedMap(item.Object, "status", "used")
+		hard, _, _ := unstructured.NestedMap(item.Object, "status", "hard")
+		details = append(details, fmt.Sprintf("used=%v hard=%v", used, hard))
+	}
+	if len(details) == 0 {
+		return ""
+	}
+	return ": " + strings.Join(details, ", ")
+}
+
+func selectWorkAgentPods(pods []corev1.Pod) []corev1.Pod {
+	workAgentPods := make([]corev1.Pod, 0)
+	for _, pod := range pods {
+		if strings.Contains(pod.Name, "work-agent") {
+			workAgentPods = append(workAgentPods, pod)
+		}
+	}
+	slices.SortFunc(workAgentPods, func(a, b corev1.Pod) int {
+		if result := strings.Compare(a.Namespace, b.Namespace); result != 0 {
+			return result
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+	return workAgentPods
+}
+
+func selectWorkAgentDeployments(deployments []appsv1.Deployment) []appsv1.Deployment {
+	selected := make([]appsv1.Deployment, 0)
+	for _, deployment := range deployments {
+		if strings.Contains(deployment.Name, "work-agent") {
+			selected = append(selected, deployment)
+		}
+	}
+	slices.SortFunc(selected, func(a, b appsv1.Deployment) int {
+		if result := strings.Compare(a.Namespace, b.Namespace); result != 0 {
+			return result
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+	return selected
+}
+
+func selectWorkAgentEvents(events []corev1.Event) []corev1.Event {
+	selected := make([]corev1.Event, 0)
+	for _, event := range events {
+		if strings.Contains(event.InvolvedObject.Name, "work-agent") || strings.Contains(event.Message, "work-agent") {
+			selected = append(selected, event)
+		}
+	}
+	return selected
+}
+
+func logWorkAgentLifecycleEvents(client kubernetes.Interface, namespaces []string) {
+	for _, namespace := range namespaces {
+		events, err := client.CoreV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			klog.Errorf("Failed to list work-agent lifecycle events in %s: %v", namespace, err)
+			continue
+		}
+		if out := formatObjectEvents("work-agent", selectWorkAgentEvents(events.Items)); out != "" {
+			klog.Infof("Work-agent lifecycle events in %s:\n%s", namespace, out)
+		}
+	}
+}
+
+func logLocalWorkAgentPods(client kubernetes.Interface) {
+	agentNamespaces := map[string]struct{}{localWorkAgentNamespace: {}}
+	deployments, err := client.AppsV1().Deployments("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list work-agent deployments on the hub: %v", err)
+	} else {
+		selected := selectWorkAgentDeployments(deployments.Items)
+		if len(selected) == 0 {
+			klog.Info("No work-agent deployments found on the hub in any namespace")
+		}
+		for _, deployment := range selected {
+			agentNamespaces[deployment.Namespace] = struct{}{}
+			desired := int32(1)
+			if deployment.Spec.Replicas != nil {
+				desired = *deployment.Spec.Replicas
+			}
+			klog.Infof("Work-agent Deployment %s/%s: desired=%d, updated=%d, ready=%d, available=%d, conditions=%v",
+				deployment.Namespace, deployment.Name, desired, deployment.Status.UpdatedReplicas,
+				deployment.Status.ReadyReplicas, deployment.Status.AvailableReplicas, deployment.Status.Conditions)
+		}
+	}
+
+	pods, err := client.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to list work-agent pods on the hub: %v", err)
+		return
+	}
+
+	workAgentPods := selectWorkAgentPods(pods.Items)
+	if len(workAgentPods) == 0 {
+		klog.Info("No work-agent pods found on the hub in any namespace")
+	}
+
+	for _, pod := range workAgentPods {
+		agentNamespaces[pod.Namespace] = struct{}{}
+		klog.Infof("Work-agent Pod %s/%s on node %s", pod.Namespace, pod.Name, pod.Spec.NodeName)
+		LogPodStatus(pod)
+		if pod.Status.Phase != corev1.PodRunning {
+			LogObjectEvents(client, pod.Namespace, "Pod", pod.Name)
+		}
+		LogPodLogs(client, pod.Namespace, pod)
+	}
+	namespaces := slices.Sorted(maps.Keys(agentNamespaces))
+	logWorkAgentLifecycleEvents(client, namespaces)
+	printRecentWarningEvents(client, "Hub work-agent", namespaces, 15)
+}
+
 // GetDiscoveredManagedClusterNames queries the Hub's ManagedCluster resources and returns their names.
 func GetDiscoveredManagedClusterNames(ctx context.Context, client dynamic.Interface) ([]string, error) {
 	objs, err := client.Resource(NewOCMManagedClustersGVR()).List(ctx, metav1.ListOptions{})
@@ -2702,6 +3238,181 @@ func printMCOACustomResources(client dynamic.Interface, ns string) {
 		}
 		klog.Infof("PrometheusRules in %s (%d): %s", ns, len(names), strings.Join(names, ", "))
 	}
+}
+
+// formatLoggingResources records installation state before AfterAll can remove
+// logging resources from either the hub or a spoke.
+func formatLoggingResources(client dynamic.Interface, clusterName string) string {
+	const namespace = loggingNamespace
+	var out strings.Builder
+	fmt.Fprintf(&out, "Logging installation on %s:\n", clusterName)
+
+	crdGVR := schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"}
+	crd, err := client.Resource(crdGVR).Get(context.TODO(), "clusterlogforwarders.observability.openshift.io", metav1.GetOptions{})
+	if err != nil {
+		fmt.Fprintf(&out, "  ClusterLogForwarder CRD: %v\n", err)
+	} else {
+		var servedVersions []string
+		versions, _, _ := unstructured.NestedSlice(crd.Object, "spec", "versions")
+		for _, version := range versions {
+			v, ok := version.(map[string]any)
+			if !ok || v["served"] != true {
+				continue
+			}
+			if name, ok := v["name"].(string); ok {
+				servedVersions = append(servedVersions, name)
+			}
+		}
+		fmt.Fprintf(&out, "  ClusterLogForwarder CRD: servedVersions=%v, conditions=%s\n",
+			servedVersions, formatSpokeLoggingConditions(crd))
+	}
+
+	resources := []struct {
+		kind string
+		gvr  schema.GroupVersionResource
+	}{
+		{"Subscription", NewSubscriptionGVR()},
+		{"ClusterServiceVersion", NewClusterServiceVersionGVR()},
+		{"InstallPlan", schema.GroupVersionResource{Group: "operators.coreos.com", Version: "v1alpha1", Resource: "installplans"}},
+		{"OperatorGroup", NewOperatorGroupGVR()},
+		{"ClusterLogForwarder", NewClusterLogForwarderGVR()},
+		{"LokiStack", NewLokiStackGVR()},
+	}
+	for _, resource := range resources {
+		list, err := client.Resource(resource.gvr).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			fmt.Fprintf(&out, "  %s in %s: %v\n", resource.kind, namespace, err)
+			continue
+		}
+		if len(list.Items) == 0 {
+			fmt.Fprintf(&out, "  %s in %s: none\n", resource.kind, namespace)
+			continue
+		}
+		for _, item := range list.Items {
+			fmt.Fprintf(&out, "  %s\n", formatSpokeLoggingResource(resource.kind, item))
+		}
+	}
+	return out.String()
+}
+
+func formatLokiOperatorResources(client dynamic.Interface) string {
+	var out strings.Builder
+	fmt.Fprintf(&out, "Loki Operator installation in %s:\n", mcoconfig.LokiOperatorNamespace)
+	sub, err := client.Resource(NewSubscriptionGVR()).Namespace(mcoconfig.LokiOperatorNamespace).
+		Get(context.TODO(), mcoconfig.LokiOperatorPackageName, metav1.GetOptions{})
+	if err != nil {
+		fmt.Fprintf(&out, "  Subscription: %v\n", err)
+		return out.String()
+	}
+	fmt.Fprintf(&out, "  %s\n", formatSpokeLoggingResource("Subscription", *sub))
+	csvName, _, _ := unstructured.NestedString(sub.Object, "status", "installedCSV")
+	if csvName == "" {
+		return out.String()
+	}
+	csv, err := client.Resource(NewClusterServiceVersionGVR()).Namespace(mcoconfig.LokiOperatorNamespace).
+		Get(context.TODO(), csvName, metav1.GetOptions{})
+	if err != nil {
+		fmt.Fprintf(&out, "  CSV %s: %v\n", csvName, err)
+		return out.String()
+	}
+	fmt.Fprintf(&out, "  %s\n", formatSpokeLoggingResource("ClusterServiceVersion", *csv))
+	return out.String()
+}
+
+func formatLokiStackComponents(item unstructured.Unstructured) string {
+	components, found, _ := unstructured.NestedMap(item.Object, "status", "components")
+	if !found || len(components) == 0 {
+		return "none"
+	}
+	var summaries []string
+	for _, name := range slices.Sorted(maps.Keys(components)) {
+		statuses, ok := components[name].(map[string]any)
+		if !ok || len(statuses) == 0 {
+			continue
+		}
+		var parts []string
+		for _, status := range slices.Sorted(maps.Keys(statuses)) {
+			parts = append(parts, fmt.Sprintf("%s=%v", status, statuses[status]))
+		}
+		summaries = append(summaries, fmt.Sprintf("%s{%s}", name, strings.Join(parts, ", ")))
+	}
+	if len(summaries) == 0 {
+		return "none"
+	}
+	return strings.Join(summaries, "; ")
+}
+
+func formatSpokeLoggingResource(kind string, item unstructured.Unstructured) string {
+	var details []string
+	if deletionTimestamp := item.GetDeletionTimestamp(); deletionTimestamp != nil {
+		details = append(details, "deleting="+deletionTimestamp.Format(time.RFC3339))
+	}
+	if finalizers := item.GetFinalizers(); len(finalizers) > 0 {
+		details = append(details, fmt.Sprintf("finalizers=%v", finalizers))
+	}
+	addString := func(label string, fields ...string) {
+		value, found, _ := unstructured.NestedString(item.Object, fields...)
+		if found {
+			details = append(details, label+"="+value)
+		}
+	}
+
+	switch kind {
+	case "Subscription":
+		addString("package", "spec", "name")
+		addString("channel", "spec", "channel")
+		addString("source", "spec", "source")
+		addString("currentCSV", "status", "currentCSV")
+		addString("installedCSV", "status", "installedCSV")
+		addString("installPlan", "status", "installPlanRef", "name")
+	case "ClusterServiceVersion":
+		addString("phase", "status", "phase")
+		addString("reason", "status", "reason")
+		addString("message", "status", "message")
+	case "InstallPlan":
+		if approved, found, _ := unstructured.NestedBool(item.Object, "spec", "approved"); found {
+			details = append(details, fmt.Sprintf("approved=%t", approved))
+		}
+		addString("phase", "status", "phase")
+	case "OperatorGroup":
+		if targets, found, _ := unstructured.NestedStringSlice(item.Object, "spec", "targetNamespaces"); found {
+			details = append(details, fmt.Sprintf("targetNamespaces=%v", targets))
+		}
+		if namespaces, found, _ := unstructured.NestedStringSlice(item.Object, "status", "namespaces"); found {
+			details = append(details, fmt.Sprintf("namespaces=%v", namespaces))
+		}
+	case "ClusterLogForwarder":
+		if observed, found, _ := unstructured.NestedInt64(item.Object, "status", "observedGeneration"); found {
+			details = append(details, fmt.Sprintf("observedGeneration=%d", observed))
+		}
+	case "LokiStack":
+		details = append(details, fmt.Sprintf("generation=%d", item.GetGeneration()))
+		if observed, found, _ := unstructured.NestedInt64(item.Object, "status", "observedGeneration"); found {
+			details = append(details, fmt.Sprintf("observedGeneration=%d", observed))
+		}
+		details = append(details, "components="+formatLokiStackComponents(item))
+	}
+	details = append(details, "conditions="+formatSpokeLoggingConditions(&item))
+	return fmt.Sprintf("%s %s/%s: %s", kind, item.GetNamespace(), item.GetName(), strings.Join(details, ", "))
+}
+
+func formatSpokeLoggingConditions(item *unstructured.Unstructured) string {
+	conditions, _, _ := unstructured.NestedSlice(item.Object, "status", "conditions")
+	if len(conditions) == 0 {
+		return "none"
+	}
+	var summaries []string
+	for _, condition := range conditions {
+		c, ok := condition.(map[string]any)
+		if !ok {
+			continue
+		}
+		summaries = append(summaries, fmt.Sprintf("%v=%v(%v: %v)", c["type"], c["status"], c["reason"], c["message"]))
+	}
+	if len(summaries) == 0 {
+		return "none"
+	}
+	return strings.Join(summaries, "; ")
 }
 
 func formatPrometheusAgentSummary(ns string, item unstructured.Unstructured) string {
@@ -2890,7 +3601,8 @@ func logSpokeClusterDebugInfo(
 		printConfigMapsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		printSecretsInNamespace(spokeClient, MCO_AGENT_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
-		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_AGENT_ADDON_NAMESPACE}, 20*time.Minute, 15)
+		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_AGENT_ADDON_NAMESPACE}, 15)
+		logSpokeLoggingDebugInfo(spokeClient, spokeDynClient, clusterName)
 	} else {
 		klog.Infof("%s (Legacy: %s)", SectionSpokeWorkloads, clusterName)
 		LogNodes(spokeClient, clusterName)
@@ -2903,6 +3615,11 @@ func logSpokeClusterDebugInfo(
 		printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		logClusterMonitoringConfigStatus(spokeClient, clusterName)
-		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_ADDON_NAMESPACE}, 20*time.Minute, 15)
+		printRecentWarningEvents(spokeClient, clusterName, []string{MCO_ADDON_NAMESPACE}, 15)
 	}
+}
+
+func logSpokeLoggingDebugInfo(spokeClient kubernetes.Interface, spokeDynClient dynamic.Interface, clusterName string) {
+	klog.Infof("Spoke logging namespace on %s: %s", clusterName, loggingNamespace)
+	logLoggingNamespaceDebugInfo(spokeClient, spokeDynClient, clusterName)
 }
