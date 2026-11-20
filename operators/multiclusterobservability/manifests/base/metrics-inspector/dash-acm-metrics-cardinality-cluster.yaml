@@ -1,6 +1,6 @@
 apiVersion: v1
 data:
-  acm-metrics-cardinality-name.json: |-
+  acm-metrics-cardinality-cluster.json: |-
     {
       "annotations": {
         "list": [
@@ -21,7 +21,7 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 63,
+      "id": 62,
       "links": [],
       "panels": [
         {
@@ -34,7 +34,7 @@ data:
           },
           "id": 3,
           "panels": [],
-          "title": "Metric Cardinality by Cluster for Metric \"$metric_name\"",
+          "title": "Cardinality by Namespace in Cluster \"$cluster\"",
           "type": "row"
         },
         {
@@ -42,7 +42,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "⚡ Front-Door Ingress Estimate: Probabilistic HyperLogLog count (±1.6% variance) of unique series received over a 15-minute sliding window before HA deduplication, relabel drops, or TSDB write limits. This is an ingress volume indicator and will naturally differ from instantaneous TSDB head counts below.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -65,14 +65,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
-                "pointSize": 5,
+                "pointSize": 3,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -80,79 +80,6 @@ data:
                 "thresholdsStyle": {
                   "mode": "off"
                 }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 0,
-            "y": 1
-          },
-          "id": 2,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "11.6.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "000000001"
-              },
-              "editorMode": "code",
-              "expr": "sum(last_over_time(cluster_name:cardinality{metric_name=\"$metric_name\"}[35m])) by (cluster)",
-              "instant": false,
-              "interval": "30m",
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Cardinality Over Time",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "000000001"
-          },
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "inspect": false
               },
               "mappings": [],
               "thresholds": {
@@ -170,236 +97,38 @@ data:
             },
             "overrides": [
               {
+                "__systemRef": "hideSeriesFrom",
                 "matcher": {
-                  "id": "byName",
-                  "options": "cluster"
+                  "id": "byNames",
+                  "options": {
+                    "mode": "exclude",
+                    "names": [
+                      "Value"
+                    ],
+                    "prefix": "All except:",
+                    "readOnly": true
+                  }
                 },
                 "properties": [
                   {
-                    "id": "links",
-                    "value": [
-                      {
-                        "title": "",
-                        "url": "/d/${__dashboard.uid}?var-metric_name=$metric_name&var-cluster=${__data.fields.cluster}"
-                      }
-                    ]
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": true
+                    }
                   }
                 ]
               }
             ]
           },
           "gridPos": {
-            "h": 9,
+            "h": 11,
             "w": 12,
-            "x": 12,
+            "x": 0,
             "y": 1
           },
           "id": 1,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": true
-            },
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Cluster Cardinality"
-              }
-            ]
-          },
-          "pluginVersion": "11.6.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "000000001"
-              },
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "sum(last_over_time(cluster_name:cardinality{metric_name=\"$metric_name\"}[35m])) by (cluster)",
-              "format": "table",
-              "instant": true,
-              "legendFormat": "__auto",
-              "range": false,
-              "refId": "Cluster Cardinality"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "000000001"
-              },
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "sum(last_over_time(cluster_name:cardinality{metric_name=\"$metric_name\"}[35m])) ",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "legendFormat": "__auto",
-              "range": false,
-              "refId": "Total Cardinality"
-            }
-          ],
-          "title": "Current Cardinality",
-          "transformations": [
-            {
-              "id": "merge",
-              "options": {}
-            },
-            {
-              "id": "calculateField",
-              "options": {
-                "alias": "ratio",
-                "binary": {
-                  "left": {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "Value #Cluster Cardinality"
-                    }
-                  },
-                  "operator": "/",
-                  "right": {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "Value #Total Cardinality"
-                    }
-                  }
-                },
-                "mode": "binary",
-                "reduce": {
-                  "reducer": "sum"
-                }
-              }
-            },
-            {
-              "id": "calculateField",
-              "options": {
-                "alias": "% of Total",
-                "binary": {
-                  "left": {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "ratio"
-                    }
-                  },
-                  "operator": "*",
-                  "right": {
-                    "fixed": "100"
-                  }
-                },
-                "mode": "binary",
-                "reduce": {
-                  "reducer": "sum"
-                }
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": [
-                    "cluster",
-                    "Value #Cluster Cardinality",
-                    "% of Total"
-                  ]
-                }
-              }
-            },
-            {
-              "id": "renameByRegex",
-              "options": {
-                "regex": "Value #(.*)",
-                "renamePattern": "$1"
-              }
-            }
-          ],
-          "type": "table"
-        },
-        {
-          "collapsed": false,
-          "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 10
-          },
-          "id": 4,
-          "panels": [],
-          "title": "Metric Cardinality by Namespace for Cluster \"$cluster\"",
-          "type": "row"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "000000001"
-          },
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 10,
-            "w": 12,
-            "x": 0,
-            "y": 11
-          },
-          "id": 6,
           "options": {
             "legend": {
               "calcs": [],
@@ -421,9 +150,10 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace!=\"\"}) by (namespace))",
+              "expr": "topk(8, sum(label_replace(avg_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\", by_namespace!=\"\"}[5m]), \"namespace\", \"$1\", \"by_namespace\", \"(.*)\")) by (namespace))",
               "instant": false,
-              "legendFormat": "__auto",
+              "interval": "1m",
+              "legendFormat": "{{namespace}}",
               "range": true,
               "refId": "A"
             },
@@ -433,15 +163,16 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"\"})",
+              "expr": "sum(avg_over_time(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\", by_namespace=\"\"}[5m]))",
               "hide": false,
               "instant": false,
+              "interval": "1m",
               "legendFormat": "Non Namespaced",
               "range": true,
               "refId": "B"
             }
           ],
-          "title": "Cardinality Over Time",
+          "title": "⚡ [Ingress Est] Namespace Cardinality Over Time",
           "type": "timeseries"
         },
         {
@@ -449,7 +180,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "⚡ Ingress series count per namespace over the current 15m sliding window. Click a namespace to drill down into stored TSDB pod series.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -487,8 +218,8 @@ data:
                     "id": "links",
                     "value": [
                       {
-                        "title": "",
-                        "url": "/d/${__dashboard.uid}﻿?var-metric_name=$metric_name&var-cluster=$cluster&﻿var-namespace=${__data.fields.namespace}"
+                        "title": "Namespace link",
+                        "url": "/d/${__dashboard.uid}?${__url_time_range}﻿&var-datasource=$datasource&var-cluster=$cluster&var-namespace=﻿${__value.raw}"
                       }
                     ]
                   }
@@ -507,7 +238,7 @@ data:
                         "options": {
                           "pattern": ".{0}",
                           "result": {
-                            "index": 1,
+                            "index": 0,
                             "text": "Non Namespaced"
                           }
                         },
@@ -520,12 +251,12 @@ data:
             ]
           },
           "gridPos": {
-            "h": 10,
+            "h": 11,
             "w": 12,
             "x": 12,
-            "y": 11
+            "y": 1
           },
-          "id": 5,
+          "id": 2,
           "options": {
             "cellHeight": "sm",
             "footer": {
@@ -553,7 +284,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\"}) by (namespace)",
+              "expr": "sum(label_replace(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"}, \"namespace\", \"$1\", \"by_namespace\", \"(.*)\")) by (namespace)",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
@@ -567,16 +298,16 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\"})",
+              "expr": "sum(cardinality_estimate{group_by_keys=\"cluster,namespace\", by_cluster=\"$cluster\"})",
               "format": "table",
               "hide": false,
               "instant": true,
               "legendFormat": "__auto",
               "range": false,
-              "refId": "Total"
+              "refId": "Total Cardinality"
             }
           ],
-          "title": "Current Cardinality",
+          "title": "⚡ [Ingress Est] Current Namespace Cardinality",
           "transformations": [
             {
               "id": "merge",
@@ -597,7 +328,7 @@ data:
                   "right": {
                     "matcher": {
                       "id": "byName",
-                      "options": "Value #Total"
+                      "options": "Value #Total Cardinality"
                     }
                   }
                 },
@@ -657,11 +388,11 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 21
+            "y": 12
           },
-          "id": 7,
+          "id": 5,
           "panels": [],
-          "title": "Metric Cardinality by Pod for Namespace \"$namespace\"",
+          "title": "Cardinality by Pod in Namespace \"$namespace\"",
           "type": "row"
         },
         {
@@ -669,7 +400,6 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -692,14 +422,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -725,12 +455,12 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 10,
+            "h": 11,
             "w": 12,
             "x": 0,
-            "y": 22
+            "y": 13
           },
-          "id": 10,
+          "id": 4,
           "options": {
             "legend": {
               "calcs": [],
@@ -752,8 +482,9 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod!=\"\"}) by (pod))",
+              "expr": "topk(8, max_over_time((count by (pod) ({__name__=~\".+\", namespace=\"$namespace\", cluster=\"$cluster\", pod!=\"\"}))[5m:]))",
               "instant": false,
+              "interval": "",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
@@ -764,23 +495,25 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"\"})",
+              "expr": "max_over_time((count({__name__=~\".+\", namespace=\"$namespace\", cluster=\"$cluster\", pod=\"\"}))[5m:])",
               "hide": false,
               "instant": false,
+              "interval": "",
               "legendFormat": "No Pod",
               "range": true,
-              "refId": "B"
+              "refId": "No pod"
             }
           ],
-          "title": "Cardinality Over Time",
-          "type": "timeseries"
+          "title": "📦 [TSDB Stored] Pod Cardinality Over Time",
+          "type": "timeseries",
+          "description": "📦 Ingested TSDB Head Series: Exact deterministic count of series currently active in Thanos TSDB storage at this specific minute. Unlike the 15m ingress estimate above, this only counts series actively being scraped and committed at tick t."
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "📦 Active series committed in TSDB storage per pod for namespace \"$namespace\". Click a pod to drill down into individual metrics.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -818,8 +551,31 @@ data:
                     "id": "links",
                     "value": [
                       {
-                        "title": "",
-                        "url": "/d/${__dashboard.uid}﻿?var-metric_name=$metric_name&var-cluster=$cluster&﻿var-namespace=$namespace$var-pod=${__data.fields.pod}"
+                        "title": "Drill down",
+                        "url": "/d/${__dashboard.uid}?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__value.raw}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "pod"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "pattern": ".{0}",
+                          "result": {
+                            "index": 1,
+                            "text": "No Pod"
+                          }
+                        },
+                        "type": "regex"
                       }
                     ]
                   }
@@ -828,12 +584,12 @@ data:
             ]
           },
           "gridPos": {
-            "h": 10,
+            "h": 11,
             "w": 12,
             "x": 12,
-            "y": 22
+            "y": 13
           },
-          "id": 8,
+          "id": 6,
           "options": {
             "cellHeight": "sm",
             "footer": {
@@ -848,7 +604,7 @@ data:
             "sortBy": [
               {
                 "desc": true,
-                "displayName": "Cardinality"
+                "displayName": "Pod Cardinality"
               }
             ]
           },
@@ -861,12 +617,12 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\"}) by (pod)",
+              "expr": "count({__name__=~\".+\", namespace=\"$namespace\", cluster=\"$cluster\"}) by (pod)",
               "format": "table",
               "instant": true,
-              "legendFormat": "{{pod}}",
+              "legendFormat": "__auto",
               "range": false,
-              "refId": "Cardinality"
+              "refId": "Pod Cardinality"
             },
             {
               "datasource": {
@@ -875,7 +631,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\"})",
+              "expr": "count({__name__=~\".+\", namespace=\"$namespace\", cluster=\"$cluster\"})",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -884,7 +640,7 @@ data:
               "refId": "Total"
             }
           ],
-          "title": "Current Cardinality",
+          "title": "📦 [TSDB Stored] Current Pod Cardinality",
           "transformations": [
             {
               "id": "merge",
@@ -898,7 +654,7 @@ data:
                   "left": {
                     "matcher": {
                       "id": "byName",
-                      "options": "Value #Cardinality"
+                      "options": "Value #Pod Cardinality"
                     }
                   },
                   "operator": "/",
@@ -943,8 +699,8 @@ data:
                 "include": {
                   "names": [
                     "pod",
-                    "% of Total",
-                    "Value #Cardinality"
+                    "Value #Pod Cardinality",
+                    "% of Total"
                   ]
                 }
               }
@@ -965,11 +721,11 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 32
+            "y": 24
           },
-          "id": 11,
+          "id": 8,
           "panels": [],
-          "title": "Timeseries in Pod \"$pod\"",
+          "title": "Cardinality in Pod \"$pod\"",
           "type": "row"
         },
         {
@@ -977,7 +733,308 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 12,
+            "x": 0,
+            "y": 25
+          },
+          "id": 7,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "expr": "topk(8, max_over_time((count by (metric_name) (label_replace({__name__=~\".+\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"}, \"metric_name\", \"$1\", \"__name__\", \"(.*)\")))[5m:]))",
+              "instant": false,
+              "legendFormat": "{{metric_name}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "📦 [TSDB Stored] Metric Cardinality Over Time",
+          "type": "timeseries",
+          "description": "📦 Ingested TSDB Head Series: Exact deterministic count of active series per metric name in pod \"$pod\" over time."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Metric Name"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Link",
+                        "url": "/d/${__dashboard.uid}﻿?﻿${__url_time_range}﻿&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=﻿$pod﻿&var-metric_name=${__value.raw}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 12,
+            "x": 12,
+            "y": 25
+          },
+          "id": 9,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": true
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Metric Cardinality"
+              }
+            ]
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count({__name__=~\".+\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"}) by (__name__)",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{label_name}}",
+              "range": false,
+              "refId": "Metric Cardinality"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count({__name__=~\".+\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"})",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Total Cardinality"
+            }
+          ],
+          "title": "📦 [TSDB Stored] Current Metric Cardinality",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Metric Cardinality"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Total Cardinality"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% of Total",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "__name__",
+                    "Value #Metric Cardinality",
+                    "% of Total"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "(__name__)",
+                "renamePattern": "Metric Name"
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #(.*)",
+                "renamePattern": "$1"
+              }
+            }
+          ],
+          "type": "table",
+          "description": "📦 Current active series in TSDB storage for pod \"$pod\" grouped by metric name. Click a metric to inspect raw series labels."
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 36
+          },
+          "id": 11,
+          "panels": [],
+          "title": "Metric \"$metric_name\"",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1010,9 +1067,9 @@ data:
             "h": 14,
             "w": 24,
             "x": 0,
-            "y": 33
+            "y": 37
           },
-          "id": 9,
+          "id": 10,
           "options": {
             "cellHeight": "sm",
             "footer": {
@@ -1043,8 +1100,9 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Raw Timeseries",
-          "type": "table"
+          "title": "📦 [TSDB Stored] Raw Timeseries",
+          "type": "table",
+          "description": "📦 Exact individual time series and labelsets currently indexed in TSDB storage for \"$metric_name\"."
         }
       ],
       "preload": false,
@@ -1053,38 +1111,33 @@ data:
       "templating": {
         "list": [
           {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "000000001"
+            "current": {
+              "text": "Observatorium",
+              "value": "000000001"
             },
-            "definition": "label_values(cluster_name:cardinality,metric_name)",
+            "description": "",
+            "hide": 2,
             "includeAll": false,
-            "label": "Metric name",
-            "name": "metric_name",
+            "name": "datasource",
             "options": [],
-            "query": {
-              "qryType": 1,
-              "query": "label_values(cluster_name:cardinality,metric_name)",
-              "refId": "PrometheusVariableQueryEditor-VariableQuery"
-            },
-            "refresh": 2,
+            "query": "prometheus",
+            "refresh": 1,
             "regex": "",
-            "sort": 1,
-            "type": "query"
+            "type": "datasource"
           },
           {
             "datasource": {
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_name:cardinality{metric_name=\"$metric_name\"},cluster)",
+            "definition": "label_values(cluster)",
             "includeAll": false,
             "label": "Cluster",
             "name": "cluster",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_name:cardinality{metric_name=\"$metric_name\"},cluster)",
+              "query": "label_values(cluster)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 2,
@@ -1097,14 +1150,34 @@ data:
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_namespace:cardinality{cluster=\"$cluster\"},namespace)",
+            "definition": "label_values(kube_pod_info{cluster=\"$cluster\"},namespace)",
             "includeAll": false,
             "label": "Namespace",
             "name": "namespace",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_namespace:cardinality{cluster=\"$cluster\"},namespace)",
+              "query": "label_values(kube_pod_info{cluster=\"$cluster\"},namespace)",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "000000001"
+            },
+            "definition": "label_values(kube_pod_info{cluster=\"$cluster\", namespace=\"$namespace\"},pod)",
+            "includeAll": false,
+            "label": "Pod",
+            "name": "pod",
+            "options": [],
+            "query": {
+              "qryType": 1,
+              "query": "label_values(kube_pod_info{cluster=\"$cluster\", namespace=\"$namespace\"},pod)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 1,
@@ -1113,17 +1186,13 @@ data:
             "type": "query"
           },
           {
-            "current": {
-              "text": "",
-              "value": ""
-            },
-            "definition": "label_values({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\"},pod)",
-            "label": "Pod",
-            "name": "pod",
+            "definition": "label_values({cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"},__name__)",
+            "label": "Metric Name",
+            "name": "metric_name",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\"},pod)",
+              "query": "label_values({cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"},__name__)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 1,
@@ -1139,13 +1208,13 @@ data:
       },
       "timepicker": {},
       "timezone": "browser",
-      "title": "Metric Name Cardinality / Cluster / Namespace / Pod",
-      "uid": "aeotjz90jlkw0f",
-      "version": 19
+      "title": "Metrics Cardinality / Cluster / Namespace / Pod",
+      "uid": "eeoqevt59fwn4c",
+      "version": 39
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-acm-metrics-cardinality-name
+  name: grafana-dashboard-acm-metrics-cardinality-cluster
   namespace: open-cluster-management-observability
   annotations:
     observability.open-cluster-management.io/dashboard-folder: Metrics Cardinality

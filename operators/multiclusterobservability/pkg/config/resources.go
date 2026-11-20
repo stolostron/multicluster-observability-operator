@@ -52,6 +52,8 @@ func getDefaultResourceCPU(component string, tshirtSize observabilityv1beta2.TSh
 		return GrafanaCPURequest[tshirtSize]
 	case MultiClusterObservabilityAddon:
 		return MCOACPURequest[tshirtSize]
+	case MetricsInspector:
+		return MetricsInspectorCPURequest[tshirtSize]
 	default:
 		return ""
 	}
@@ -90,6 +92,8 @@ func getDefaultResourceMemory(component string, tshirtSize observabilityv1beta2.
 		return GrafanaMemoryRequest[tshirtSize]
 	case MultiClusterObservabilityAddon:
 		return MCOAMemoryRequest[tshirtSize]
+	case MetricsInspector:
+		return MetricsInspectorMemoryRequest[tshirtSize]
 	default:
 		return ""
 	}
