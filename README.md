@@ -31,6 +31,8 @@ The project currently supports two architectures for metrics collection:
 1.  **MCOA (Multi-Cluster Observability Addon) - New Standard**: Leverages the upstream `addon-framework` and `monitoring.rhobs` APIs (`PrometheusAgent`, `ScrapeConfig`) for a more standard and scalable approach.
 2.  **Legacy Architecture**: Uses the `observability-endpoint-operator` and custom `metrics-collector` deployed via `ManifestWorks`.
 
+To use MCOA's managed LokiStack and log forwarder, set `metadata.annotations.mco-managed-logging: "true"` on the `MultiClusterObservability` CR. This selects the `platformLogsDefault` addon setting without enabling the user-defined platform ClusterLogForwarder path. Without the annotation, `spec.capabilities.platform.logs.collection.enabled` retains its existing user-defined ClusterLogForwarder behavior.
+
 ### Data Flow
 
 ```mermaid
@@ -184,6 +186,8 @@ MCO_TAG=2.17.0-SNAPSHOT-<YOUR_TAG> ./dev-scripts/image-override.sh
 ```
 
 See [`dev-scripts/README.md`](dev-scripts/README.md) for the full reference.
+For upgrade testing with a custom ACM bundle, see
+[`Building a custom ACM bundle for upgrade testing`](dev-scripts/README.md#building-a-custom-acm-bundle-for-upgrade-testing).
 
 ---
 

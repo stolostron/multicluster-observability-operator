@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -184,6 +185,55 @@ func NewRouteGVR() schema.GroupVersionResource {
 		Group:    "route.openshift.io",
 		Version:  "v1",
 		Resource: "routes",
+	}
+}
+
+// NewLokiStackGVR returns the GVR for Loki Operator's LokiStack resources, used by MCOA as the
+// default managed log store for platform log collection.
+func NewLokiStackGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "loki.grafana.com",
+		Version:  "v1",
+		Resource: "lokistacks",
+	}
+}
+
+// NewClusterLogForwarderGVR returns the GVR for ClusterLogForwarder resources, used by MCOA to
+// collect and forward platform/user workload logs to the managed log store.
+func NewClusterLogForwarderGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "observability.openshift.io",
+		Version:  "v1",
+		Resource: "clusterlogforwarders",
+	}
+}
+
+// NewCertManagerIssuerGVR returns the GVR for cert-manager's namespaced Issuer resources.
+func NewCertManagerIssuerGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "cert-manager.io",
+		Version:  "v1",
+		Resource: "issuers",
+	}
+}
+
+// NewCertManagerClusterIssuerGVR returns the GVR for cert-manager's cluster-scoped
+// ClusterIssuer resources.
+func NewCertManagerClusterIssuerGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "cert-manager.io",
+		Version:  "v1",
+		Resource: "clusterissuers",
+	}
+}
+
+// NewCertManagerCertificateGVR returns the GVR for cert-manager's namespaced Certificate
+// resources.
+func NewCertManagerCertificateGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "cert-manager.io",
+		Version:  "v1",
+		Resource: "certificates",
 	}
 }
 
@@ -767,6 +817,58 @@ func SetMCOAAlertForwardingCapabilities(opt TestOptions, platformAlerts, userWor
 	})
 }
 
+// SetMCOAPlatformLogsCapability enables/disables the existing user-defined
+// ClusterLogForwarder path. The managed log store is selected by the MCO annotation.
+func SetMCOAPlatformLogsCapability(opt TestOptions, enabled bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+
+		if err := unstructured.SetNestedField(mco.Object, enabled, "spec", "capabilities", "platform", "logs", "collection", "enabled"); err != nil {
+			return err
+		}
+
+		_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return updateErr
+	})
+}
+
+// SetMCOAManagedLogging selects MCOA's managed LokiStack through the MCO CR.
+func SetMCOAManagedLogging(opt TestOptions, enabled bool) error {
+	clientDynamic := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		mco, err := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		annotations := mco.GetAnnotations()
+		if enabled {
+			if annotations == nil {
+				annotations = make(map[string]string)
+			}
+			annotations[mcoconfig.AnnotationMCOManagedLogging] = "true"
+		} else {
+			delete(annotations, mcoconfig.AnnotationMCOManagedLogging)
+		}
+		mco.SetAnnotations(annotations)
+
+		_, err = clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		return err
+	})
+}
+
 func SetMCOAAllCapabilities(opt TestOptions, platformMetrics, platformAlerts, userWorkloadMetrics, userWorkloadAlerts bool) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
@@ -844,8 +946,12 @@ func ResetMCOACapabilities(opt TestOptions) error {
 		if err := unstructured.SetNestedField(mco.Object, false, "spec", "capabilities", "userWorkloads", "logs", "collection", "clusterLogForwarder", "enabled"); err != nil {
 			return err
 		}
+		annotations := mco.GetAnnotations()
+		delete(annotations, mcoconfig.AnnotationMCOManagedLogging)
+		mco.SetAnnotations(annotations)
 
-		if reflect.DeepEqual(original.Object["spec"], mco.Object["spec"]) {
+		if reflect.DeepEqual(original.Object["spec"], mco.Object["spec"]) &&
+			reflect.DeepEqual(original.GetAnnotations(), mco.GetAnnotations()) {
 			return nil
 		}
 

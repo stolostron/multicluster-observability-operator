@@ -35,6 +35,10 @@ else
   kubectl config view --raw --minify >${kubeconfig_hub_path}
 fi
 
+# Upgrade ACM to such that we get recent MCO bundle (as deployed through ACM)
+if [[ -z ${IS_KIND_ENV} ]]; then
+  "${ROOTDIR}/cicd-scripts/upgrade-acm.sh"
+fi
 kubecontext=$(kubectl config current-context)
 cluster_name="local-cluster"
 

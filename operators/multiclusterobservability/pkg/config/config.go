@@ -62,6 +62,8 @@ const (
 	AnnotationCertDuration       = "mco-cert-duration"
 	AnnotationDisableMCOAlerting = "mco-disable-alerting"
 	AnnotationDisableUWMAlerting = "mco-disable-uwl-alerting"
+	// AnnotationMCOManagedLogging selects MCOA's managed LokiStack and log forwarder.
+	AnnotationMCOManagedLogging = "mco-managed-logging"
 
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"
@@ -248,6 +250,76 @@ const (
 	PrometheusAgentCRDName        = "prometheusagents.monitoring.rhobs"
 	ScrapeConfigCRDName           = "scrapeconfigs.monitoring.rhobs"
 	PrometheusRuleCRDName         = "prometheusrules.monitoring.rhobs"
+)
+
+const (
+	// LokiOperatorNamespace is the namespace Loki Operator is installed into via OLM. Loki
+	// Operator is a global (cluster-scoped) operator, so it gets its own dedicated namespace
+	// rather than reusing an app namespace, following the same convention OLM examples use for
+	// community-catalog operators.
+	LokiOperatorNamespace = "kubernetes-operators"
+
+	// LokiOperatorPackageName is the OLM package/Subscription name for Loki Operator.
+	LokiOperatorPackageName = "loki-operator"
+
+	// LokiOperatorCatalogSource and LokiOperatorCatalogSourceNamespace point at the
+	// community-operators catalog (rather than redhat-operators), since the Red Hat catalog
+	// isn't available on every cluster we need to install Loki Operator on.
+	LokiOperatorCatalogSource          = "community-operators"
+	LokiOperatorCatalogSourceNamespace = "openshift-marketplace"
+
+	// LokiOperatorChannel is the Subscription channel used for the community-operators catalog.
+	// Unlike redhat-operators (which uses versioned channels such as stable-6.3 that get pruned
+	// over time), community-operators publishes loki-operator on a single flat "alpha" channel,
+	// so hardcoding it here doesn't carry the same risk of eventually resolving to nothing.
+	LokiOperatorChannel = "alpha"
+
+	// LokiStackCRDName is the CustomResourceDefinition Loki Operator registers once installed.
+	// MCO waits for this CRD to exist before assuming Loki Operator is ready.
+	LokiStackCRDName = "lokistacks.loki.grafana.com"
+)
+
+const (
+	// CertManagerOperatorNamespace is the namespace the cert-manager Operator for Red Hat
+	// OpenShift is installed into via OLM. It's a global (cluster-scoped) operator, so it
+	// follows the same convention as other Red Hat cluster-scoped operators.
+	CertManagerOperatorNamespace = "cert-manager-operator"
+
+	// CertManagerOperatorPackageName is the OLM package/Subscription name for the cert-manager
+	// Operator for Red Hat OpenShift.
+	CertManagerOperatorPackageName = "openshift-cert-manager-operator"
+
+	// CertManagerOperatorCatalogSource and CertManagerOperatorCatalogSourceNamespace point at
+	// the default Red Hat operator catalog.
+	CertManagerOperatorCatalogSource          = "redhat-operators"
+	CertManagerOperatorCatalogSourceNamespace = "openshift-marketplace"
+
+	// CertManagerCertificateCRDName is one of the CustomResourceDefinitions the cert-manager
+	// Operator registers once installed. MCO waits for this CRD to exist before assuming
+	// cert-manager is ready. MCOA's logging default stack uses cert-manager Certificate/
+	// Issuer/ClusterIssuer CRs to issue mTLS certs for log collection/storage.
+	CertManagerCertificateCRDName = "certificates.cert-manager.io"
+
+	// CertManagerNamespace is the fixed operand namespace the cert-manager Operator for Red
+	// Hat OpenShift deploys the cert-manager controllers into. It's enforced by the operator
+	// and can't be changed, so the namespaced cert-manager resources MCO manages (the
+	// self-signed Issuer and root CA Certificate below) must live here too.
+	CertManagerNamespace = "cert-manager"
+
+	// MCOARootCAIssuerName is the self-signed Issuer MCO creates to mint the MCOA root CA
+	// Certificate below. It only ever issues that one Certificate, so it's not meant to be
+	// referenced by anything else.
+	MCOARootCAIssuerName = "mcoa-root-ca"
+
+	// MCOARootCertificateName is the root CA Certificate (and the Secret it's written to, same
+	// name) that backs MCOARootClusterIssuerName. It's what actually signs the leaf
+	// certificates MCOA's logging default stack uses for mTLS.
+	MCOARootCertificateName = "mcoa-root-cert"
+
+	// MCOARootClusterIssuerName is the cluster-scoped Issuer, backed by MCOARootCertificateName's
+	// Secret, that MCOA-rendered Certificates request their mTLS leaf certs from for log
+	// collection/storage.
+	MCOARootClusterIssuerName = "mcoa-root-issuer"
 )
 
 var (
@@ -624,6 +696,22 @@ func IsPaused(annotations map[string]string) bool {
 	}
 
 	return false
+}
+
+// IsManagedLoggingEnabled returns true when the MCO CR selects MCOA's managed log store.
+func IsManagedLoggingEnabled(annotations map[string]string) bool {
+	return annotations[AnnotationMCOManagedLogging] == "true"
+}
+
+// MCOALoggingEnabled reports whether managed logging or the existing platform
+// ClusterLogForwarder path needs MCOA's logging dependencies.
+func MCOALoggingEnabled(mco *observabilityv1beta2.MultiClusterObservability) bool {
+	if mco == nil {
+		return false
+	}
+	return IsManagedLoggingEnabled(mco.Annotations) ||
+		(mco.Spec.Capabilities != nil && mco.Spec.Capabilities.Platform != nil &&
+			mco.Spec.Capabilities.Platform.Logs.Collection.Enabled)
 }
 
 // GetTenantUID returns tenant uid.
