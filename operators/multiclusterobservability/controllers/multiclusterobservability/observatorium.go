@@ -613,10 +613,23 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability, tlsP
 				if ep.HttpClientConfig != nil {
 					newConfig, mountS := mcoutil.Transform(*ep.HttpClientConfig)
 
-					// add backup label
 					for _, s := range mountS {
-						err = addBackupLabel(c, s, nil)
-						if err != nil {
+						mountSecret := &v1.Secret{}
+						if err := c.Get(context.TODO(), types.NamespacedName{
+							Name:      s,
+							Namespace: mcoconfig.GetDefaultNamespace(),
+						}, mountSecret); err != nil {
+							if k8serrors.IsNotFound(err) {
+								return apiSpec, fmt.Errorf(
+									"writeStorage endpoint %q references secret %q which does not exist",
+									storageConfig.Name, s,
+								)
+							}
+							return apiSpec, fmt.Errorf("failed to get secret %q for writeStorage endpoint %q: %w",
+								s, storageConfig.Name, err,
+							)
+						}
+						if err := addBackupLabel(c, s, mountSecret); err != nil {
 							return apiSpec, err
 						}
 					}
