@@ -284,6 +284,14 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, aodc); err != nil {
 		return nil, err
 	}
+	if mcoconfig.IsThanosOperatorEnabled(r.cr.Annotations) {
+		annotations := maps.Clone(u.GetAnnotations())
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
+		annotations[mcoconfig.AnnotationMCOAThanosOperator] = "true"
+		u.SetAnnotations(annotations)
+	}
 
 	appendCustomVar := func(aodc *addonv1beta1.AddOnDeploymentConfig, name, value string) {
 		aodc.Spec.CustomizedVariables = append(
@@ -469,6 +477,9 @@ func RightSizingEnabled(cr *obv1beta2.MultiClusterObservability) bool {
 // In ACM 5.0 GA, right-sizing is always MCOA-based — use RightSizingEnabled
 // separately to check whether the RS feature itself is active.
 func MCOAEnabled(cr *obv1beta2.MultiClusterObservability) bool {
+	if mcoconfig.IsThanosOperatorEnabled(cr.Annotations) {
+		return true
+	}
 	if mcoconfig.MCOALoggingEnabled(cr) {
 		return true
 	}

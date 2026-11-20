@@ -33,6 +33,8 @@ The project currently supports two architectures for metrics collection:
 
 To use MCOA's managed LokiStack and log forwarder, set `metadata.annotations.mco-managed-logging: "true"` on the `MultiClusterObservability` CR. This selects the `platformLogsDefault` addon setting without enabling the user-defined platform ClusterLogForwarder path. Without the annotation, `spec.capabilities.platform.logs.collection.enabled` retains its existing user-defined ClusterLogForwarder behavior.
 
+To enable MCOA's Thanos operator, set `metadata.annotations.mco-thanos-operator: "true"` on the `MultiClusterObservability` CR. MCO adds `mcoa-thanos-operator: "true"` to the MCOA `AddOnDeploymentConfig`, and deploys MCOA even when no other MCOA capability is enabled.
+
 ### Data Flow
 
 ```mermaid
