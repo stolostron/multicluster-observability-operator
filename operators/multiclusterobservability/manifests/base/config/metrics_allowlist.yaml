@@ -177,7 +177,9 @@ data:
       - kubevirt_vmi_memory_unused_bytes
       - kubevirt_vmi_memory_used_bytes
       - kubevirt_vmi_migration_end_time_seconds
+      - kubevirt_vmi_migration_info
       - kubevirt_vmi_migration_succeeded
+      - kubevirt_vmi_migrations_in_running_phase
       - kubevirt_vmi_network_receive_bytes_total
       - kubevirt_vmi_network_receive_packets_dropped_total
       - kubevirt_vmi_network_receive_packets_total
@@ -192,6 +194,8 @@ data:
       - kubevirt_vmi_storage_write_traffic_bytes_total
       - kubevirt_vmi_vcpu_delay_seconds_total
       - kubevirt_vmi_vcpu_wait_seconds_total
+      - kubevirt_vmsnapshot_create_date_timestamp_seconds
+      - kubevirt_vmsnapshot_info
       - kubevirt_vmsnapshot_succeeded_timestamp_seconds
       - machine_cpu_cores
       - machine_memory_bytes
