@@ -42,7 +42,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "⚡ Front-Door Ingress Estimate: Probabilistic HyperLogLog count (±1.6% variance) of unique series received over a 15-minute sliding window before HA deduplication, relabel drops, or TSDB write limits. This is an ingress volume indicator and will naturally differ from instantaneous TSDB head counts below.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -172,7 +172,7 @@ data:
               "refId": "B"
             }
           ],
-          "title": "Cardinality Over Time",
+          "title": "⚡ [Ingress Est] Namespace Cardinality Over Time",
           "type": "timeseries"
         },
         {
@@ -180,7 +180,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "⚡ Ingress series count per namespace over the current 15m sliding window. Click a namespace to drill down into stored TSDB pod series.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -219,7 +219,7 @@ data:
                     "value": [
                       {
                         "title": "Namespace link",
-                        "url": "/d/${__dashboard.uid}?${__url_time_range}\ufeff&var-datasource=$datasource&var-cluster=$cluster&var-namespace=\ufeff${__value.raw}"
+                        "url": "/d/${__dashboard.uid}?${__url_time_range}﻿&var-datasource=$datasource&var-cluster=$cluster&var-namespace=﻿${__value.raw}"
                       }
                     ]
                   }
@@ -307,7 +307,7 @@ data:
               "refId": "Total Cardinality"
             }
           ],
-          "title": "Current Cardinality",
+          "title": "⚡ [Ingress Est] Current Namespace Cardinality",
           "transformations": [
             {
               "id": "merge",
@@ -504,15 +504,16 @@ data:
               "refId": "No pod"
             }
           ],
-          "title": "Cardinality Over Time",
-          "type": "timeseries"
+          "title": "📦 [TSDB Stored] Pod Cardinality Over Time",
+          "type": "timeseries",
+          "description": "📦 Ingested TSDB Head Series: Exact deterministic count of series currently active in Thanos TSDB storage at this specific minute. Unlike the 15m ingress estimate above, this only counts series actively being scraped and committed at tick t."
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "📦 Active series committed in TSDB storage per pod for namespace \"$namespace\". Click a pod to drill down into individual metrics.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -639,7 +640,7 @@ data:
               "refId": "Total"
             }
           ],
-          "title": "Current Cardinality",
+          "title": "📦 [TSDB Stored] Current Pod Cardinality",
           "transformations": [
             {
               "id": "merge",
@@ -821,8 +822,9 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Cardinality Over Time",
-          "type": "timeseries"
+          "title": "📦 [TSDB Stored] Metric Cardinality Over Time",
+          "type": "timeseries",
+          "description": "📦 Ingested TSDB Head Series: Exact deterministic count of active series per metric name in pod \"$pod\" over time."
         },
         {
           "datasource": {
@@ -867,7 +869,7 @@ data:
                     "value": [
                       {
                         "title": "Link",
-                        "url": "/d/${__dashboard.uid}\ufeff?\ufeff${__url_time_range}\ufeff&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=\ufeff$pod\ufeff&var-metric_name=${__value.raw}"
+                        "url": "/d/${__dashboard.uid}﻿?﻿${__url_time_range}﻿&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=﻿$pod﻿&var-metric_name=${__value.raw}"
                       }
                     ]
                   }
@@ -932,7 +934,7 @@ data:
               "refId": "Total Cardinality"
             }
           ],
-          "title": "Current Cardinality",
+          "title": "📦 [TSDB Stored] Current Metric Cardinality",
           "transformations": [
             {
               "id": "merge",
@@ -1012,7 +1014,8 @@ data:
               }
             }
           ],
-          "type": "table"
+          "type": "table",
+          "description": "📦 Current active series in TSDB storage for pod \"$pod\" grouped by metric name. Click a metric to inspect raw series labels."
         },
         {
           "collapsed": false,
@@ -1097,8 +1100,9 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Raw Timeseries",
-          "type": "table"
+          "title": "📦 [TSDB Stored] Raw Timeseries",
+          "type": "table",
+          "description": "📦 Exact individual time series and labelsets currently indexed in TSDB storage for \"$metric_name\"."
         }
       ],
       "preload": false,
@@ -1206,7 +1210,7 @@ data:
       "timezone": "browser",
       "title": "Metrics Cardinality / Cluster / Namespace / Pod",
       "uid": "eeoqevt59fwn4c",
-      "version": 38
+      "version": 39
     }
 kind: ConfigMap
 metadata:
