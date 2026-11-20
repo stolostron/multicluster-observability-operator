@@ -357,10 +357,12 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 	}
 
 	// Setup HTTPS client
+	// nosemgrep: go-crypto-tls-version, go-tls-min-version-tls12-only - client-side TLS.
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      caCertPool,
-		MinVersion:   tls.VersionTLS12,
+		// nosemgrep: go-crypto-tls-version - client-side TLS.
+		MinVersion: tls.VersionTLS12,
 	}
 	return &http.Transport{
 		Dial: (&net.Dialer{

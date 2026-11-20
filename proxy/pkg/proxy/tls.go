@@ -200,6 +200,7 @@ func (t *reloadingTransport) reloadTLSConfig() error {
 		return err
 	}
 
+	// nosemgrep: go-crypto-tls-cipher-suites - chiper suites are derived at runtime from cluster TLS security profile
 	newTLSConfig := &tls.Config{ //nolint:gosec // TLS min version must be configured at runtime by the cluster TLS security profile
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      caCertPool,
