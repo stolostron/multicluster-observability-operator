@@ -35,8 +35,6 @@ const (
 
 	metaFilename         = "meta.json"
 	deletionMarkFilename = "deletion-mark.json"
-	indexFilename        = "index"
-	chunksDirname        = "chunks"
 
 	msPerDay = 86400 * 1000
 
@@ -68,10 +66,7 @@ type BlockSummary struct {
 	NumSamples        uint64
 	NumSeries         uint64
 	NumChunks         uint64
-	ChunkBytes        int64
-	IndexBytes        int64
-	MetaBytes         int64
-	OtherBytes        int64
+	StorageBytes      int64
 	MarkedForDeletion bool
 }
 
@@ -442,7 +437,7 @@ func parseBlockSummary(
 	producer := extractProducer(meta.Thanos.Labels, meta.Thanos.Source)
 	resolution := formatResolution(meta.Thanos.Downsample.Resolution)
 
-	var chunkBytes, indexBytes, metaBytes, otherBytes int64
+	var storageBytes int64
 	var hasMetaSize bool
 	for _, f := range meta.Thanos.Files {
 		if f.SizeBytes <= 0 {
@@ -451,14 +446,14 @@ func parseBlockSummary(
 		if f.RelPath == metaFilename {
 			hasMetaSize = true
 		}
-		classifyFileSize(f.RelPath, f.SizeBytes, &chunkBytes, &indexBytes, &metaBytes, &otherBytes)
+		storageBytes += f.SizeBytes
 	}
 
 	// Fall back to querying object attributes when thanos.files is unpopulated (e.g. older TSDB blocks).
 	var markedForDeletion bool
 	if listed != nil {
 		markedForDeletion = listed.hasDeletion
-		if chunkBytes == 0 && indexBytes == 0 && bkt != nil {
+		if storageBytes == 0 && bkt != nil {
 			for _, relPath := range listed.relPaths {
 				if relPath == metaFilename {
 					continue
@@ -467,12 +462,12 @@ func parseBlockSummary(
 				if err != nil || attrs.Size <= 0 {
 					continue
 				}
-				classifyFileSize(relPath, attrs.Size, &chunkBytes, &indexBytes, &metaBytes, &otherBytes)
+				storageBytes += attrs.Size
 			}
 		}
 	}
 	if !hasMetaSize {
-		metaBytes += int64(len(rawMeta))
+		storageBytes += int64(len(rawMeta))
 	}
 
 	compactionLevel := meta.Compaction.Level
@@ -491,25 +486,9 @@ func parseBlockSummary(
 		NumSamples:        meta.Stats.NumSamples,
 		NumSeries:         meta.Stats.NumSeries,
 		NumChunks:         meta.Stats.NumChunks,
-		ChunkBytes:        chunkBytes,
-		IndexBytes:        indexBytes,
-		MetaBytes:         metaBytes,
-		OtherBytes:        otherBytes,
+		StorageBytes:      storageBytes,
 		MarkedForDeletion: markedForDeletion,
 	}, nil
-}
-
-func classifyFileSize(relPath string, size int64, chunkBytes, indexBytes, metaBytes, otherBytes *int64) {
-	switch {
-	case strings.HasPrefix(relPath, chunksDirname+"/"):
-		*chunkBytes += size
-	case relPath == indexFilename:
-		*indexBytes += size
-	case relPath == metaFilename || relPath == deletionMarkFilename:
-		*metaBytes += size
-	default:
-		*otherBytes += size
-	}
 }
 
 // extractProducer derives the originating component ("receive" or "ruler") from external labels
@@ -798,8 +777,7 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 		ageTier := classifyAgeTier(b.MinTime, b.MaxTime, nowMs)
 		delStr := strconv.FormatBool(b.MarkedForDeletion)
 
-		totalBytes := b.ChunkBytes + b.IndexBytes + b.MetaBytes + b.OtherBytes
-		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, ageTier, delStr}] += totalBytes
+		storageByKey[storageKey{b.TenantID, b.Producer, b.Resolution, ageTier, delStr}] += b.StorageBytes
 
 		blocksByKey[blockCountKey{b.TenantID, b.Producer, b.Resolution, b.CompactionLevel, delStr}]++
 

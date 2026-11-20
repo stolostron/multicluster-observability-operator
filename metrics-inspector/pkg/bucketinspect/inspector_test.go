@@ -383,9 +383,9 @@ config:
 	ins.mu.RLock()
 	blk := ins.blocks[ulidStr]
 	ins.mu.RUnlock()
-	wantMetaBytes := int64(len(metaPayload) + len(deletionMarkPayload))
-	if blk.MetaBytes != wantMetaBytes {
-		t.Errorf("MetaBytes = %d, want %d (meta.json + deletion-mark.json)", blk.MetaBytes, wantMetaBytes)
+	wantStorageBytes := int64(len(metaPayload) + len(deletionMarkPayload) + 10)
+	if blk.StorageBytes != wantStorageBytes {
+		t.Errorf("StorageBytes = %d, want %d (meta.json + deletion-mark.json + chunk)", blk.StorageBytes, wantStorageBytes)
 	}
 }
 
