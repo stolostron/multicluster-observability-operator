@@ -522,6 +522,181 @@ func TestCMOConfigReconciler_reconcileConfigMutation(t *testing.T) {
 	assert.NotContains(t, platformYAML, "old-hub.com")
 }
 
+func TestCMOConfigReconciler_UnmanagedPlatformConfig_SkipsReconciliation(t *testing.T) {
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	addRhobsToScheme(t, s)
+
+	ctx := context.Background()
+	namespace := "test-namespace"
+
+	oldYAML := "prometheusK8s: {}\n"
+	cmPlatform := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			Annotations: map[string]string{
+				observabilityendpoint.UnmanagedAnnotationKey: observabilityendpoint.UnmanagedAnnotationValue,
+			},
+		},
+		Data: map[string]string{
+			observabilityendpoint.ClusterMonitoringConfigDataKey: oldYAML,
+		},
+	}
+
+	agent := newTestPrometheusAgent("test-agent", namespace, platformMetricsCollectorComponent, "https://new-hub.com", "", "")
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithObjects(cmPlatform, agent).Build()
+
+	r := &MCOAAgentReconciler{
+		Client:                        cl,
+		Log:                           ctrl.Log.WithName("test-controller"),
+		Namespace:                     namespace,
+		HubAlertmanagerURL:            "https://new-hub.com",
+		CASecret:                      "test-ca-secret",
+		CertSecret:                    "test-cert-secret",
+		EnablePlatformAlertForwarding: true,
+	}
+
+	require.NoError(t, r.ReconcileCMOPlatformConfig(ctx))
+
+	updatedCM := &corev1.ConfigMap{}
+	require.NoError(t, cl.Get(ctx, client.ObjectKey{
+		Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+		Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+	}, updatedCM))
+
+	// Admin-managed ConfigMap must be left untouched.
+	assert.Equal(t, oldYAML, updatedCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey])
+}
+
+// TestCMOConfigReconciler_UnmanagedPlatformConfig_SurvivesAggressiveAlertmanagerCleanup proves
+// that marking the ConfigMap unmanaged blocks the aggressive hub-ID-suffix cleanup in
+// reconcileAlertmanagerConfigs (see TestCMOConfigReconciler_reconcileAlertmanagerConfigs_TransitionFromLegacy),
+// which would otherwise replace an ACM-Policy-authored Alertmanager stanza referencing ACM mTLS
+// secrets when MCOA alert forwarding is enabled.
+func TestCMOConfigReconciler_UnmanagedPlatformConfig_SurvivesAggressiveAlertmanagerCleanup(t *testing.T) {
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	addRhobsToScheme(t, s)
+
+	ctx := context.Background()
+	namespace := "test-namespace"
+	const hubID = "465e377c1ecd4cc29c7"
+
+	// Policy-managed config whose CA secret happens to end with the hub-ID suffix, e.g. left
+	// behind by a previous MCOA/legacy install, but now intentionally owned by an ACM Policy.
+	policyCfg := cmomanifests.ClusterMonitoringConfiguration{
+		PrometheusK8sConfig: &cmomanifests.PrometheusK8sConfig{
+			AlertmanagerConfigs: []cmomanifests.AdditionalAlertmanagerConfig{
+				{
+					Scheme:        "https",
+					APIVersion:    "v2",
+					StaticConfigs: []string{"policy-managed-am.example.com"},
+					TLSConfig: cmomanifests.TLSConfig{
+						CA: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "obs-alertmanager-mtls-ca-" + hubID},
+							Key:                  "ca.crt",
+						},
+					},
+				},
+			},
+		},
+	}
+	policyYAML, err := yaml.Marshal(policyCfg)
+	require.NoError(t, err)
+
+	cmPlatform := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+			Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+			Annotations: map[string]string{
+				observabilityendpoint.UnmanagedAnnotationKey: observabilityendpoint.UnmanagedAnnotationValue,
+			},
+		},
+		Data: map[string]string{
+			observabilityendpoint.ClusterMonitoringConfigDataKey: string(policyYAML),
+		},
+	}
+
+	agent := newTestPrometheusAgent("test-agent", namespace, platformMetricsCollectorComponent, "https://new-hub.com", "", "")
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithObjects(cmPlatform, agent).Build()
+
+	r := &MCOAAgentReconciler{
+		Client:                        cl,
+		Log:                           ctrl.Log.WithName("test-controller"),
+		Namespace:                     namespace,
+		HubAlertmanagerURL:            "https://new-hub.com",
+		CASecret:                      "hub-mtls-ca-" + hubID,
+		CertSecret:                    "hub-mtls-cert-" + hubID,
+		AccessorSecret:                "observability-alertmanager-accessor-" + hubID,
+		EnablePlatformAlertForwarding: true,
+	}
+
+	require.NoError(t, r.ReconcileCMOPlatformConfig(ctx))
+
+	updatedCM := &corev1.ConfigMap{}
+	require.NoError(t, cl.Get(ctx, client.ObjectKey{
+		Name:      operatorconfig.OCPClusterMonitoringConfigMapName,
+		Namespace: operatorconfig.OCPClusterMonitoringNamespace,
+	}, updatedCM))
+
+	// The policy-managed stanza must survive untouched; MCOA's own CA secret must not appear.
+	platformYAML := updatedCM.Data[observabilityendpoint.ClusterMonitoringConfigDataKey]
+	assert.Equal(t, string(policyYAML), platformYAML)
+	assert.Contains(t, platformYAML, "obs-alertmanager-mtls-ca-"+hubID)
+	assert.NotContains(t, platformYAML, "hub-mtls-ca-"+hubID)
+}
+
+func TestCMOConfigReconciler_UnmanagedUWLConfig_SkipsReconciliation(t *testing.T) {
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	addRhobsToScheme(t, s)
+
+	ctx := context.Background()
+	namespace := "test-namespace"
+
+	oldYAML := "prometheus: {}\n"
+	cmUWL := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+			Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+			Annotations: map[string]string{
+				observabilityendpoint.UnmanagedAnnotationKey: observabilityendpoint.UnmanagedAnnotationValue,
+			},
+		},
+		Data: map[string]string{
+			uwlMonitoringConfigDataKey: oldYAML,
+		},
+	}
+
+	agent := newTestPrometheusAgent("test-agent", namespace, userWorkloadMetricsCollectorComponent, "https://new-hub.com", "", "")
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithObjects(cmUWL, agent).Build()
+
+	r := &MCOAAgentReconciler{
+		Client:                   cl,
+		Log:                      ctrl.Log.WithName("test-controller"),
+		Namespace:                namespace,
+		HubAlertmanagerURL:       "https://new-hub.com",
+		CASecret:                 "test-ca-secret",
+		CertSecret:               "test-cert-secret",
+		EnableUWLAlertForwarding: true,
+	}
+
+	require.NoError(t, r.ReconcileCMOUWLConfig(ctx))
+
+	updatedCM := &corev1.ConfigMap{}
+	require.NoError(t, cl.Get(ctx, client.ObjectKey{
+		Name:      operatorconfig.OCPUserWorkloadMonitoringConfigMap,
+		Namespace: operatorconfig.OCPUserWorkloadMonitoringNamespace,
+	}, updatedCM))
+
+	// Admin-managed ConfigMap must be left untouched.
+	assert.Equal(t, oldYAML, updatedCM.Data[uwlMonitoringConfigDataKey])
+}
+
 func TestToCMORemoteWrite_ReconstructsTLSSecrets(t *testing.T) {
 	rw := &monitoringv1.RemoteWriteSpec{
 		URL: "https://hub.example.com",
