@@ -449,3 +449,155 @@ func TestGetTLSSecurityConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func customProfileWithGroups(groups []configv1.TLSGroup) *configv1.TLSSecurityProfile {
+	return &configv1.TLSSecurityProfile{
+		Type: configv1.TLSProfileCustomType,
+		Custom: &configv1.CustomTLSProfile{
+			TLSProfileSpec: configv1.TLSProfileSpec{
+				MinTLSVersion: configv1.VersionTLS12,
+				Ciphers:       []string{"ECDHE-RSA-AES128-GCM-SHA256"},
+				Groups:        groups,
+			},
+		},
+	}
+}
+
+func TestGetOrCreateTLSConfigGroups(t *testing.T) {
+	strict := configv1.TLSAdherencePolicyStrictAllComponents
+
+	t.Run("custom profile groups set CurvePreferences", func(t *testing.T) {
+		defer ResetTLSState()
+		setFakeClient(newAPIServerWithProfile(
+			customProfileWithGroups([]configv1.TLSGroup{configv1.TLSGroupX25519, configv1.TLSGroupSecP256r1}),
+			strict,
+		))
+
+		fn, err := GetOrCreateTLSConfig(context.Background())
+		require.NoError(t, err)
+		cfg := &tls.Config{}
+		fn(cfg)
+
+		assert.Equal(t, []tls.CurveID{tls.X25519, tls.CurveP256}, cfg.CurvePreferences)
+	})
+
+	t.Run("unsupported groups are skipped", func(t *testing.T) {
+		defer ResetTLSState()
+		// A group name with no crypto/tls equivalent on this build must be dropped.
+		setFakeClient(newAPIServerWithProfile(
+			customProfileWithGroups([]configv1.TLSGroup{configv1.TLSGroupX25519, configv1.TLSGroup("BogusGroup")}),
+			strict,
+		))
+
+		fn, err := GetOrCreateTLSConfig(context.Background())
+		require.NoError(t, err)
+		cfg := &tls.Config{}
+		fn(cfg)
+
+		assert.Equal(t, []tls.CurveID{tls.X25519}, cfg.CurvePreferences)
+	})
+
+	t.Run("no groups leaves CurvePreferences unset", func(t *testing.T) {
+		defer ResetTLSState()
+		setFakeClient(newAPIServerWithProfile(customProfileWithGroups(nil), strict))
+
+		fn, err := GetOrCreateTLSConfig(context.Background())
+		require.NoError(t, err)
+		cfg := &tls.Config{}
+		fn(cfg)
+
+		assert.Nil(t, cfg.CurvePreferences)
+	})
+}
+
+func TestSetTLSGroups(t *testing.T) {
+	strict := configv1.TLSAdherencePolicyStrictAllComponents
+
+	t.Run("appends supported groups", func(t *testing.T) {
+		defer ResetTLSState()
+		setFakeClient(newAPIServerWithProfile(
+			customProfileWithGroups([]configv1.TLSGroup{configv1.TLSGroupX25519, configv1.TLSGroupSecP256r1}),
+			strict,
+		))
+
+		args, err := SetTLSGroups(context.Background(), []string{}, "--tls-groups=")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"--tls-groups=X25519,secp256r1"}, args)
+	})
+
+	t.Run("skips unsupported group names", func(t *testing.T) {
+		defer ResetTLSState()
+		setFakeClient(newAPIServerWithProfile(
+			customProfileWithGroups([]configv1.TLSGroup{configv1.TLSGroupX25519, configv1.TLSGroup("BogusGroup")}),
+			strict,
+		))
+
+		args, err := SetTLSGroups(context.Background(), []string{}, "--tls-groups=")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"--tls-groups=X25519"}, args)
+	})
+
+	t.Run("no groups adds no flag", func(t *testing.T) {
+		defer ResetTLSState()
+		setFakeClient(newAPIServerWithProfile(customProfileWithGroups(nil), strict))
+
+		args, err := SetTLSGroups(context.Background(), []string{"--existing=1"}, "--tls-groups=")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"--existing=1"}, args)
+	})
+}
+
+func TestSetTLSCurvePreferences(t *testing.T) {
+	strict := configv1.TLSAdherencePolicyStrictAllComponents
+
+	t.Run("appends numeric curve IDs", func(t *testing.T) {
+		defer ResetTLSState()
+		setFakeClient(newAPIServerWithProfile(
+			customProfileWithGroups([]configv1.TLSGroup{configv1.TLSGroupX25519, configv1.TLSGroupSecP256r1}),
+			strict,
+		))
+
+		args, err := SetTLSCurvePreferences(context.Background(), []string{}, "--tls-curve-preferences=")
+		require.NoError(t, err)
+		// X25519=29, secp256r1 (P-256)=23
+		assert.Equal(t, []string{"--tls-curve-preferences=29,23"}, args)
+	})
+
+	t.Run("skips unsupported groups", func(t *testing.T) {
+		defer ResetTLSState()
+		setFakeClient(newAPIServerWithProfile(
+			customProfileWithGroups([]configv1.TLSGroup{configv1.TLSGroupX25519, configv1.TLSGroup("BogusGroup")}),
+			strict,
+		))
+
+		args, err := SetTLSCurvePreferences(context.Background(), []string{}, "--tls-curve-preferences=")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"--tls-curve-preferences=29"}, args)
+	})
+
+	t.Run("no groups adds no flag", func(t *testing.T) {
+		defer ResetTLSState()
+		setFakeClient(newAPIServerWithProfile(customProfileWithGroups(nil), strict))
+
+		args, err := SetTLSCurvePreferences(context.Background(), []string{"--x=1"}, "--tls-curve-preferences=")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"--x=1"}, args)
+	})
+}
+
+func TestConvertTLSGroups(t *testing.T) {
+	assert.Equal(t,
+		[]tls.CurveID{
+			tls.X25519, tls.CurveP256, tls.CurveP384, tls.CurveP521,
+			tls.X25519MLKEM768, tls.SecP256r1MLKEM768, tls.SecP384r1MLKEM1024,
+		},
+		convertTLSGroups([]configv1.TLSGroup{
+			configv1.TLSGroupX25519, configv1.TLSGroupSecP256r1, configv1.TLSGroupSecP384r1,
+			configv1.TLSGroupSecP521r1, configv1.TLSGroupX25519MLKEM768,
+			configv1.TLSGroupSecP256r1MLKEM768, configv1.TLSGroupSecP384r1MLKEM1024,
+		}),
+	)
+	// Group names with no crypto/tls equivalent on this build are dropped.
+	assert.Empty(t, convertTLSGroups([]configv1.TLSGroup{configv1.TLSGroup("BogusGroup")}))
+	assert.Empty(t, convertTLSGroups(nil))
+}
