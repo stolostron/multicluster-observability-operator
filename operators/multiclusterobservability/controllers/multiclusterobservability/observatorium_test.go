@@ -198,10 +198,10 @@ http_client_config:
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.SchemeBuilder.AddToScheme(s)
 
-	objs := []runtime.Object{mco, writeStorageS, alertmanagerCABundleConfigMap()}
+	objs := []runtime.Object{mco, writeStorageS}
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-	_, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "", observatoriumv1alpha1.TLSProfileSpec{})
+	_, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 	if err == nil {
 		t.Fatal("expected error when TLS secret does not exist, got nil")
 	}
