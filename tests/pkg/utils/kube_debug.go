@@ -66,6 +66,7 @@ const (
 	statusFalse                   = "False"
 	statusYes                     = "YES"
 	statusNo                      = "No"
+	statusNone                    = "none"
 	conditionAvailable            = "Available"
 	conditionDegraded             = "Degraded"
 	conditionApplied              = "Applied"
@@ -2181,7 +2182,7 @@ func formatRoutesStatuses(routes []unstructured.Unstructured, ns string) string 
 		host, _, _ := unstructured.NestedString(r.Object, "spec", "host")
 		termination, _, _ := unstructured.NestedString(r.Object, "spec", "tls", "termination")
 		if termination == "" {
-			termination = "none"
+			termination = statusNone
 		}
 		admitted := statusUnknown
 		ingresses, found, _ := unstructured.NestedSlice(r.Object, "status", "ingress")
@@ -3322,7 +3323,7 @@ func formatLokiOperatorResources(client dynamic.Interface) string {
 func formatLokiStackComponents(item unstructured.Unstructured) string {
 	components, found, _ := unstructured.NestedMap(item.Object, "status", "components")
 	if !found || len(components) == 0 {
-		return "none"
+		return statusNone
 	}
 	var summaries []string
 	for _, name := range slices.Sorted(maps.Keys(components)) {
@@ -3337,7 +3338,7 @@ func formatLokiStackComponents(item unstructured.Unstructured) string {
 		summaries = append(summaries, fmt.Sprintf("%s{%s}", name, strings.Join(parts, ", ")))
 	}
 	if len(summaries) == 0 {
-		return "none"
+		return statusNone
 	}
 	return strings.Join(summaries, "; ")
 }
@@ -3399,7 +3400,7 @@ func formatSpokeLoggingResource(kind string, item unstructured.Unstructured) str
 func formatSpokeLoggingConditions(item *unstructured.Unstructured) string {
 	conditions, _, _ := unstructured.NestedSlice(item.Object, "status", "conditions")
 	if len(conditions) == 0 {
-		return "none"
+		return statusNone
 	}
 	var summaries []string
 	for _, condition := range conditions {
@@ -3410,7 +3411,7 @@ func formatSpokeLoggingConditions(item *unstructured.Unstructured) string {
 		summaries = append(summaries, fmt.Sprintf("%v=%v(%v: %v)", c["type"], c["status"], c["reason"], c["message"]))
 	}
 	if len(summaries) == 0 {
-		return "none"
+		return statusNone
 	}
 	return strings.Join(summaries, "; ")
 }

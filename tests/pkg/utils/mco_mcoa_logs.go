@@ -128,10 +128,10 @@ func checkClusterLoggingCSVStatus(csv *unstructured.Unstructured) error {
 
 func checkClusterLoggingDeploymentStatus(deployment *appsv1.Deployment) error {
 	if deployment.DeletionTimestamp != nil {
-		return fmt.Errorf("Deployment %s/%s is deleting", deployment.Namespace, deployment.Name)
+		return fmt.Errorf("deployment %s/%s is deleting", deployment.Namespace, deployment.Name)
 	}
 	if deployment.Status.ObservedGeneration < deployment.Generation {
-		return fmt.Errorf("Deployment %s/%s has not observed generation %d yet (observed: %d)",
+		return fmt.Errorf("deployment %s/%s has not observed generation %d yet (observed: %d)",
 			deployment.Namespace, deployment.Name, deployment.Generation, deployment.Status.ObservedGeneration)
 	}
 	desiredReplicas := int32(1)
@@ -139,13 +139,13 @@ func checkClusterLoggingDeploymentStatus(deployment *appsv1.Deployment) error {
 		desiredReplicas = *deployment.Spec.Replicas
 	}
 	if desiredReplicas == 0 {
-		return fmt.Errorf("Deployment %s/%s has zero desired replicas", deployment.Namespace, deployment.Name)
+		return fmt.Errorf("deployment %s/%s has zero desired replicas", deployment.Namespace, deployment.Name)
 	}
 	if deployment.Status.ReadyReplicas < desiredReplicas {
 		return FormatDeploymentNotReadyError(deployment, deployment.Namespace, deployment.Name)
 	}
 	if deployment.Status.AvailableReplicas < desiredReplicas {
-		return fmt.Errorf("Deployment %s/%s has %d/%d available replicas", deployment.Namespace, deployment.Name,
+		return fmt.Errorf("deployment %s/%s has %d/%d available replicas", deployment.Namespace, deployment.Name,
 			deployment.Status.AvailableReplicas, desiredReplicas)
 	}
 	return nil

@@ -64,6 +64,10 @@ const (
 	AnnotationDisableUWMAlerting = "mco-disable-uwl-alerting"
 	// AnnotationMCOManagedLogging selects MCOA's managed LokiStack and log forwarder.
 	AnnotationMCOManagedLogging = "mco-managed-logging"
+	// AnnotationMCOThanosOperator enables MCOA's Thanos operator.
+	AnnotationMCOThanosOperator = "mco-thanos-operator"
+	// AnnotationMCOAThanosOperator is the corresponding annotation on the MCOA AddOnDeploymentConfig.
+	AnnotationMCOAThanosOperator = "mcoa-thanos-operator"
 
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"
@@ -701,6 +705,11 @@ func IsPaused(annotations map[string]string) bool {
 // IsManagedLoggingEnabled returns true when the MCO CR selects MCOA's managed log store.
 func IsManagedLoggingEnabled(annotations map[string]string) bool {
 	return annotations[AnnotationMCOManagedLogging] == "true"
+}
+
+// IsThanosOperatorEnabled returns true when the MCO CR enables MCOA's Thanos operator.
+func IsThanosOperatorEnabled(annotations map[string]string) bool {
+	return annotations[AnnotationMCOThanosOperator] == "true"
 }
 
 // MCOALoggingEnabled reports whether managed logging or the existing platform
