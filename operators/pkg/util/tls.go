@@ -103,7 +103,20 @@ func GetOrCreateTLSConfig(ctx context.Context) (func(*tls.Config), error) {
 	return tlsConfig, nil
 }
 
-func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSuitesArg string, minTLSversionArg string) ([]string, error) {
+// SetTLSSecurityConfiguration appends or overwrites the cipher-suite, min-version and
+// curve-preferences flags on a container args slice based on the cluster TLS profile.
+// The flags are applied in one pass because callers always set all of them together.
+// Pass an empty tlsCurvePreferencesArg to skip curve preferences (e.g. for binaries whose
+// flag is not yet available). Curve preferences are emitted as numeric crypto/tls CurveID
+// values (e.g. "29,23"), the format kube-rbac-proxy expects for --tls-curve-preferences;
+// use SetTLSGroups for binaries that take IANA group names instead.
+func SetTLSSecurityConfiguration(
+	ctx context.Context,
+	args []string,
+	tlsCipherSuitesArg string,
+	minTLSversionArg string,
+	tlsCurvePreferencesArg string,
+) ([]string, error) {
 	tlsProfileSpec, err := GetOrCreateTLSProfileSpec(ctx)
 	if err != nil {
 		log.Error(err, "unable to get TLS security configuration")
@@ -115,6 +128,16 @@ func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSu
 		args = setArg(args, tlsCipherSuitesArg, strings.Join(ianaCiphers, ","))
 	}
 	args = setArg(args, minTLSversionArg, string(tlsProfileSpec.MinTLSVersion))
+
+	if tlsCurvePreferencesArg != "" {
+		if curves := convertTLSGroups(tlsProfileSpec.Groups); len(curves) > 0 {
+			nums := make([]string, len(curves))
+			for i, c := range curves {
+				nums[i] = strconv.Itoa(int(c))
+			}
+			args = setArg(args, tlsCurvePreferencesArg, strings.Join(nums, ","))
+		}
+	}
 	return args, nil
 }
 
@@ -131,29 +154,6 @@ func SetTLSGroups(ctx context.Context, args []string, tlsGroupsArg string) ([]st
 
 	if groups := tlsGroupNames(tlsProfileSpec.Groups); len(groups) > 0 {
 		args = setArg(args, tlsGroupsArg, strings.Join(groups, ","))
-	}
-	return args, nil
-}
-
-// SetTLSCurvePreferences appends or overwrites a numeric curve-preferences flag on a container args
-// slice based on the cluster TLS profile's Groups field. The value is the comma-separated list of
-// numeric crypto/tls CurveID values (e.g. "29,23"). This is the format kube-rbac-proxy expects for
-// its --tls-curve-preferences flag (as opposed to the IANA group names used by SetTLSGroups). It is
-// a no-op when the profile configures no supported groups.
-func SetTLSCurvePreferences(ctx context.Context, args []string, tlsCurvesArg string) ([]string, error) {
-	tlsProfileSpec, err := GetOrCreateTLSProfileSpec(ctx)
-	if err != nil {
-		log.Error(err, "unable to get TLS security configuration")
-		return nil, err
-	}
-
-	curves := convertTLSGroups(tlsProfileSpec.Groups)
-	if len(curves) > 0 {
-		nums := make([]string, len(curves))
-		for i, c := range curves {
-			nums[i] = strconv.Itoa(int(c))
-		}
-		args = setArg(args, tlsCurvesArg, strings.Join(nums, ","))
 	}
 	return args, nil
 }

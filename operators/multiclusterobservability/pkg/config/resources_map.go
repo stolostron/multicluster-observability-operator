@@ -395,7 +395,7 @@ const (
 type ReplicaMap map[observabilityv1beta2.TShirtSize]*int32
 
 func intptr(i int32) *int32 {
-	return &i
+	return new(i)
 }
 
 // Specifies replicas for all components.

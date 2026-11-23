@@ -119,7 +119,7 @@ func GenerateObservatoriumCR(
 	}
 	// TODO(ACM-49950): apply TLS group preferences (TLSSecurityProfile.Groups) to observatorium-api
 	// once the observatorium-operator TLSProfileSpec and the observatorium-api binary support a
-	// curve/group option. util.SetTLSCurvePreferences / util.SetTLSGroups produce the values.
+	// curve/group option. util.SetTLSSecurityConfiguration / util.SetTLSGroups produce the values.
 	tlsProfileSpec := obsv1alpha1.TLSProfileSpec{
 		CipherSuites: tlsCipherSuites,
 		MinVersion:   tlsMinVersion,

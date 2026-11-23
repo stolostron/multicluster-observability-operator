@@ -16,7 +16,6 @@ import (
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
-	"k8s.io/utils/ptr"
 )
 
 func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv1alpha1.PrometheusAgent) ([]*monitoringv1.RemoteWriteSpec, error) {
@@ -92,13 +91,13 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 				SourceLabels: sourceLabels,
 				Regex:        strings.Join(posValues, ";"),
 				TargetLabel:  tmpKeepLabel,
-				Replacement:  ptr.To("keep"),
+				Replacement:  new("keep"),
 			})
 		} else {
 			relabelConfigs = append(relabelConfigs, monitoringv1.RelabelConfig{
 				Action:      "replace",
 				TargetLabel: tmpKeepLabel,
-				Replacement: ptr.To("keep"),
+				Replacement: new("keep"),
 			})
 		}
 
@@ -117,7 +116,7 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 					SourceLabels: []monitoringv1.LabelName{monitoringv1.LabelName(tmpKeepLabel), monitoringv1.LabelName(lm.Name)},
 					Regex:        fmt.Sprintf("keep;%s", regexVal),
 					TargetLabel:  tmpKeepLabel,
-					Replacement:  ptr.To(""),
+					Replacement:  new(""),
 				})
 			}
 		}
@@ -127,7 +126,7 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 	relabelConfigs = append(relabelConfigs, monitoringv1.RelabelConfig{
 		Action:      "replace",
 		TargetLabel: "__tmp_keep",
-		Replacement: ptr.To("drop"),
+		Replacement: new("drop"),
 	})
 
 	// 3. Combine selector decisions: set global __tmp_keep to "keep" if any __tmp_keep_i is "keep" (OR logic)
@@ -141,7 +140,7 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 		SourceLabels: combineSourceLabels,
 		Regex:        ".*keep.*",
 		TargetLabel:  "__tmp_keep",
-		Replacement:  ptr.To("keep"),
+		Replacement:  new("keep"),
 	})
 
 	// 4. Keep only metrics flagged with "keep"
@@ -195,7 +194,7 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 		spec.URL = agentRw.URL
 
 		if agentRw.RemoteTimeout != nil {
-			spec.RemoteTimeout = ptr.To(*agentRw.RemoteTimeout)
+			spec.RemoteTimeout = new(*agentRw.RemoteTimeout)
 		}
 		if agentRw.BasicAuth != nil {
 			spec.BasicAuth = agentRw.BasicAuth.DeepCopy()
@@ -213,17 +212,17 @@ func Transpile(scrapeConfig *monitoringv1alpha1.ScrapeConfig, agent *monitoringv
 			spec.TLSConfig = agentRw.TLSConfig.DeepCopy()
 		}
 		if agentRw.ProxyURL != nil {
-			spec.ProxyURL = ptr.To(*agentRw.ProxyURL)
+			spec.ProxyURL = new(*agentRw.ProxyURL)
 		}
 		if agentRw.NoProxy != nil {
-			spec.NoProxy = ptr.To(*agentRw.NoProxy)
+			spec.NoProxy = new(*agentRw.NoProxy)
 		}
 		if agentRw.Headers != nil {
 			spec.Headers = make(map[string]string)
 			maps.Copy(spec.Headers, agentRw.Headers)
 		}
 		if agentRw.Name != nil {
-			spec.Name = ptr.To(*agentRw.Name)
+			spec.Name = new(*agentRw.Name)
 		}
 
 		specs = append(specs, spec)

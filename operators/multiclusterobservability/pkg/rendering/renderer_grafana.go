@@ -96,7 +96,7 @@ func (r *MCORenderer) renderGrafanaDeployments(
 	if supported, tlsErr := util.IsOAuthProxyTLSSupported(ctx, r.kubeClient); tlsErr != nil {
 		return nil, tlsErr
 	} else if supported {
-		spec.Containers[2].Args, err = util.SetTLSSecurityConfiguration(ctx, spec.Containers[2].Args, "--tls-cipher-suites=", "--tls-min-version=")
+		spec.Containers[2].Args, err = util.SetTLSSecurityConfiguration(ctx, spec.Containers[2].Args, "--tls-cipher-suites=", "--tls-min-version=", "")
 		if err != nil {
 			return nil, err
 		}

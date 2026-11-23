@@ -196,7 +196,7 @@ func (r *MCORenderer) renderMCOADeployment(
 		kubeRbacProxyContainer.ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
 
 		// Inject OpenShift cluster TLS profile (cipher suites & min TLS version)
-		args, err := util.SetTLSSecurityConfiguration(ctx, kubeRbacProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
+		args, err := util.SetTLSSecurityConfiguration(ctx, kubeRbacProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=", "")
 		if err != nil {
 			return nil, err
 		}

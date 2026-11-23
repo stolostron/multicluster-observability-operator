@@ -367,7 +367,7 @@ func TestSetTLSSecurityConfiguration(t *testing.T) {
 			defer ResetTLSState()
 			setFakeClient(newAPIServerWithProfile(tt.tlsSecProfile, tt.adherence))
 
-			result, err := SetTLSSecurityConfiguration(context.Background(), tt.initialArgs, "--tls-cipher-suites=", "--tls-min-version=")
+			result, err := SetTLSSecurityConfiguration(context.Background(), tt.initialArgs, "--tls-cipher-suites=", "--tls-min-version=", "")
 			require.NoError(t, err)
 
 			assert.Contains(t, result[0], "--foo=bar")
@@ -547,7 +547,7 @@ func TestSetTLSGroups(t *testing.T) {
 	})
 }
 
-func TestSetTLSCurvePreferences(t *testing.T) {
+func TestSetTLSSecurityConfigurationCurvePreferences(t *testing.T) {
 	strict := configv1.TLSAdherencePolicyStrictAllComponents
 
 	t.Run("appends numeric curve IDs", func(t *testing.T) {
@@ -557,10 +557,13 @@ func TestSetTLSCurvePreferences(t *testing.T) {
 			strict,
 		))
 
-		args, err := SetTLSCurvePreferences(context.Background(), []string{}, "--tls-curve-preferences=")
+		args, err := SetTLSSecurityConfiguration(
+			context.Background(), []string{},
+			"--tls-cipher-suites=", "--tls-min-version=", "--tls-curve-preferences=",
+		)
 		require.NoError(t, err)
 		// X25519=29, secp256r1 (P-256)=23
-		assert.Equal(t, []string{"--tls-curve-preferences=29,23"}, args)
+		assert.Contains(t, args, "--tls-curve-preferences=29,23")
 	})
 
 	t.Run("skips unsupported groups", func(t *testing.T) {
@@ -570,18 +573,44 @@ func TestSetTLSCurvePreferences(t *testing.T) {
 			strict,
 		))
 
-		args, err := SetTLSCurvePreferences(context.Background(), []string{}, "--tls-curve-preferences=")
+		args, err := SetTLSSecurityConfiguration(
+			context.Background(), []string{},
+			"--tls-cipher-suites=", "--tls-min-version=", "--tls-curve-preferences=",
+		)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"--tls-curve-preferences=29"}, args)
+		assert.Contains(t, args, "--tls-curve-preferences=29")
 	})
 
-	t.Run("no groups adds no flag", func(t *testing.T) {
+	t.Run("empty curves flag skips curve preferences", func(t *testing.T) {
+		defer ResetTLSState()
+		setFakeClient(newAPIServerWithProfile(
+			customProfileWithGroups([]configv1.TLSGroup{configv1.TLSGroupX25519}),
+			strict,
+		))
+
+		args, err := SetTLSSecurityConfiguration(
+			context.Background(), []string{"--x=1"},
+			"--tls-cipher-suites=", "--tls-min-version=", "",
+		)
+		require.NoError(t, err)
+		for _, arg := range args {
+			assert.NotContains(t, arg, "--tls-curve-preferences=")
+		}
+	})
+
+	t.Run("no groups adds no curve flag", func(t *testing.T) {
 		defer ResetTLSState()
 		setFakeClient(newAPIServerWithProfile(customProfileWithGroups(nil), strict))
 
-		args, err := SetTLSCurvePreferences(context.Background(), []string{"--x=1"}, "--tls-curve-preferences=")
+		args, err := SetTLSSecurityConfiguration(
+			context.Background(), []string{"--x=1"},
+			"--tls-cipher-suites=", "--tls-min-version=", "--tls-curve-preferences=",
+		)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"--x=1"}, args)
+		assert.Contains(t, args, "--x=1")
+		for _, arg := range args {
+			assert.NotContains(t, arg, "--tls-curve-preferences=")
+		}
 	})
 }
 

@@ -75,7 +75,7 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 	}
 	queryTimeout := mcoconfig.GetGrafanaQueryTimeout(r.cr)
 	args0 = append(args0, fmt.Sprintf("--proxy-timeout=%s", queryTimeout))
-	args0, err = util.SetTLSSecurityConfiguration(ctx, args0, "--tls-cipher-suites=", "--tls-min-version=")
+	args0, err = util.SetTLSSecurityConfiguration(ctx, args0, "--tls-cipher-suites=", "--tls-min-version=", "")
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 	if supported, tlsErr := util.IsOAuthProxyTLSSupported(ctx, r.kubeClient); tlsErr != nil {
 		return nil, tlsErr
 	} else if supported {
-		args1, err = util.SetTLSSecurityConfiguration(ctx, args1, "--tls-cipher-suites=", "--tls-min-version=")
+		args1, err = util.SetTLSSecurityConfiguration(ctx, args1, "--tls-cipher-suites=", "--tls-min-version=", "")
 		if err != nil {
 			return nil, err
 		}
