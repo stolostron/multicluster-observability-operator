@@ -75,7 +75,12 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 	}
 	queryTimeout := mcoconfig.GetGrafanaQueryTimeout(r.cr)
 	args0 = append(args0, fmt.Sprintf("--proxy-timeout=%s", queryTimeout))
-	args0, err = util.SetTLSSecurityConfiguration(ctx, args0, "--tls-cipher-suites=", "--tls-min-version=")
+	args0, err = util.SetTLSSecurityConfiguration(ctx, args0, "--tls-cipher-suites=", "--tls-min-version=", "")
+	if err != nil {
+		return nil, err
+	}
+	// rbac-query-proxy is our own binary, so it understands --tls-groups (TLS named curves).
+	args0, err = util.SetTLSGroups(ctx, args0, "--tls-groups=")
 	if err != nil {
 		return nil, err
 	}
@@ -90,10 +95,12 @@ func (r *MCORenderer) renderProxyDeployment(ctx context.Context, res *resource.R
 	if supported, tlsErr := util.IsOAuthProxyTLSSupported(ctx, r.kubeClient); tlsErr != nil {
 		return nil, tlsErr
 	} else if supported {
-		args1, err = util.SetTLSSecurityConfiguration(ctx, args1, "--tls-cipher-suites=", "--tls-min-version=")
+		args1, err = util.SetTLSSecurityConfiguration(ctx, args1, "--tls-cipher-suites=", "--tls-min-version=", "")
 		if err != nil {
 			return nil, err
 		}
+		// TODO(ACM-49951): once the oauth-proxy image ships the --tls-groups flag (openshift/oauth-proxy#413),
+		// also apply TLS group preferences here: args1 = util.SetTLSGroups(ctx, args1, "--tls-groups=").
 	}
 	spec.Containers[1].Args = args1
 	spec.NodeSelector = r.cr.Spec.NodeSelector

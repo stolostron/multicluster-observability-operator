@@ -142,17 +142,20 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(ctx context.Context, res *re
 	if supported, tlsErr := util.IsOAuthProxyTLSSupported(ctx, r.kubeClient); tlsErr != nil {
 		return nil, tlsErr
 	} else if supported {
-		oauthProxyContainer.Args, err = util.SetTLSSecurityConfiguration(ctx, oauthProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
+		oauthProxyContainer.Args, err = util.SetTLSSecurityConfiguration(ctx, oauthProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=", "")
 		if err != nil {
 			return nil, err
 		}
+		// TODO(ACM-49951): once the oauth-proxy image ships the --tls-groups flag (openshift/oauth-proxy#413),
+		// also apply TLS group preferences here: oauthProxyContainer.Args = util.SetTLSGroups(ctx, oauthProxyContainer.Args, "--tls-groups=").
 	}
 
 	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {
 		kubeRbacProxyContainer.Image = image
 	}
 	kubeRbacProxyContainer.ImagePullPolicy = imagePullPolicy
-	args, err := util.SetTLSSecurityConfiguration(ctx, kubeRbacProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=")
+	// kube-rbac-proxy honors TLS curve/group preferences via --tls-curve-preferences (numeric CurveIDs).
+	args, err := util.SetTLSSecurityConfiguration(ctx, kubeRbacProxyContainer.Args, "--tls-cipher-suites=", "--tls-min-version=", "--tls-curve-preferences=")
 	if err != nil {
 		return nil, err
 	}

@@ -84,15 +84,39 @@ func GetOrCreateTLSConfig(ctx context.Context) (func(*tls.Config), error) {
 		return nil, err
 	}
 
-	tlsConfig, unsupportedCiphers := tlsutil.NewTLSConfigFromProfile(*profileSpec)
+	baseConfig, unsupportedCiphers := tlsutil.NewTLSConfigFromProfile(*profileSpec)
 	if len(unsupportedCiphers) > 0 {
 		log.Info("TLS configuration contains unsupported ciphers that will be ignored", "ciphers", unsupportedCiphers)
+	}
+
+	// NewTLSConfigFromProfile only applies MinTLSVersion and ciphers; it does not yet handle
+	// the TLSSecurityProfile.Groups field. Layer the configured named groups (curve preferences)
+	// on top so in-process TLS servers honor them. CurvePreferences applies to both TLS 1.2 and 1.3.
+	curves := convertTLSGroups(profileSpec.Groups)
+	tlsConfig = func(c *tls.Config) {
+		baseConfig(c)
+		if len(curves) > 0 {
+			c.CurvePreferences = curves
+		}
 	}
 
 	return tlsConfig, nil
 }
 
-func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSuitesArg string, minTLSversionArg string) ([]string, error) {
+// SetTLSSecurityConfiguration appends or overwrites the cipher-suite, min-version and
+// curve-preferences flags on a container args slice based on the cluster TLS profile.
+// The flags are applied in one pass because callers always set all of them together.
+// Pass an empty tlsCurvePreferencesArg to skip curve preferences (e.g. for binaries whose
+// flag is not yet available). Curve preferences are emitted as numeric crypto/tls CurveID
+// values (e.g. "29,23"), the format kube-rbac-proxy expects for --tls-curve-preferences;
+// use SetTLSGroups for binaries that take IANA group names instead.
+func SetTLSSecurityConfiguration(
+	ctx context.Context,
+	args []string,
+	tlsCipherSuitesArg string,
+	minTLSversionArg string,
+	tlsCurvePreferencesArg string,
+) ([]string, error) {
 	tlsProfileSpec, err := GetOrCreateTLSProfileSpec(ctx)
 	if err != nil {
 		log.Error(err, "unable to get TLS security configuration")
@@ -104,7 +128,96 @@ func SetTLSSecurityConfiguration(ctx context.Context, args []string, tlsCipherSu
 		args = setArg(args, tlsCipherSuitesArg, strings.Join(ianaCiphers, ","))
 	}
 	args = setArg(args, minTLSversionArg, string(tlsProfileSpec.MinTLSVersion))
+
+	if tlsCurvePreferencesArg != "" {
+		if curves := convertTLSGroups(tlsProfileSpec.Groups); len(curves) > 0 {
+			nums := make([]string, len(curves))
+			for i, c := range curves {
+				nums[i] = strconv.Itoa(int(c))
+			}
+			args = setArg(args, tlsCurvePreferencesArg, strings.Join(nums, ","))
+		}
+	}
 	return args, nil
+}
+
+// SetTLSGroups appends or overwrites the given TLS named-groups flag on a container args slice
+// based on the cluster TLS profile's Groups field. The flag value is the comma-separated list of
+// group names (IANA "TLS Supported Groups" registry form, e.g. "X25519,secp256r1"). It is a no-op
+// when the profile configures no groups. Only pass a groups flag for binaries that support it.
+func SetTLSGroups(ctx context.Context, args []string, tlsGroupsArg string) ([]string, error) {
+	tlsProfileSpec, err := GetOrCreateTLSProfileSpec(ctx)
+	if err != nil {
+		log.Error(err, "unable to get TLS security configuration")
+		return nil, err
+	}
+
+	if groups := tlsGroupNames(tlsProfileSpec.Groups); len(groups) > 0 {
+		args = setArg(args, tlsGroupsArg, strings.Join(groups, ","))
+	}
+	return args, nil
+}
+
+// tlsGroupToCurveID maps OpenShift TLSGroup names (IANA "TLS Supported Groups" registry names)
+// to crypto/tls CurveIDs. Groups with no corresponding crypto/tls constant in the current Go
+// runtime are omitted and treated as unsupported.
+//
+// TODO: once MCO moves to k8s >= 0.36 / the newer library-go, replace this local map with the
+// shared library-go helpers crypto.TLSGroupsToCurveIDs / crypto.TLSGroupsToCurvePreferences —
+// the same helpers LSO (STOR-3177) and the CSI operators use — instead of re-implementing it.
+// Those helpers only exist in library-go revisions that require k8s >= 0.36, which this repo
+// deliberately avoids (ACM-49950 pins openshift/api to the k8s-0.35 line).
+var tlsGroupToCurveID = map[ocinfrav1.TLSGroup]tls.CurveID{
+	ocinfrav1.TLSGroupX25519:             tls.X25519,
+	ocinfrav1.TLSGroupSecP256r1:          tls.CurveP256,
+	ocinfrav1.TLSGroupSecP384r1:          tls.CurveP384,
+	ocinfrav1.TLSGroupSecP521r1:          tls.CurveP521,
+	ocinfrav1.TLSGroupX25519MLKEM768:     tls.X25519MLKEM768,
+	ocinfrav1.TLSGroupSecP256r1MLKEM768:  tls.SecP256r1MLKEM768,
+	ocinfrav1.TLSGroupSecP384r1MLKEM1024: tls.SecP384r1MLKEM1024,
+}
+
+// tlsGroupsToCurveIDs converts OpenShift TLSGroup values to crypto/tls CurveIDs (in order),
+// returning the recognized curves and any group names this runtime does not support.
+func tlsGroupsToCurveIDs(groups []ocinfrav1.TLSGroup) (curves []tls.CurveID, unrecognized []ocinfrav1.TLSGroup) {
+	for _, g := range groups {
+		if id, ok := tlsGroupToCurveID[g]; ok {
+			curves = append(curves, id)
+		} else {
+			unrecognized = append(unrecognized, g)
+		}
+	}
+	return curves, unrecognized
+}
+
+// convertTLSGroups converts OpenShift TLSGroup values to crypto/tls CurveIDs for use as
+// tls.Config.CurvePreferences. Groups the current Go runtime does not recognize are logged and
+// skipped rather than failing.
+func convertTLSGroups(groups []ocinfrav1.TLSGroup) []tls.CurveID {
+	curves, unrecognized := tlsGroupsToCurveIDs(groups)
+	if len(unrecognized) > 0 {
+		log.Info("ignoring TLS groups not supported by this build", "groups", unrecognized)
+	}
+	return curves
+}
+
+// tlsGroupNames returns the supported group names as strings, preserving order. Groups with no
+// crypto/tls equivalent are logged and skipped so downstream binaries are not handed a value their
+// Go runtime cannot apply.
+func tlsGroupNames(groups []ocinfrav1.TLSGroup) []string {
+	names := make([]string, 0, len(groups))
+	var unrecognized []ocinfrav1.TLSGroup
+	for _, g := range groups {
+		if _, ok := tlsGroupToCurveID[g]; ok {
+			names = append(names, string(g))
+			continue
+		}
+		unrecognized = append(unrecognized, g)
+	}
+	if len(unrecognized) > 0 {
+		log.Info("ignoring TLS groups not supported by this build", "groups", unrecognized)
+	}
+	return names
 }
 
 // FetchTLSAdherencePolicy retrieves the current TLS adherence policy from the
