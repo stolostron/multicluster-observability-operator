@@ -1228,6 +1228,8 @@ spec:
                         type: string
                       configMapName:
                         type: string
+                      curvePreferences:
+                        type: string
                       keyKey:
                         type: string
                       minVersion:
@@ -12328,10 +12330,12 @@ spec:
                     - volumeClaimTemplate
                     type: object
                   tlsProfile:
-                    description: TLSProfile configures TLS cipher suites and minimum
-                      version for all Thanos component servers.
+                    description: TLSProfile configures TLS cipher suites, minimum
+                      version and curve preferences for all Thanos component servers.
                     properties:
                       cipherSuites:
+                        type: string
+                      curvePreferences:
                         type: string
                       minVersion:
                         type: string
