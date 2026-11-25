@@ -5,9 +5,14 @@ metadata:
   namespace: open-cluster-management-observability
 spec:
   ports:
-  - port: 8333
+  - name: s3-https
+    port: 8333
     protocol: TCP
     targetPort: 8333
+  - name: s3-http
+    port: 8334
+    protocol: TCP
+    targetPort: 8334
   selector:
     app.kubernetes.io/name: seaweedfs
   type: ClusterIP

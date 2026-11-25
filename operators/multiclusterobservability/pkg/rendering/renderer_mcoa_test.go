@@ -202,6 +202,56 @@ func TestRenderMCOADeployment(t *testing.T) {
 	assert.Equal(t, "quay.io/custom/kube-rbac-proxy:custom", kubeRbacProxyContainer.Image)
 }
 
+func TestRenderAddonDeploymentConfig_ThanosOperator(t *testing.T) {
+	templatesPath := filepath.Join("..", "..", "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(tmplRenderer)
+	require.NoError(t, err)
+
+	var aodc *kustomizeres.Resource
+	for _, template := range mcoaTemplates {
+		if template.GetKind() == "AddOnDeploymentConfig" {
+			aodc = template
+		}
+	}
+	require.NotNil(t, aodc)
+
+	for _, tc := range []struct {
+		name        string
+		annotation  string
+		wantEnabled bool
+	}{
+		{name: "absent"},
+		{name: "false", annotation: "false"},
+		{name: "true", annotation: "true", wantEnabled: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{EnableMetrics: true},
+				},
+			}
+			if tc.annotation != "" {
+				mco.Annotations = map[string]string{mcoconfig.AnnotationMCOThanosOperator: tc.annotation}
+			}
+			renderer := &MCORenderer{cr: mco}
+			assert.Equal(t, tc.wantEnabled, MCOAEnabled(mco))
+
+			aodcObj, err := renderer.renderAddonDeploymentConfig(t.Context(), aodc.DeepCopy(), "test", nil)
+			require.NoError(t, err)
+			gotAODC := &addonv1beta1.AddOnDeploymentConfig{}
+			require.NoError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(aodcObj.Object, gotAODC))
+
+			if tc.wantEnabled {
+				assert.Equal(t, "true", gotAODC.Annotations[mcoconfig.AnnotationMCOAThanosOperator])
+			} else {
+				assert.NotContains(t, gotAODC.Annotations, mcoconfig.AnnotationMCOAThanosOperator)
+			}
+		})
+	}
+}
+
 func TestRenderAddonDeploymentConfig(t *testing.T) {
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -408,6 +458,76 @@ func TestRenderAddonDeploymentConfig_AlertsEnabled(t *testing.T) {
 	assert.Contains(t, got.Spec.CustomizedVariables, addonv1beta1.CustomizedVariable{Name: nameUserWorkloadMetricsAlerts, Value: "enabled"})
 }
 
+func TestRenderAddonDeploymentConfig_ManagedLogging(t *testing.T) {
+	templatesPath := filepath.Join("..", "..", "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+	tmplRenderer := templatesutil.NewTemplateRenderer(templatesPath)
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(tmplRenderer)
+	require.NoError(t, err)
+
+	var aodc *kustomizeres.Resource
+	for _, template := range mcoaTemplates {
+		if template.GetKind() == "AddOnDeploymentConfig" {
+			aodc = template
+			break
+		}
+	}
+	require.NotNil(t, aodc)
+
+	for _, tc := range []struct {
+		name               string
+		annotation         string
+		platformLogs       bool
+		wantManagedDefault bool
+		wantUserDefinedCLF bool
+	}{
+		{name: "existing user defined CLF", platformLogs: true, wantUserDefinedCLF: true},
+		{name: "false annotation keeps user defined CLF", annotation: "false", platformLogs: true, wantUserDefinedCLF: true},
+		{name: "managed logging replaces user defined CLF", annotation: "true", platformLogs: true, wantManagedDefault: true},
+		{name: "managed logging without CLF spec", annotation: "true", wantManagedDefault: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mco := &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+					mcoconfig.AnnotationMCOManagedLogging: tc.annotation,
+				}},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{EnableMetrics: true},
+					Capabilities: &mcov1beta2.CapabilitiesSpec{Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+						Logs: mcov1beta2.PlatformLogsSpec{Collection: mcov1beta2.PlatformLogsCollectionSpec{
+							Enabled: tc.platformLogs,
+						}},
+					}},
+				},
+			}
+			renderer := &MCORenderer{cr: mco}
+			uobj, err := renderer.renderAddonDeploymentConfig(t.Context(), aodc.DeepCopy(), "test", nil)
+			require.NoError(t, err)
+			got := &addonv1beta1.AddOnDeploymentConfig{}
+			require.NoError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(uobj.Object, got))
+
+			managedDefault := addonv1beta1.CustomizedVariable{Name: namePlatformLogsDefault, Value: "true"}
+			loggingChannel := addonv1beta1.CustomizedVariable{Name: nameOpenShiftLoggingChannel, Value: "stable-6.7"}
+			userDefinedCLF := addonv1beta1.CustomizedVariable{
+				Name:  namePlatformLogsCollection,
+				Value: mcoconfig.GetMCOASupportedCRDFQDN(mcoconfig.ClusterLogForwarderCRDName),
+			}
+			if tc.wantManagedDefault {
+				assert.Contains(t, got.Spec.CustomizedVariables, managedDefault)
+				assert.Contains(t, got.Spec.CustomizedVariables, loggingChannel)
+			} else {
+				assert.NotContains(t, got.Spec.CustomizedVariables, managedDefault)
+				assert.NotContains(t, got.Spec.CustomizedVariables, loggingChannel)
+			}
+			if tc.wantUserDefinedCLF {
+				assert.Contains(t, got.Spec.CustomizedVariables, userDefinedCLF)
+			} else {
+				assert.NotContains(t, got.Spec.CustomizedVariables, userDefinedCLF)
+			}
+		})
+	}
+}
+
 func TestMCOAEnabled(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -434,6 +554,18 @@ func TestMCOAEnabled(t *testing.T) {
 						EnableMetrics: false,
 					},
 					Capabilities: nil,
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "Managed logging annotation enables MCOA without capabilities",
+			cr: &mcov1beta2.MultiClusterObservability{
+				ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+					mcoconfig.AnnotationMCOManagedLogging: "true",
+				}},
+				Spec: mcov1beta2.MultiClusterObservabilitySpec{
+					ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{EnableMetrics: true},
 				},
 			},
 			expected: true,

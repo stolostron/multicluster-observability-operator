@@ -35,6 +35,10 @@ else
   kubectl config view --raw --minify >${kubeconfig_hub_path}
 fi
 
+# Upgrade ACM to such that we get recent MCO bundle (as deployed through ACM)
+if [[ -z ${IS_KIND_ENV} ]]; then
+  "${ROOTDIR}/cicd-scripts/upgrade-acm.sh"
+fi
 kubecontext=$(kubectl config current-context)
 cluster_name="local-cluster"
 
@@ -159,7 +163,7 @@ else
 fi
 
 go mod vendor
-${GINKGO_CMD} --no-color --junit-report=${ROOTDIR}/tests/pkg/tests/results.xml -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=2
+${GINKGO_CMD} --no-color --junit-report=${ROOTDIR}/tests/pkg/tests/results.xml -debug -trace --timeout=70m ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=2
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then

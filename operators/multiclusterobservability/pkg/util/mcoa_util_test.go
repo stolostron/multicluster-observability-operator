@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,6 +19,18 @@ import (
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func TestIsMCOAEnabledWithManagedLogging(t *testing.T) {
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+			config.AnnotationMCOManagedLogging: "true",
+		}},
+	}
+	assert.True(t, IsMCOAEnabled(mco))
+
+	mco.Annotations[config.AnnotationMCOManagedLogging] = "false"
+	assert.False(t, IsMCOAEnabled(mco))
+}
 
 func prometheusAgentManifest() workv1.Manifest {
 	return workv1.Manifest{
