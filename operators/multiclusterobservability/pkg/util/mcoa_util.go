@@ -24,14 +24,19 @@ import (
 // This relies on ensurePlatformMetricsDefault having already persisted
 // an explicit Enabled value into the CR before reconciliation proceeds.
 func IsMCOAEnabled(mco *mcov1beta2.MultiClusterObservability) bool {
-	if mco == nil || mco.Spec.Capabilities == nil {
+	if mco == nil {
+		return false
+	}
+	if config.MCOALoggingEnabled(mco) {
+		return true
+	}
+	if mco.Spec.Capabilities == nil {
 		return false
 	}
 
 	if mco.Spec.Capabilities.Platform != nil {
 		if (mco.Spec.Capabilities.Platform.Metrics.Default.Enabled != nil &&
 			*mco.Spec.Capabilities.Platform.Metrics.Default.Enabled) ||
-			mco.Spec.Capabilities.Platform.Logs.Collection.Enabled ||
 			mco.Spec.Capabilities.Platform.Analytics.IncidentDetection.Enabled {
 			return true
 		}
