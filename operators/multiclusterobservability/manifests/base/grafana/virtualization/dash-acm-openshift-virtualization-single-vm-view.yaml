@@ -1264,7 +1264,7 @@ data:
               "targets": [
                 {
                   "exemplar": true,
-                  "expr": "kubevirt_vmsnapshot_succeeded_timestamp_seconds{cluster=~\"$cluster\",namespace=\"$namespace\", name=\"$name\"}*1000",
+                  "expr": "label_replace((kubevirt_vmsnapshot_create_date_timestamp_seconds{cluster=~\"$cluster\",namespace=\"$namespace\"} * on (cluster, namespace, name) group_left (vm, phase) kubevirt_vmsnapshot_info{cluster=~\"$cluster\",namespace=\"$namespace\",vm=\"$name\",phase=\"succeeded\"}), \"snapshot_name\", \"$1\", \"name\", \"(.*)\") * 1000 or (kubevirt_vmsnapshot_succeeded_timestamp_seconds{cluster=~\"$cluster\",namespace=\"$namespace\",name=\"$name\"} * 1000 unless on (cluster) kubevirt_vmsnapshot_info)",
                   "format": "table",
                   "instant": true,
                   "interval": "",
@@ -1288,10 +1288,12 @@ data:
                       "job": true,
                       "name": true,
                       "namespace": true,
+                      "phase": true,
                       "pod": true,
                       "receive": true,
                       "service": true,
-                      "tenant_id": true
+                      "tenant_id": true,
+                      "vm": true
                     },
                     "indexByName": {
                       "Time": 0,

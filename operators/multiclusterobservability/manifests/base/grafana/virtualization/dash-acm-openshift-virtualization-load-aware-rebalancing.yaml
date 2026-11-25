@@ -1405,7 +1405,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "irate(sum(kubevirt_vmi_migration_succeeded)[10m:])",
+              "expr": "irate(sum(kubevirt_vmi_migration_info{result=\"succeeded\"} or (kubevirt_vmi_migration_succeeded unless on (cluster) kubevirt_vmi_migration_info))[10m:])",
               "format": "time_series",
               "hide": false,
               "instant": false,
@@ -1530,6 +1530,198 @@ data:
             "x": 0,
             "y": 33
           },
+          "id": 45,
+          "panels": [],
+          "title": "Live Migrations",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 4,
+            "x": 0,
+            "y": 34
+          },
+          "id": 46,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(count by (cluster) (kubevirt_vmi_migration_info{phase=~\"running|scheduled|preparingtarget|targetready|waitingforsync|synchronizing\"}) or (sum by (cluster) (kubevirt_vmi_migrations_in_running_phase) unless on (cluster) kubevirt_vmi_migration_info)) or vector(0)",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "In-flight Migrations (running)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "center",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 20,
+            "x": 4,
+            "y": 34
+          },
+          "id": 47,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          },
+          "pluginVersion": "11.1.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "kubevirt_vmi_migration_info{result=\"in_progress\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "In-flight Live Migrations",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": true,
+                  "__name__": true,
+                  "clusterID": true,
+                  "container": true,
+                  "endpoint": true,
+                  "instance": true,
+                  "job": true,
+                  "migration_policy": true,
+                  "network_type": true,
+                  "pod": true,
+                  "reason": true,
+                  "receive": true,
+                  "result": true,
+                  "service": true,
+                  "tenant_id": true,
+                  "uid": true
+                },
+                "indexByName": {
+                  "cluster": 0,
+                  "namespace": 1,
+                  "vmi": 2,
+                  "name": 3,
+                  "source_node": 4,
+                  "target_node": 5,
+                  "phase": 6,
+                  "trigger": 7,
+                  "mode": 8,
+                  "priority": 9
+                },
+                "renameByName": {
+                  "cluster": "Cluster",
+                  "name": "Migration Name",
+                  "namespace": "Namespace",
+                  "phase": "Phase",
+                  "priority": "Priority",
+                  "source_node": "Source Node",
+                  "target_node": "Target Node",
+                  "trigger": "Trigger",
+                  "vmi": "VMI"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 42
+          },
           "id": 44,
           "panels": [],
           "title": "Top Consumers",
@@ -1600,7 +1792,7 @@ data:
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 34
+            "y": 43
           },
           "id": 34,
           "options": {
@@ -1697,7 +1889,7 @@ data:
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 34
+            "y": 43
           },
           "id": 35,
           "options": {
