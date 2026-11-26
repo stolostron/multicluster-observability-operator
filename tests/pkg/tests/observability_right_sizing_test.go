@@ -41,7 +41,10 @@ const (
 	podDetailDashboardName        = "acm-rs-pod-detail"
 	podDetailSpecName             = "Should deploy a pod-only detail dashboard without tables and with all query variables"
 	workloadPodResourcesSpecName  = "Should create separate workload and pod right-sizing resources"
+	workloadRightSizingMetric     = "acm_rs:workload:"
 )
+
+var rightSizingDashboardGVR = schema.GroupVersionResource{Group: "perses.dev", Version: "v1alpha2", Resource: "persesdashboards"}
 
 var rightSizingADCKeys = map[string]string{
 	namespaceRightSizingFlag:      "platformNamespaceRightSizing",
@@ -173,7 +176,17 @@ func waitForRightSizingState(ctx context.Context, client dynamic.Interface, flag
 		}
 		// When the manager stays up, wait for it to act on the disabled flags even if deletion has not started yet.
 		removeAnalytics := mcoaEnabled && !rightSizingEnabled && !incidentDetection
-		return checkRightSizingNamespaces(ctx, client, removeAnalytics, removeAnalytics && !metricsUI)
+		if err := checkRightSizingNamespaces(ctx, client, removeAnalytics, removeAnalytics && !metricsUI); err != nil {
+			return err
+		}
+		// Incident detection keeps the analytics namespace and the Perses API available.
+		if !rightSizingEnabled && incidentDetection {
+			if err := checkRightSizingFeatureResources(ctx, client, "workload", false); err != nil {
+				return err
+			}
+			return checkRightSizingFeatureResources(ctx, client, "pod", false)
+		}
+		return nil
 	}, 5*time.Minute, 5*time.Second).Should(Succeed())
 }
 
@@ -633,32 +646,30 @@ func checkRightSizingResource(ctx context.Context, client dynamic.ResourceInterf
 	return nil
 }
 
+func checkRightSizingFeatureResources(ctx context.Context, client dynamic.Interface, level string, wantPresent bool) error {
+	for _, resource := range []struct {
+		gvr             schema.GroupVersionResource
+		namespace, name string
+	}{
+		{schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}, MCO_NAMESPACE, "rs-" + level + "-config"},
+		{utils.NewPrometheusRuleGVR(), "openshift-monitoring", "acm-rs-" + level + "-prometheus-rules"},
+		{rightSizingDashboardGVR, analyticsNamespace, "acm-rs-" + level + "-overview"},
+		{rightSizingDashboardGVR, analyticsNamespace, "acm-rs-" + level + "-detail"},
+	} {
+		resources := client.Resource(resource.gvr).Namespace(resource.namespace)
+		if err := checkRightSizingResource(ctx, resources, resource.name, wantPresent); err != nil {
+			return fmt.Errorf("check %s in %s: %w", resource.gvr.Resource, resource.namespace, err)
+		}
+	}
+	return nil
+}
+
 var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsizing/g2)", Ordered, func() {
 	var (
-		mcoClient          dynamic.ResourceInterface
-		policyGVR          = schema.GroupVersionResource{Group: "policy.open-cluster-management.io", Version: "v1", Resource: "policies"}
-		configMapGVR       = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
-		prometheusRuleGVR  = schema.GroupVersionResource{Group: "monitoring.coreos.com", Version: "v1", Resource: "prometheusrules"}
-		persesDashboardGVR = schema.GroupVersionResource{Group: "perses.dev", Version: "v1alpha2", Resource: "persesdashboards"}
+		mcoClient    dynamic.ResourceInterface
+		policyGVR    = schema.GroupVersionResource{Group: "policy.open-cluster-management.io", Version: "v1", Resource: "policies"}
+		configMapGVR = schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}
 	)
-
-	checkFeatureResources := func(ctx context.Context, level string, wantPresent bool) error {
-		for _, resource := range []struct {
-			gvr             schema.GroupVersionResource
-			namespace, name string
-		}{
-			{configMapGVR, MCO_NAMESPACE, "rs-" + level + "-config"},
-			{prometheusRuleGVR, "openshift-monitoring", "acm-rs-" + level + "-prometheus-rules"},
-			{persesDashboardGVR, analyticsNamespace, "acm-rs-" + level + "-overview"},
-			{persesDashboardGVR, analyticsNamespace, "acm-rs-" + level + "-detail"},
-		} {
-			resources := dynClient.Resource(resource.gvr).Namespace(resource.namespace)
-			if err := checkRightSizingResource(ctx, resources, resource.name, wantPresent); err != nil {
-				return fmt.Errorf("check %s in %s: %w", resource.gvr.Resource, resource.namespace, err)
-			}
-		}
-		return nil
-	}
 
 	BeforeAll(func(ctx SpecContext) {
 		if hubClient == nil {
@@ -694,19 +705,19 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 
 		It(workloadPodResourcesSpecName, func(ctx SpecContext) {
 			Eventually(ctx, func(ctx context.Context) error {
-				if err := checkFeatureResources(ctx, "workload", true); err != nil {
+				if err := checkRightSizingFeatureResources(ctx, dynClient, "workload", true); err != nil {
 					return err
 				}
-				return checkFeatureResources(ctx, "pod", true)
+				return checkRightSizingFeatureResources(ctx, dynClient, "pod", true)
 			}, 5*time.Minute, 10*time.Second).Should(Succeed())
 		}, NodeTimeout(6*time.Minute))
 
 		It(podDetailSpecName, func(ctx SpecContext) {
 			Eventually(ctx, func(ctx context.Context) error {
-				dashboard, err := dynClient.Resource(persesDashboardGVR).Namespace(analyticsNamespace).
+				dashboard, err := dynClient.Resource(rightSizingDashboardGVR).Namespace(analyticsNamespace).
 					Get(ctx, podDetailDashboardName, metav1.GetOptions{})
 				if err != nil {
-					return fmt.Errorf("read %s PersesDashboard %s/%s: %w", persesDashboardGVR.Version, analyticsNamespace, podDetailDashboardName, err)
+					return fmt.Errorf("read %s PersesDashboard %s/%s: %w", rightSizingDashboardGVR.Version, analyticsNamespace, podDetailDashboardName, err)
 				}
 				return validatePodDetailDashboard(dashboard)
 			}, 5*time.Minute, 10*time.Second).Should(Succeed())
@@ -715,7 +726,7 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 		JustAfterEach(func(ctx SpecContext) {
 			report := CurrentSpecReport()
 			if report.Failed() && (report.LeafNodeText == podDetailSpecName || report.LeafNodeText == workloadPodResourcesSpecName) {
-				logPodDetailDashboardVersions(ctx, dynClient, persesDashboardGVR)
+				logPodDetailDashboardVersions(ctx, dynClient, rightSizingDashboardGVR)
 			}
 		}, NodeTimeout(30*time.Second))
 
@@ -791,13 +802,15 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 		{"pod only", false, true},
 	} {
 		It("Should independently reconcile "+state.name, func(ctx SpecContext) {
-			disabledLevel := "workload"
+			disabledLevel, disabledFlag := "workload", workloadRightSizingFlag
 			if state.workload {
-				disabledLevel = "pod"
+				disabledLevel, disabledFlag = "pod", podRightSizingFlag
 			}
+			// A retry can start after an earlier attempt has already disabled the feature.
+			setRightSizingFlags(ctx, mcoClient, rightSizingFlags{disabledFlag: ptr.To(true)})
 			By("Waiting for " + disabledLevel + " right-sizing resources to exist before disabling the feature")
 			Eventually(ctx, func(ctx context.Context) error {
-				return checkFeatureResources(ctx, disabledLevel, true)
+				return checkRightSizingFeatureResources(ctx, dynClient, disabledLevel, true)
 			}, 5*time.Minute, 10*time.Second).Should(Succeed())
 
 			flags := allRightSizingFlags(false)
@@ -813,23 +826,36 @@ var _ = Describe("Always-MCOA right-sizing: ADC reflects CR spec state (rightsiz
 				if err := checkRightSizingADC(ctx, dynClient, expected); err != nil {
 					return err
 				}
-				if err := checkFeatureResources(ctx, "workload", state.workload); err != nil {
+				if err := checkRightSizingFeatureResources(ctx, dynClient, "workload", state.workload); err != nil {
 					return err
 				}
-				return checkFeatureResources(ctx, "pod", state.pod)
+				return checkRightSizingFeatureResources(ctx, dynClient, "pod", state.pod)
 			}, 5*time.Minute, 10*time.Second).Should(Succeed())
-		}, NodeTimeout(13*time.Minute))
+		}, NodeTimeout(15*time.Minute))
 	}
 
 	Context("when all RS features are disabled", Ordered, func() {
 		disabledFlags := allRightSizingFlags(false)
 
 		BeforeAll(func(ctx SpecContext) {
+			By("Waiting for the MCOA manager and pod right-sizing resources before disabling all right-sizing features")
+			setRightSizingFlags(ctx, mcoClient, rightSizingFlags{podRightSizingFlag: ptr.To(true)})
+			Eventually(ctx, func(ctx context.Context) error {
+				deployment, err := hubClient.AppsV1().Deployments(MCO_NAMESPACE).Get(ctx, mcoaManagerDeploymentName, metav1.GetOptions{})
+				if err != nil {
+					return fmt.Errorf("get MCOA manager Deployment: %w", err)
+				}
+				if deployment.DeletionTimestamp != nil || deployment.Status.ObservedGeneration < deployment.Generation || deployment.Status.AvailableReplicas == 0 {
+					return fmt.Errorf("waiting for the MCOA manager Deployment to be available (generation=%d, observedGeneration=%d, availableReplicas=%d, deletionTimestamp=%v)",
+						deployment.Generation, deployment.Status.ObservedGeneration, deployment.Status.AvailableReplicas, deployment.DeletionTimestamp)
+				}
+				return checkRightSizingFeatureResources(ctx, dynClient, "pod", true)
+			}, 5*time.Minute, 5*time.Second).Should(Succeed())
 			By("Disabling all right-sizing features")
 			setRightSizingFlags(ctx, mcoClient, disabledFlags)
 			By("Waiting for the disabled state to reconcile")
 			waitForRightSizingState(ctx, dynClient, disabledFlags)
-		}, NodeTimeout(8*time.Minute))
+		}, NodeTimeout(15*time.Minute))
 
 		It("Should set all ADC RS variables to 'disabled'", func(ctx SpecContext) {
 			expected := make(map[string]string, len(rightSizingADCKeys))
@@ -876,9 +902,22 @@ func validatePodDetailDashboard(dashboard *unstructured.Unstructured) error {
 			return fmt.Errorf("read pod detail %s matchers: %w", name, err)
 		}
 		if slices.ContainsFunc(matchers, func(matcher string) bool {
-			return strings.Contains(matcher, "acm_rs:workload:")
+			return strings.Contains(matcher, workloadRightSizingMetric)
 		}) {
 			return fmt.Errorf("pod detail variable %s selects workload-level right-sizing data", name)
+		}
+		kind, _, err := unstructured.NestedString(v, "spec", "plugin", "kind")
+		if err != nil {
+			return fmt.Errorf("read pod detail %s variable plugin kind: %w", name, err)
+		}
+		if kind == "PrometheusPromQLVariable" {
+			expr, _, err := unstructured.NestedString(v, "spec", "plugin", "spec", "expr")
+			if err != nil {
+				return fmt.Errorf("read pod detail %s PromQL variable expression: %w", name, err)
+			}
+			if strings.Contains(expr, workloadRightSizingMetric) {
+				return fmt.Errorf("pod detail variable %s selects workload-level right-sizing data", name)
+			}
 		}
 		switch name {
 		case "cluster", "namespace", "pod":
@@ -939,7 +978,7 @@ func validatePodDetailQueries(panels map[string]any) error {
 			if err != nil {
 				return fmt.Errorf("read pod detail panel %s query: %w", name, err)
 			}
-			if strings.Contains(text, "acm_rs:workload:") {
+			if strings.Contains(text, workloadRightSizingMetric) {
 				return fmt.Errorf("pod detail panel %s queries workload-level right-sizing data", name)
 			}
 			hasPodQuery = hasPodQuery || strings.Contains(text, "acm_rs:pod:")
