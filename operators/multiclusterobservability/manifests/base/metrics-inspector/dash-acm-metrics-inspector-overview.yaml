@@ -52,7 +52,7 @@ data:
                   "showLineNumbers": false,
                   "showMiniMap": false
                 },
-                "content": "### **📝 Managing Monitoring Cardinality**\n\nThis dashboard helps you visualize the metric cardinality and series churn ingested from all managed clusters. Understanding and controlling cardinality is crucial, as the number of unique metrics directly correlates with the CPU, memory, and storage resources required by the Thanos monitoring platform.\n\n#### **⚡ Real-Time Probabilistic Estimation (HyperLogLog)**\n\nCardinality and series churn are computed continuously on the Hub by the `observability-metrics-inspector` service using **Time-Sliced Bloom Filters** and **Sliding-Window HyperLogLog (HLL)** sketches over a 15-minute sliding window, pushed to Thanos every **60 seconds**.\n\n#### **🤔 What is Cardinality & Churn?**\n\n* **Cardinality (`cardinality_estimate`):** The total number of unique **time series** active over the 15-minute window. A time series is a unique combination of a **metric name** and its descriptive **labels**.\n* **Series Churn Percentage (`cardinality_churn_ratio`):** Measures the proportion of newly created or short-lived series entering the 15-minute window relative to total active series (displayed as a percentage from `0.00%` to `100.00%`). High churn puts heavy pressure on the TSDB head block, index compaction, and memory even when standing cardinality appears stable:\n  * **< 10% (Green / Normal):** Typical steady-state cluster operation.\n  * **10% – 30% (Amber / Elevated):** Moderate turnover, common during rolling deployments, CronJobs, or auto-scaling events.\n  * **> 30% (Red / High):** Aggressive series turnover (often caused by ephemeral labels such as UUIDs, pod hashes, or dynamically generated timestamps).\n\n#### **🔍 How to Use These Dashboards**\n\n1. **Fleet Overview & Churn:** Check the **Total Fleet Cardinality** and **Peak Cluster Churn** indicators for fleet-level health.\n2. **Cardinality Outliers (>3σ):** Automatically identifies clusters and metrics whose cardinality exceeds 3 standard deviations above the fleet average.\n3. **Anomalies & Churn Triage:** Inspect the top churning clusters and statistical outliers before they cause Thanos resource saturation.\n4. **Cluster Cardinality:** Shows the total number of series sent by each managed cluster. Click on a cluster to drill down by namespace and pod.\n5. **Metric Cardinality:** Shows the highest-cardinality metrics across all clusters. Click on a metric to drill down by cluster, namespace, and pod.\n\n#### **⚠️ Telemetry Tiers: Ingress Estimation vs. Stored TSDB & Historical Trends**\n\nDepending on where you look, cardinality numbers will not add up 1:1:\n* **⚡ [Ingress Est] Front-Door Estimation (`cardinality_estimate`):** Computed at the ingress mirror via HyperLogLog over a **15-minute sliding window** (±1.6% error). It measures raw incoming series volume at the cluster perimeter. Crucially, if managed clusters send metrics in **High Availability (HA) mode** (dual Prometheus replicas with replica labels), ingress estimation counts both streams as distinct incoming series before any deduplication or relabeling occurs.\n* **📦 [TSDB Stored] Committed Head Series (`count(...)`):** Evaluated directly against the Thanos TSDB head block at a **single point in time (instantaneous)**. This reflects only series that were successfully committed and are currently queryable in storage. This number is typically lower than the ingress estimate due to:\n  * **HA Deduplication:** Thanos Query deduplicates dual replica streams (collapsing `prometheus_replica` / `replica` labels), reducing apparent cluster cardinality by up to 2× for HA setups.\n  * **Zero Churn Retention:** Unlike the 15-minute HLL window that retains ephemeral series, instantaneous `count()` reflects only series actively posting samples at that exact tick, excluding short-lived churn or dropped series.\n* **📈 [Macro Trends] 7d & 30d Ingress Lookback:** Historical deltas (`Δ 7d`, `Δ 30d`) compare the current ingress estimate directly against historical estimates (`offset 7d` / `offset 30d`). Both sides of this comparison use the same estimator metric, showing directional growth or reduction in incoming traffic over time without being affected by TSDB compaction or block retention.",
+                "content": "### **📝 Managing Monitoring Cardinality**\n\nThis dashboard helps you visualize the metric cardinality and series churn ingested from all managed clusters. Understanding and controlling cardinality is crucial, as the number of unique metrics directly correlates with the CPU, memory, and storage resources required by the Thanos monitoring platform.\n\n#### **Real-Time Probabilistic Estimation (HyperLogLog)**\n\nCardinality and series churn are computed continuously on the Hub by the `observability-metrics-inspector` service using **Time-Sliced Bloom Filters** and **Sliding-Window HyperLogLog (HLL)** sketches over a 15-minute sliding window, pushed to Thanos every **60 seconds**.\n\nAll panels on this Overview dashboard display **15m Estimates (Remote Write)** from `observability-metrics-inspector`. When drilling down into individual clusters or metrics via the links below, lower dashboard sections query **Exact Counts (Thanos TSDB)** directly from storage.\n\n#### **🤔 What is Cardinality & Churn?**\n\n* **Cardinality (`cardinality_estimate`):** The total number of unique **time series** active over the 15-minute window. A time series is a unique combination of a **metric name** and its descriptive **labels**.\n* **Series Churn Percentage (`cardinality_churn_ratio`):** Measures the proportion of newly created or short-lived series entering the 15-minute window relative to total active series (displayed as a percentage from `0.00%` to `100.00%`). High churn puts heavy pressure on the TSDB head block, index compaction, and memory even when standing cardinality appears stable:\n  * **< 10% (Green / Normal):** Typical steady-state cluster operation.\n  * **10% – 30% (Amber / Elevated):** Moderate turnover, common during rolling deployments, CronJobs, or auto-scaling events.\n  * **> 30% (Red / High):** Aggressive series turnover (often caused by ephemeral labels such as UUIDs, pod hashes, or dynamically generated timestamps).\n  * **Note on low-frequency rules (≥ 7.5m):** Periodic recording rules evaluated every 15m or slower (e.g., right-sizing `acm_rs:*` metrics) expire between pulses inside the 7.5m half-window and may report elevated per-metric churn even when stable.\n\n#### **🔍 How to Use These Dashboards**\n\n1. **Fleet Overview & Churn:** Check the **Total Fleet Cardinality** and **Peak Cluster Churn** indicators for fleet-level health.\n2. **Cardinality Outliers (>3σ):** Automatically identifies clusters and metrics whose cardinality exceeds 3 standard deviations above the fleet average.\n3. **Anomalies & Churn Triage:** Inspect the top churning clusters and statistical outliers before they cause Thanos resource saturation.\n4. **Cluster Cardinality:** Shows the total number of series sent by each managed cluster. Click on a cluster to drill down by namespace and pod.\n5. **Metric Cardinality:** Shows the highest-cardinality metrics across all clusters. Click on a metric to drill down by cluster, namespace, and pod.\n\n#### **Telemetry Tiers: 15m Estimate (Remote Write) vs. Exact Count (Thanos TSDB) & Historical Trends**\n\nDepending on where you look, cardinality numbers will not add up 1:1:\n* **15m Estimate (Remote Write) (`cardinality_estimate`):** Computed at the ingress mirror via HyperLogLog over a **15-minute sliding window** (±1.6% error). It measures raw incoming series volume at the cluster perimeter. Crucially, if managed clusters send metrics in **High Availability (HA) mode** (dual Prometheus replicas with replica labels), ingress estimation counts both streams as distinct incoming series before any deduplication or relabeling occurs.\n* **Exact Count (Thanos TSDB) (`count(...)`):** Evaluated directly against the Thanos TSDB head block at a **single point in time (instantaneous)**. This reflects only series that were successfully committed and are currently queryable in storage. This number is typically lower than the ingress estimate due to:\n  * **HA Deduplication:** Thanos Query deduplicates dual replica streams (collapsing `prometheus_replica` / `replica` labels), reducing apparent cluster cardinality by up to 2× for HA setups.\n  * **Zero Churn Retention:** Unlike the 15-minute HLL window that retains ephemeral series, instantaneous `count()` reflects only series actively posting samples at that exact tick, excluding short-lived churn or dropped series.\n* **Macro Trends: 7d & 30d Ingress Lookback:** Historical deltas (`Δ 7d`, `Δ 30d`) compare the current ingress estimate directly against historical estimates (`offset 7d` / `offset 30d`). Both sides of this comparison use the same estimator metric, showing directional growth or reduction in incoming traffic over time without being affected by TSDB compaction or block retention.",
                 "mode": "markdown"
               },
               "pluginVersion": "11.6.1",
@@ -135,7 +135,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "⚡ Total Fleet Cardinality (15m Ingress Est)",
+          "title": "Total Fleet Cardinality (15m)",
           "type": "stat"
         },
         {
@@ -515,7 +515,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "⚡ Fleet Total Cardinality Over Time (15m Ingress Est)",
+          "title": "Fleet Total Cardinality Over Time (15m)",
           "type": "timeseries",
           "description": "Total unique time series received across all managed clusters over time, estimated at ingress via HyperLogLog (±1.6% variance) over a 15m sliding window and smoothed with a 10m moving average."
         },
@@ -662,7 +662,7 @@ data:
               "refId": "B"
             }
           ],
-          "title": "⚡ Fleet Series Churn Over Time (15m Ingress Est)",
+          "title": "Fleet Series Churn Over Time (15m)",
           "type": "timeseries",
           "description": "Historical fleet-wide series churn ratio over a 15m sliding window, smoothed with a 5m moving average. Tracks the worst cluster churn spike (Peak Cluster Churn) alongside the fleet-wide cardinality-weighted average churn rate. Values > 10% indicate elevated turnover (e.g. rolling updates); values > 30% indicate aggressive churn."
         },
@@ -1193,7 +1193,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "⚡ Ingress Cardinality Over Time",
+          "title": "Cluster Cardinality Over Time (15m)",
           "type": "timeseries"
         },
         {
@@ -1497,7 +1497,7 @@ data:
               "refId": "Churn"
             }
           ],
-          "title": "⚡ Ingress Cardinality & Macro Trends",
+          "title": "Cluster Cardinality & Macro Trends (15m)",
           "transformations": [
             {
               "id": "merge",
@@ -1787,7 +1787,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "⚡ Ingress Cardinality Over Time",
+          "title": "Metric Cardinality Over Time (15m)",
           "type": "timeseries"
         },
         {
@@ -1795,7 +1795,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "Highest cardinality metrics across all clusters with 7d and 30d drift. Front-door ingress estimation captures total active series combinations.",
+          "description": "Highest cardinality metrics across all clusters with 7d and 30d drift. Front-door ingress estimation captures total active series combinations. Note: Periodic recording rules evaluated every 15m+ (e.g., right-sizing acm_rs:* metrics) expire between pulses in the 7.5m half-window and may show elevated churn even when stable.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2098,7 +2098,7 @@ data:
               "refId": "Churn"
             }
           ],
-          "title": "⚡ Ingress Cardinality & Macro Trends",
+          "title": "Metric Cardinality & Macro Trends (15m)",
           "transformations": [
             {
               "id": "merge",

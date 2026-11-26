@@ -25,16 +25,55 @@ data:
       "links": [],
       "panels": [
         {
-          "collapsed": false,
+          "collapsed": true,
           "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
             "y": 0
           },
+          "id": 13,
+          "panels": [
+            {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 10,
+                "w": 24,
+                "x": 0,
+                "y": 1
+              },
+              "id": 14,
+              "options": {
+                "code": {
+                  "language": "plaintext",
+                  "showLineNumbers": false,
+                  "showMiniMap": false
+                },
+                "content": "### **📝 Understanding Metric Cardinality & Data Sources**\n\nThis drill-down dashboard analyzes the distribution and churn of a specific metric (**\"$metric_name\"**) across clusters, namespaces, and pods.\n\n---\n\n#### **Telemetry Tiers: Remote Write Estimates vs. Thanos TSDB Counts**\n\n* **15m Estimate (Remote Write):** Probabilistic HyperLogLog count (±1.6%) and churn ratio of unique series received for \"$metric_name\" per cluster over a 15-minute sliding window before TSDB compaction or relabeling (requires ≥ 25 series per cluster).\n* **Exact Count (Thanos TSDB):** Point-in-time deterministic count of active time series currently stored in Thanos TSDB for the selected cluster/namespace/pod. Values may differ from the 15m estimate due to short-lived churn.\n\n> [!NOTE]\n> Hub-generated metrics (e.g. Thanos Ruler recording rules or alerts) bypass Remote Write mirroring and appear only in the **Exact Count (Thanos TSDB)** sections below. Periodic recording rules evaluated every 15m or slower (e.g. right-sizing `acm_rs:*` metrics) expire between pulses inside the 7.5m half-window and may report elevated churn even when stable.\n\n---\n\n#### **🔍 How to Drill Down**\n\n1. **Cluster Level:** Review which clusters send the highest volume of \"$metric_name\" and their churn rate. Click a cluster in the table to populate the **$cluster** filter.\n2. **Namespace Level:** Inspect exact TSDB series counts for this metric across namespaces in that cluster. Click a namespace to populate the **$namespace** filter.\n3. **Pod Level:** Inspect series counts across pods and view raw labelsets currently indexed in storage.",
+                "mode": "markdown"
+              },
+              "pluginVersion": "11.6.1",
+              "title": "",
+              "type": "text"
+            }
+          ],
+          "title": "Dashboard Guide (Click to Expand)",
+          "type": "row"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 1
+          },
           "id": 3,
           "panels": [],
-          "title": "⚡ Ingress Cardinality by Cluster for Metric \"$metric_name\" (Ingested Streams Only)",
+          "title": "Cluster Cardinality & Churn for \"$metric_name\" — 15m Estimate (Remote Write)",
           "type": "row"
         },
         {
@@ -42,7 +81,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "⚡ Front-Door Ingress Estimate: Probabilistic HyperLogLog count (±1.6% variance) of unique series received for \"$metric_name\" per cluster over a 15-minute sliding window before HA deduplication, relabel drops, or TSDB write limits. This is an ingress volume indicator and will naturally differ from instantaneous TSDB head counts below.\n\nℹ️ No data? Internally generated metrics (e.g. Thanos Ruler recording rules, alerts) bypass ingress and will only appear in the TSDB Stored sections below. Ingress cluster estimates also require ≥ 25 series per cluster.",
+          "description": "15m Estimate (Remote Write): Probabilistic HyperLogLog count (±1.6% variance) of unique series received for \"$metric_name\" per cluster over a 15-minute sliding window before HA deduplication, relabel drops, or TSDB write limits. This is an ingress volume indicator and will naturally differ from instantaneous TSDB head counts below.\n\nℹ️ No data? Internally generated metrics (e.g. Thanos Ruler recording rules, alerts) bypass ingress and will only appear in the Exact Count (Thanos TSDB) sections below. Ingress cluster estimates also require ≥ 25 series per cluster.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -101,7 +140,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 1
+            "y": 2
           },
           "id": 2,
           "options": {
@@ -133,7 +172,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "⚡ [Ingress Est] Cluster Cardinality Over Time",
+          "title": "Cluster Cardinality Over Time",
           "type": "timeseries"
         },
         {
@@ -141,7 +180,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "Ingress series churn ratio per cluster for metric \"$metric_name\" over a 15m sliding window, smoothed with a 15m moving average. Values > 10% indicate elevated turnover; values > 30% indicate aggressive churn (e.g. short-lived pods, rapid restarts, ephemeral labels).\n\nℹ️ No data? Internally generated metrics bypass ingress and will only appear in the TSDB Stored sections below.",
+          "description": "Ingress series churn ratio per cluster for metric \"$metric_name\" over a 15m sliding window, smoothed with a 15m moving average. Values > 10% indicate elevated turnover; values > 30% indicate aggressive churn (e.g. short-lived pods, rapid restarts, ephemeral labels).\n\nNote: Periodic recording rules evaluated every 15m+ (e.g. right-sizing acm_rs:* metrics) expire between pulses inside the 7.5m half-window and may report elevated churn even when stable.\n\nℹ️ No data? Internally generated metrics bypass ingress and will only appear in the Exact Count (Thanos TSDB) sections below.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -209,7 +248,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 9
+            "y": 10
           },
           "id": 12,
           "options": {
@@ -240,7 +279,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "⚡ [Ingress Est] Cluster Churn Over Time",
+          "title": "Cluster Churn Over Time",
           "type": "timeseries"
         },
         {
@@ -248,7 +287,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "⚡ Ingress series count for \"$metric_name\" per cluster over the current 15m sliding window. Click a cluster to drill down into stored TSDB namespace series.\n\nℹ️ No data? Internally generated metrics bypass ingress and will only appear in the TSDB Stored sections below.",
+          "description": "Ingress series count for \"$metric_name\" per cluster over the current 15m sliding window. Click a cluster to drill down into stored TSDB namespace series.\n\nℹ️ No data? Internally generated metrics bypass ingress and will only appear in the Exact Count (Thanos TSDB) sections below.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -408,7 +447,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 9
+            "y": 10
           },
           "id": 1,
           "options": {
@@ -476,7 +515,7 @@ data:
               "refId": "Cluster Churn"
             }
           ],
-          "title": "⚡ [Ingress Est] Current Cluster Cardinality & Churn",
+          "title": "Current Cluster Cardinality & Churn",
           "transformations": [
             {
               "id": "merge",
@@ -558,11 +597,11 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 18
+            "y": 19
           },
           "id": 4,
           "panels": [],
-          "title": "📦 TSDB Stored Cardinality by Namespace for Cluster \"$cluster\"",
+          "title": "Namespace Cardinality in \"$cluster\" — Exact Count (Thanos TSDB)",
           "type": "row"
         },
         {
@@ -570,7 +609,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "📦 Ingested TSDB Head Series: Exact deterministic count of series for \"$metric_name\" currently active in Thanos TSDB storage across namespaces at this specific minute.",
+          "description": "Exact Count (Thanos TSDB): Exact deterministic count of series for \"$metric_name\" currently active in Thanos TSDB storage across namespaces at this specific minute.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -629,7 +668,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 19
+            "y": 20
           },
           "id": 6,
           "options": {
@@ -673,7 +712,7 @@ data:
               "refId": "B"
             }
           ],
-          "title": "📦 [TSDB Stored] Namespace Cardinality Over Time",
+          "title": "Namespace Cardinality Over Time",
           "type": "timeseries"
         },
         {
@@ -681,7 +720,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "📦 Active series committed in TSDB storage for \"$metric_name\" grouped by namespace. Click a namespace to drill down into pod series.",
+          "description": "Active series committed in TSDB storage for \"$metric_name\" grouped by namespace. Click a namespace to drill down into pod series.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -798,7 +837,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 19
+            "y": 20
           },
           "id": 5,
           "options": {
@@ -851,7 +890,7 @@ data:
               "refId": "Total"
             }
           ],
-          "title": "📦 [TSDB Stored] Current Namespace Cardinality",
+          "title": "Current Namespace Cardinality",
           "transformations": [
             {
               "id": "merge",
@@ -932,11 +971,11 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 29
+            "y": 30
           },
           "id": 7,
           "panels": [],
-          "title": "📦 TSDB Stored Cardinality by Pod for Namespace \"$namespace\"",
+          "title": "Pod Cardinality in \"$namespace\" — Exact Count (Thanos TSDB)",
           "type": "row"
         },
         {
@@ -944,7 +983,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "📦 Ingested TSDB Head Series: Exact deterministic count of series for \"$metric_name\" across pods over time.",
+          "description": "Exact Count (Thanos TSDB): Exact deterministic count of series for \"$metric_name\" across pods over time.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1003,7 +1042,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 30
+            "y": 31
           },
           "id": 10,
           "options": {
@@ -1047,7 +1086,7 @@ data:
               "refId": "B"
             }
           ],
-          "title": "📦 [TSDB Stored] Pod Cardinality Over Time",
+          "title": "Pod Cardinality Over Time",
           "type": "timeseries"
         },
         {
@@ -1055,7 +1094,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "📦 Active series committed in TSDB storage for \"$metric_name\" in namespace \"$namespace\" grouped by pod. Click a pod to inspect raw labelsets.",
+          "description": "Active series committed in TSDB storage for \"$metric_name\" in namespace \"$namespace\" grouped by pod. Click a pod to inspect raw labelsets.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1149,7 +1188,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 30
+            "y": 31
           },
           "id": 8,
           "options": {
@@ -1202,7 +1241,7 @@ data:
               "refId": "Total"
             }
           ],
-          "title": "📦 [TSDB Stored] Current Pod Cardinality",
+          "title": "Current Pod Cardinality",
           "transformations": [
             {
               "id": "merge",
@@ -1283,11 +1322,11 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 40
+            "y": 41
           },
           "id": 11,
           "panels": [],
-          "title": "📦 TSDB Stored Timeseries in Pod \"$pod\"",
+          "title": "Raw Time Series in Pod \"$pod\" — Exact List (Thanos TSDB)",
           "type": "row"
         },
         {
@@ -1295,7 +1334,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "📦 Exact individual time series and labelsets currently indexed in TSDB storage for \"$metric_name\" in pod \"$pod\".",
+          "description": "Exact individual time series and labelsets currently indexed in TSDB storage for \"$metric_name\" in pod \"$pod\".",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1328,7 +1367,7 @@ data:
             "h": 14,
             "w": 24,
             "x": 0,
-            "y": 41
+            "y": 42
           },
           "id": 9,
           "options": {
@@ -1361,7 +1400,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "📦 [TSDB Stored] Raw Timeseries",
+          "title": "Raw Time Series",
           "type": "table"
         }
       ],
@@ -1389,7 +1428,7 @@ data:
             "regex": "",
             "sort": 1,
             "type": "query",
-            "description": "Select an ingested metric. Note: Ingress estimates only measure front-door incoming streams. Internally synthesized metrics (such as Thanos Ruler recording rules, alerts, or TSDB-derived series) bypass ingress and will show \"No data\" in the top section—scroll down to the \"📦 TSDB Stored\" panels for storage-level data."
+            "description": "Select an ingested metric. Note: Ingress estimates only measure front-door incoming streams. Internally synthesized metrics (such as Thanos Ruler recording rules, alerts, or TSDB-derived series) bypass ingress and will show \"No data\" in the top section—scroll down to the \"Exact Count (Thanos TSDB)\" panels for storage-level data."
           },
           {
             "datasource": {
