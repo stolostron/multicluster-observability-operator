@@ -17,6 +17,8 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -261,6 +263,120 @@ func parseLogLevel(level string) (slog.Level, error) {
 	}
 }
 
+type rotatingTLSConfig struct {
+	certFile     string
+	keyFile      string
+	clientCAFile string
+	minVersion   uint16
+	cipherSuites []uint16
+
+	cached        atomic.Pointer[tls.Config]
+	startTime     time.Time
+	lastCheckNano atomic.Int64
+
+	mu       sync.Mutex
+	certInfo os.FileInfo
+	keyInfo  os.FileInfo
+	caInfo   os.FileInfo
+}
+
+func fileUnchanged(prev, cur os.FileInfo) bool {
+	if prev == nil || cur == nil {
+		return prev == cur
+	}
+	return os.SameFile(prev, cur) &&
+		cur.ModTime().Equal(prev.ModTime()) &&
+		cur.Size() == prev.Size()
+}
+
+func newRotatingTLSConfig(certFile, keyFile, clientCAFile string, minVersion uint16, cipherSuites []uint16) (*rotatingTLSConfig, error) {
+	rot := &rotatingTLSConfig{
+		certFile:     certFile,
+		keyFile:      keyFile,
+		clientCAFile: clientCAFile,
+		minVersion:   minVersion,
+		cipherSuites: cipherSuites,
+		startTime:    time.Now(),
+	}
+	cfg, err := rot.load(true)
+	if err != nil {
+		return nil, err
+	}
+	rot.cached.Store(cfg)
+	rot.lastCheckNano.Store(time.Since(rot.startTime).Nanoseconds())
+	return rot, nil
+}
+
+func (r *rotatingTLSConfig) getConfig(*tls.ClientHelloInfo) (*tls.Config, error) {
+	elapsed := time.Since(r.startTime).Nanoseconds()
+	// Fast path: if checked within the last 10 seconds, return cached config immediately
+	// without taking any locks, performing syscalls, or executing disk I/O.
+	// Uses monotonic time (time.Since) so NTP wall-clock adjustments cannot freeze rotation.
+	if cur := r.cached.Load(); cur != nil && (elapsed-r.lastCheckNano.Load()) < int64(10*time.Second) {
+		return cur, nil
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Double check under lock
+	elapsed = time.Since(r.startTime).Nanoseconds()
+	if cur := r.cached.Load(); cur != nil && (elapsed-r.lastCheckNano.Load()) < int64(10*time.Second) {
+		return cur, nil
+	}
+	r.lastCheckNano.Store(elapsed)
+
+	cfg, err := r.load(false)
+	if err != nil {
+		if cur := r.cached.Load(); cur != nil {
+			slog.Warn("failed to reload TLS configuration; keeping cached config", "err", err)
+			return cur, nil // Fall back gracefully to existing valid config if transient reload error
+		}
+		return nil, err
+	}
+	if cfg != nil {
+		r.cached.Store(cfg)
+		return cfg, nil
+	}
+	return r.cached.Load(), nil
+}
+
+func (r *rotatingTLSConfig) load(initial bool) (*tls.Config, error) {
+	certStat, err := os.Stat(r.certFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat cert file %q: %w", r.certFile, err)
+	}
+	keyStat, err := os.Stat(r.keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat key file %q: %w", r.keyFile, err)
+	}
+	var caStat os.FileInfo
+	if r.clientCAFile != "" {
+		var err error
+		caStat, err = os.Stat(r.clientCAFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to stat client CA file %q: %w", r.clientCAFile, err)
+		}
+	}
+
+	if !initial &&
+		fileUnchanged(r.certInfo, certStat) &&
+		fileUnchanged(r.keyInfo, keyStat) &&
+		fileUnchanged(r.caInfo, caStat) {
+		return nil, nil
+	}
+
+	cfg, err := loadHandshakeTLSConfig(r.certFile, r.keyFile, r.clientCAFile, r.minVersion, r.cipherSuites)
+	if err != nil {
+		return nil, err
+	}
+
+	r.certInfo = certStat
+	r.keyInfo = keyStat
+	r.caInfo = caStat
+	return cfg, nil
+}
+
 func buildTLSConfig(certFile, keyFile, clientCAFile, minVersionStr, cipherSuitesStr string) (*tls.Config, error) {
 	if minVersionStr == "" {
 		minVersionStr = "VersionTLS12"
@@ -282,15 +398,15 @@ func buildTLSConfig(certFile, keyFile, clientCAFile, minVersionStr, cipherSuites
 		}
 	}
 
-	if _, err := loadHandshakeTLSConfig(certFile, keyFile, clientCAFile, minVersion, cipherSuites); err != nil {
+	rot, err := newRotatingTLSConfig(certFile, keyFile, clientCAFile, minVersion, cipherSuites)
+	if err != nil {
 		return nil, err
 	}
+
 	return &tls.Config{ //nolint:gosec // TLS min version and cipher suites are configured dynamically from the cluster TLS security profile
-		MinVersion:   minVersion,
-		CipherSuites: cipherSuites,
-		GetConfigForClient: func(*tls.ClientHelloInfo) (*tls.Config, error) {
-			return loadHandshakeTLSConfig(certFile, keyFile, clientCAFile, minVersion, cipherSuites)
-		},
+		MinVersion:         minVersion,
+		CipherSuites:       cipherSuites,
+		GetConfigForClient: rot.getConfig,
 	}, nil
 }
 

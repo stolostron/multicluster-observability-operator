@@ -134,6 +134,17 @@ func (r *MCORenderer) renderMetricsInspectorTemplates(
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
+		if forRemoval && template.GetKind() == "Deployment" {
+			uobj, err := r.renderer.RenderDeployments(ctx, template.DeepCopy(), namespace, labels)
+			if err != nil {
+				return nil, err
+			}
+			if operandName := mcoconfig.GetOperandName(mcoconfig.MetricsInspector); operandName != "" {
+				uobj.SetName(operandName)
+			}
+			uobjs = append(uobjs, uobj)
+			continue
+		}
 		uobj, err := render(ctx, template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return nil, err

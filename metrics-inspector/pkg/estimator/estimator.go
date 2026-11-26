@@ -71,7 +71,11 @@ func NewEstimator(cfg StreamConfig) (*Estimator, error) {
 		stopCh:          make(chan struct{}),
 	}
 	if cfg.CalculateChurn {
-		e.churn = newChurnTracker(cfg.Interval)
+		maxEntries := cfg.GroupLimit
+		if len(cfg.GroupBy) == 0 {
+			maxEntries = 1
+		}
+		e.churn = newChurnTracker(cfg.Interval, maxEntries)
 	}
 
 	for i := range e.buckets {
@@ -101,6 +105,9 @@ func (e *Estimator) Stop() {
 	e.wg.Wait()
 	for _, eb := range e.buckets {
 		eb.releaseAll()
+	}
+	if e.churn != nil {
+		e.churn.releaseAll()
 	}
 }
 
@@ -224,6 +231,12 @@ func (e *Estimator) EvaluateAt(now time.Time) StreamReport {
 		CalculateChurn: e.cfg.CalculateChurn,
 	}
 
+	var churnScratch *hll.Sketch
+	if e.churn != nil {
+		churnScratch = hll.MustNewByPrecision(e.cfg.HLLPrecision)
+		defer churnScratch.Release()
+	}
+
 	if len(e.cfg.GroupBy) == 0 {
 		resSK := hll.MustNewByPrecision(e.cfg.HLLPrecision)
 		defer resSK.Release()
@@ -235,13 +248,13 @@ func (e *Estimator) EvaluateAt(now time.Time) StreamReport {
 		}
 		report.GlobalEstimate = resSK.Estimate()
 		if e.churn != nil {
-			report.GlobalChurn = e.churn.updateAndRate(0, resSK, now)
+			report.GlobalChurn = e.churn.updateAndRate(0, resSK, churnScratch, now)
 		}
 		return report
 	}
 
-	const batchSize = 1000
-	keys := make([]uint64, 0, batchSize)
+	const initialKeysCap = 1000
+	keys := make([]uint64, 0, initialKeysCap)
 	resSK := hll.MustNewByPrecision(e.cfg.HLLPrecision)
 	defer resSK.Release()
 
@@ -258,53 +271,43 @@ func (e *Estimator) EvaluateAt(now time.Time) StreamReport {
 		}
 		eb.mu.Unlock()
 
-		for i := 0; i < len(keys); i += batchSize {
-			batch := keys[i:min(i+batchSize, len(keys))]
-
+		for _, key := range keys {
+			// Acquire eb.mu strictly to extract values and merge sketches into our private
+			// resSK buffer (~50ns hold time). Mutex is released immediately before cardinality
+			// estimation and churn math to prevent blocking concurrent Ingest/InsertMany calls.
 			eb.mu.Lock()
-			for _, key := range batch {
-				gsk, hasCur := eb.groups[key]
-				prevGSK, hasPrev := eb.prevGroups[key]
-				if !hasCur && !hasPrev {
-					continue
-				}
-
-				values := gsk.values
-				if len(values) == 0 {
-					values = prevGSK.values
-				}
-
-				var activeSK *hll.Sketch
-				switch {
-				case gsk.Sketch != nil && prevGSK.Sketch == nil:
-					activeSK = gsk.Sketch
-				case gsk.Sketch == nil && prevGSK.Sketch != nil:
-					activeSK = prevGSK.Sketch
-				default:
-					resSK.Reset()
-					mergeInto(resSK, gsk.Sketch, prevGSK.Sketch)
-					activeSK = resSK
-				}
-
-				est := activeSK.Estimate()
-
-				var churnRate float64
-				if e.churn != nil {
-					churnRate = e.churn.updateAndRate(key, activeSK, now)
-				}
-
-				if est < e.cfg.MinCardinality {
-					report.DroppedCount++
-					continue
-				}
-
-				report.Groups = append(report.Groups, GroupEstimate{
-					Values:     values,
-					Estimate:   est,
-					ChurnRatio: churnRate,
-				})
+			gsk, hasCur := eb.groups[key]
+			prevGSK, hasPrev := eb.prevGroups[key]
+			if !hasCur && !hasPrev {
+				eb.mu.Unlock()
+				continue
 			}
+
+			values := gsk.values
+			if len(values) == 0 {
+				values = prevGSK.values
+			}
+
+			resSK.Reset()
+			mergeInto(resSK, gsk.Sketch, prevGSK.Sketch)
 			eb.mu.Unlock()
+
+			est := resSK.Estimate()
+			if est < e.cfg.MinCardinality {
+				report.DroppedCount++
+				continue
+			}
+
+			var churnRate float64
+			if e.churn != nil {
+				churnRate = e.churn.updateAndRate(key, resSK, churnScratch, now)
+			}
+
+			report.Groups = append(report.Groups, GroupEstimate{
+				Values:     values,
+				Estimate:   est,
+				ChurnRatio: churnRate,
+			})
 		}
 	}
 

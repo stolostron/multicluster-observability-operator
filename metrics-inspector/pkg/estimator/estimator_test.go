@@ -476,6 +476,68 @@ func TestCalculateChurnRatio(t *testing.T) {
 	if r := CalculateChurnRatio(nil, s1); r != 0 {
 		t.Fatalf("expected 0 churn for nil sketch, got %.4f", r)
 	}
+
+	// Verify scratch sketch yields identical results without allocations.
+	scratch := hll.MustNewByPrecision(14)
+	defer scratch.Release()
+	if r := CalculateChurnRatio(s1, s2, scratch); r > 0.02 {
+		t.Fatalf("expected ~0 churn with scratch, got %.4f", r)
+	}
+	if r := CalculateChurnRatio(s1, s3, scratch); math.Abs(r-1.0) > 0.05 {
+		t.Fatalf("expected ~1.0 churn with scratch, got %.4f", r)
+	}
+}
+
+func TestChurnTrackerMaxEntriesAndCleanup(t *testing.T) {
+	interval := 15 * time.Minute
+	ct := newChurnTracker(interval, 2)
+	now := time.Now()
+
+	s := hll.MustNewByPrecision(14)
+	defer s.Release()
+	s.InsertHash(12345)
+
+	scratch := hll.MustNewByPrecision(14)
+	defer scratch.Release()
+
+	// Insert key 1 & 2 (within limit 2)
+	ct.updateAndRate(1, s, scratch, now)
+	ct.updateAndRate(2, s, scratch, now)
+
+	ct.mu.Lock()
+	if len(ct.entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(ct.entries))
+	}
+	ct.mu.Unlock()
+
+	// Insert key 3 (exceeds maxEntries = 2) -> rejected
+	rate := ct.updateAndRate(3, s, scratch, now)
+	if rate != 0 {
+		t.Fatalf("expected 0 churn for rejected key 3, got %f", rate)
+	}
+	ct.mu.Lock()
+	if len(ct.entries) != 2 {
+		t.Fatalf("expected still 2 entries after rejection, got %d", len(ct.entries))
+	}
+	ct.mu.Unlock()
+
+	// Advance time past interval -> cleanup should evict entries
+	ct.cleanup(now.Add(interval + time.Second))
+	ct.mu.Lock()
+	if len(ct.entries) != 0 {
+		t.Fatalf("expected 0 entries after cleanup past interval, got %d", len(ct.entries))
+	}
+	ct.mu.Unlock()
+
+	// Repopulate and test releaseAll
+	ct.updateAndRate(10, s, scratch, now)
+	ct.updateAndRate(20, s, scratch, now)
+	ct.releaseAll()
+	ct.mu.Lock()
+	if len(ct.entries) != 0 {
+		t.Fatalf("expected 0 entries after releaseAll, got %d", len(ct.entries))
+	}
+	ct.mu.Unlock()
 }
 
 func TestEngineIngestAndEvaluate(t *testing.T) {

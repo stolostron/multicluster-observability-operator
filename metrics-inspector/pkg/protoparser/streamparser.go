@@ -14,6 +14,19 @@ import (
 	"github.com/golang/snappy"
 )
 
+const (
+	// maxPooledBufferSize (4 MiB) caps the capacity of buffers returned to sync.Pool.
+	// Outlier requests larger than this are dropped to the GC instead of pinning
+	// hundreds of MiBs across pooled slices indefinitely.
+	maxPooledBufferSize = 4 * 1024 * 1024
+
+	// maxPooledTimeseriesCap caps the capacity of timeseries slices retained in WriteRequest.
+	maxPooledTimeseriesCap = 8192
+
+	// maxPooledLabelsCap caps the capacity of labels slices retained in WriteRequest.
+	maxPooledLabelsCap = 65536
+)
+
 var (
 	compressedBufPool = sync.Pool{
 		New: func() any {
@@ -43,7 +56,11 @@ func ParseStream(req *http.Request, hashEachLabel bool, maxSize int64, callback 
 
 	cBuf := compressedBufPool.Get().(*bytes.Buffer)
 	cBuf.Reset()
-	defer compressedBufPool.Put(cBuf)
+	defer func() {
+		if cBuf.Cap() <= maxPooledBufferSize {
+			compressedBufPool.Put(cBuf)
+		}
+	}()
 
 	lr := io.LimitReader(req.Body, maxSize+1)
 	if _, err := cBuf.ReadFrom(lr); err != nil {
@@ -70,8 +87,10 @@ func ParseStream(req *http.Request, hashEachLabel bool, maxSize int64, callback 
 		uBuf = uBuf[:decodedLen]
 	}
 	defer func() {
-		*uBufPtr = uBuf[:0]
-		uncompressedBufPool.Put(uBufPtr)
+		if cap(uBuf) <= maxPooledBufferSize {
+			*uBufPtr = uBuf[:0]
+			uncompressedBufPool.Put(uBufPtr)
+		}
 	}()
 
 	uncompressed, err := snappy.Decode(uBuf, compressed)
@@ -82,8 +101,10 @@ func ParseStream(req *http.Request, hashEachLabel bool, maxSize int64, callback 
 	wr := writeRequestPool.Get().(*WriteRequest)
 	wr.Reset()
 	defer func() {
-		wr.Reset()
-		writeRequestPool.Put(wr)
+		if cap(wr.Timeseries) <= maxPooledTimeseriesCap && cap(wr.labelsPool) <= maxPooledLabelsCap {
+			wr.Reset()
+			writeRequestPool.Put(wr)
+		}
 	}()
 
 	if err := wr.UnmarshalWriteRequest(uncompressed, hashEachLabel); err != nil {

@@ -33,6 +33,8 @@ type Deduplicator struct {
 	interval      time.Duration
 	bucketMaxSize uint64
 	bfs           [dedupBucketsCount]atomic.Pointer[bloomFilter]
+	rotateMu      sync.Mutex
+	spareBf       *bloomFilter
 	stopCh        chan struct{}
 	wg            sync.WaitGroup
 }
@@ -40,6 +42,13 @@ type Deduplicator struct {
 type bloomFilter struct {
 	bits []uint64
 	size atomic.Uint64
+}
+
+func (bf *bloomFilter) reset() {
+	for i := range bf.bits {
+		atomic.StoreUint64(&bf.bits[i], 0)
+	}
+	bf.size.Store(0)
 }
 
 func newBloomFilter(expectedItems int) *bloomFilter {
@@ -54,11 +63,11 @@ func newBloomFilter(expectedItems int) *bloomFilter {
 // Returns true if h was newly added, or false if all 4 bits were already set.
 func (bf *bloomFilter) isNew(h uint64) bool {
 	numBits := uint64(len(bf.bits)) * 64
-	h1 := uint32(h)       //nolint:gosec // intentional lower 32 bits for Kirsch-Mitzenmacher double hashing
-	h2 := uint32(h >> 32) //nolint:gosec // intentional upper 32 bits for Kirsch-Mitzenmacher double hashing
+	h1 := h & 0xffffffff
+	h2 := (h >> 32) & 0xffffffff
 	allSet := true
-	for i := range uint32(hashesCount) {
-		bitPos := uint64(h1+i*h2) % numBits
+	for i := range uint64(hashesCount) {
+		bitPos := (h1 + i*h2) % numBits
 		wordIdx := bitPos / 64
 		bitMask := uint64(1) << (bitPos % 64)
 
@@ -90,6 +99,7 @@ func NewDeduplicator(interval time.Duration, maxItemsPerInterval int) *Deduplica
 	d := &Deduplicator{
 		interval:      interval,
 		bucketMaxSize: uint64(expectedPerBucket), //nolint:gosec // expectedPerBucket >= 1 via max(..., 1)
+		spareBf:       newBloomFilter(expectedPerBucket),
 		stopCh:        make(chan struct{}),
 	}
 	for i := range d.bfs {
@@ -121,7 +131,12 @@ func (d *Deduplicator) CheckAndAdd(hash uint64) bool {
 }
 
 func (d *Deduplicator) resetShard(idx int) {
-	d.bfs[idx].Store(newBloomFilter(int(d.bucketMaxSize))) //nolint:gosec // bounded by maxItemsPerInterval/10
+	d.rotateMu.Lock()
+	defer d.rotateMu.Unlock()
+
+	spare := d.spareBf
+	spare.reset()
+	d.spareBf = d.bfs[idx].Swap(spare)
 }
 
 func (d *Deduplicator) rotateLoop() {

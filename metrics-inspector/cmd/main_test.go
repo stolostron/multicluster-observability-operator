@@ -483,6 +483,220 @@ func TestBuildTLSConfigProfileOptions(t *testing.T) {
 	}
 }
 
+func TestRotatingTLSConfigLiveReload(t *testing.T) {
+	tmpDir := t.TempDir()
+	_, certFile1, keyFile1 := generateTestCerts(t, tmpDir, "cert1", true)
+
+	// Copy cert1 to target cert/key paths
+	certPath := filepath.Join(tmpDir, "tls.crt")
+	keyPath := filepath.Join(tmpDir, "tls.key")
+	certBytes1, err := os.ReadFile(certFile1)
+	if err != nil {
+		t.Fatalf("ReadFile cert1: %v", err)
+	}
+	keyBytes1, err := os.ReadFile(keyFile1)
+	if err != nil {
+		t.Fatalf("ReadFile key1: %v", err)
+	}
+	if err := os.WriteFile(certPath, certBytes1, 0o600); err != nil {
+		t.Fatalf("WriteFile cert: %v", err)
+	}
+	if err := os.WriteFile(keyPath, keyBytes1, 0o600); err != nil {
+		t.Fatalf("WriteFile key: %v", err)
+	}
+
+	// Instantiate rotating config initially with cert1
+	rot, err := newRotatingTLSConfig(certPath, keyPath, "", tls.VersionTLS12, nil)
+	if err != nil {
+		t.Fatalf("newRotatingTLSConfig failed: %v", err)
+	}
+	rotCfg1, err := rot.getConfig(nil)
+	if err != nil {
+		t.Fatalf("getConfig failed: %v", err)
+	}
+	leafCert1 := rotCfg1.Certificates[0].Certificate[0]
+
+	// Fast path check: subsequent call returns identical config pointer without disk I/O
+	rotCfgFast, err := rot.getConfig(nil)
+	if err != nil {
+		t.Fatalf("getConfig fast path failed: %v", err)
+	}
+	if rotCfgFast != rotCfg1 {
+		t.Fatal("expected cached tls.Config instance returned on fast path")
+	}
+
+	// Generate cert2 and overwrite files with a distinct future timestamp via os.Chtimes
+	_, certFile2, keyFile2 := generateTestCerts(t, tmpDir, "cert2", true)
+	certBytes2, err := os.ReadFile(certFile2)
+	if err != nil {
+		t.Fatalf("ReadFile cert2: %v", err)
+	}
+	keyBytes2, err := os.ReadFile(keyFile2)
+	if err != nil {
+		t.Fatalf("ReadFile key2: %v", err)
+	}
+	if err := os.WriteFile(certPath, certBytes2, 0o600); err != nil {
+		t.Fatalf("WriteFile cert2: %v", err)
+	}
+	if err := os.WriteFile(keyPath, keyBytes2, 0o600); err != nil {
+		t.Fatalf("WriteFile key2: %v", err)
+	}
+	futureTime := time.Now().Add(5 * time.Second)
+	if err := os.Chtimes(certPath, futureTime, futureTime); err != nil {
+		t.Fatalf("Chtimes certPath: %v", err)
+	}
+	if err := os.Chtimes(keyPath, futureTime, futureTime); err != nil {
+		t.Fatalf("Chtimes keyPath: %v", err)
+	}
+
+	// Within 10s cooldown window, fast path STILL returns cached cert1 despite disk change
+	rotCfgStillCached, err := rot.getConfig(nil)
+	if err != nil {
+		t.Fatalf("getConfig during cooldown failed: %v", err)
+	}
+	if rotCfgStillCached != rotCfg1 {
+		t.Fatal("expected cached config returned within cooldown window")
+	}
+
+	// Simulate cooldown expiration: backdate lastCheckNano
+	rot.lastCheckNano.Store(time.Since(rot.startTime).Nanoseconds() - int64(20*time.Second))
+
+	// Next call must trigger reload and return cert2
+	reloadedCfg, err := rot.getConfig(nil)
+	if err != nil {
+		t.Fatalf("getConfig after cooldown failed: %v", err)
+	}
+	leafCert2 := reloadedCfg.Certificates[0].Certificate[0]
+	if bytes.Equal(leafCert1, leafCert2) {
+		t.Fatal("expected leaf certificate to change after live reload")
+	}
+}
+
+func TestRotatingTLSConfigK8sSymlinkSwapSameModTime(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 1. Create two backing directories representing Kubernetes Secret revisions (..v1 and ..v2)
+	v1Dir := filepath.Join(tmpDir, "..v1")
+	v2Dir := filepath.Join(tmpDir, "..v2")
+	if err := os.MkdirAll(v1Dir, 0o700); err != nil {
+		t.Fatalf("MkdirAll v1Dir: %v", err)
+	}
+	if err := os.MkdirAll(v2Dir, 0o700); err != nil {
+		t.Fatalf("MkdirAll v2Dir: %v", err)
+	}
+
+	// Generate cert1 and cert2
+	_, certFile1, keyFile1 := generateTestCerts(t, tmpDir, "cert1", true)
+	_, certFile2, keyFile2 := generateTestCerts(t, tmpDir, "cert2", true)
+
+	certBytes1, err := os.ReadFile(certFile1)
+	if err != nil {
+		t.Fatalf("ReadFile cert1: %v", err)
+	}
+	keyBytes1, err := os.ReadFile(keyFile1)
+	if err != nil {
+		t.Fatalf("ReadFile key1: %v", err)
+	}
+	certBytes2, err := os.ReadFile(certFile2)
+	if err != nil {
+		t.Fatalf("ReadFile cert2: %v", err)
+	}
+	keyBytes2, err := os.ReadFile(keyFile2)
+	if err != nil {
+		t.Fatalf("ReadFile key2: %v", err)
+	}
+
+	v1Cert := filepath.Join(v1Dir, "tls.crt")
+	v1Key := filepath.Join(v1Dir, "tls.key")
+	v2Cert := filepath.Join(v2Dir, "tls.crt")
+	v2Key := filepath.Join(v2Dir, "tls.key")
+
+	if err := os.WriteFile(v1Cert, certBytes1, 0o600); err != nil {
+		t.Fatalf("WriteFile v1Cert: %v", err)
+	}
+	if err := os.WriteFile(v1Key, keyBytes1, 0o600); err != nil {
+		t.Fatalf("WriteFile v1Key: %v", err)
+	}
+	if err := os.WriteFile(v2Cert, certBytes2, 0o600); err != nil {
+		t.Fatalf("WriteFile v2Cert: %v", err)
+	}
+	if err := os.WriteFile(v2Key, keyBytes2, 0o600); err != nil {
+		t.Fatalf("WriteFile v2Key: %v", err)
+	}
+
+	// Enforce identical ModTime on both versions to ensure detection relies on os.SameFile (inode change)
+	sameTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	for _, f := range []string{v1Cert, v1Key, v2Cert, v2Key} {
+		if err := os.Chtimes(f, sameTime, sameTime); err != nil {
+			t.Fatalf("Chtimes on %s: %v", f, err)
+		}
+	}
+
+	// 2. Setup kubelet AtomicWriter symlink structure:
+	// ..data -> ..v1
+	// tls.crt -> ..data/tls.crt
+	// tls.key -> ..data/tls.key
+	dataSymlink := filepath.Join(tmpDir, "..data")
+	if err := os.Symlink(v1Dir, dataSymlink); err != nil {
+		t.Fatalf("Symlink ..data -> ..v1: %v", err)
+	}
+
+	certPath := filepath.Join(tmpDir, "tls.crt")
+	keyPath := filepath.Join(tmpDir, "tls.key")
+	if err := os.Symlink(filepath.Join(dataSymlink, "tls.crt"), certPath); err != nil {
+		t.Fatalf("Symlink tls.crt -> ..data/tls.crt: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(dataSymlink, "tls.key"), keyPath); err != nil {
+		t.Fatalf("Symlink tls.key -> ..data/tls.key: %v", err)
+	}
+
+	// 3. Initialize rotating config pointing to symlinks and verify cert1 is loaded
+	rot, err := newRotatingTLSConfig(certPath, keyPath, "", tls.VersionTLS12, nil)
+	if err != nil {
+		t.Fatalf("newRotatingTLSConfig failed: %v", err)
+	}
+	rotCfg1, err := rot.getConfig(nil)
+	if err != nil {
+		t.Fatalf("getConfig failed: %v", err)
+	}
+	if len(rotCfg1.Certificates) == 0 {
+		t.Fatal("expected certificate loaded")
+	}
+	leafCert1 := rotCfg1.Certificates[0].Certificate[0]
+
+	// 4. Atomically swap ..data to ..v2 as AtomicWriter does:
+	// symlink ..data_tmp -> ..v2 followed by rename(..data_tmp, ..data)
+	dataTmpSymlink := filepath.Join(tmpDir, "..data_tmp")
+	if err := os.Symlink(v2Dir, dataTmpSymlink); err != nil {
+		t.Fatalf("Symlink ..data_tmp -> ..v2: %v", err)
+	}
+	if err := os.Rename(dataTmpSymlink, dataSymlink); err != nil {
+		t.Fatalf("Rename ..data_tmp -> ..data: %v", err)
+	}
+
+	// Within 10s cooldown window, fast path STILL returns cached cert1
+	rotCfgCached, err := rot.getConfig(nil)
+	if err != nil {
+		t.Fatalf("getConfig during cooldown failed: %v", err)
+	}
+	if rotCfgCached != rotCfg1 {
+		t.Fatal("expected cached config returned within cooldown window")
+	}
+
+	// 5. Expire cooldown: backdate lastCheckNano
+	rot.lastCheckNano.Store(time.Since(rot.startTime).Nanoseconds() - int64(20*time.Second))
+
+	// 6. Assert reload occurs and returns cert2 even though ModTime is identical
+	rotCfg2, err := rot.getConfig(nil)
+	if err != nil {
+		t.Fatalf("getConfig after cooldown failed: %v", err)
+	}
+	leafCert2 := rotCfg2.Certificates[0].Certificate[0]
+	if bytes.Equal(leafCert1, leafCert2) {
+		t.Fatal("expected leaf certificate to change after atomic symlink swap despite identical ModTime")
+	}
+}
+
 func TestParseLogLevel(t *testing.T) {
 	tests := []struct {
 		input   string

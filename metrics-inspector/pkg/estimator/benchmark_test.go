@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/prometheus/prometheus/prompb"
+	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/hll"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
 )
 
@@ -162,5 +163,47 @@ func BenchmarkEngineEvaluate(b *testing.B) {
 		for i := range reports {
 			_ = reports[i].ToTimeSeries(now.UnixMilli())
 		}
+	}
+}
+
+func BenchmarkCalculateChurnRatioWithScratch(b *testing.B) {
+	sk1 := buildDenseTestSketch(14, 5000)
+	sk2 := buildDenseTestSketch(14, 5000)
+	scratch := buildDenseTestSketch(14, 0)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = CalculateChurnRatio(sk1, sk2, scratch)
+	}
+}
+
+func BenchmarkCalculateChurnRatioWithoutScratch(b *testing.B) {
+	sk1 := buildDenseTestSketch(14, 5000)
+	sk2 := buildDenseTestSketch(14, 5000)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = CalculateChurnRatio(sk1, sk2)
+	}
+}
+
+func buildDenseTestSketch(precision uint8, numItems int) *hll.Sketch {
+	sk := hll.MustNewByPrecision(precision)
+	for i := range numItems {
+		sk.InsertHash(uint64(i + 1))
+	}
+	return sk
+}
+
+func BenchmarkDeduplicatorResetShard(b *testing.B) {
+	d := NewDeduplicator(15*time.Minute, 15000000)
+	defer d.Stop()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		d.resetShard(0)
 	}
 }

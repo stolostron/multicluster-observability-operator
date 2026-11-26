@@ -48,6 +48,17 @@ const (
 	ageTier30dTo90d  = "30d_to_90d"
 	ageTier90dTo180d = "90d_to_180d"
 	ageTier180dPlus  = "180d_plus"
+
+	// fullDeletionSweepInterval controls the duration between comprehensive sweeps
+	// of all cached blocks for deletion marks.
+	fullDeletionSweepInterval = 6 * time.Hour
+
+	// recentBlockAgeThresholdMs defines the age under which blocks are actively considered
+	// candidates for compaction by Thanos Compactor (72 hours).
+	recentBlockAgeThresholdMs = 72 * 3600 * 1000
+
+	// retentionBufferMs defines how close to retention expiry a block must be to probe deletion marks (24 hours).
+	retentionBufferMs = 24 * 3600 * 1000
 )
 
 var allAgeTiers = []string{
@@ -125,6 +136,7 @@ type Inspector struct {
 	syncErrorsTotal       atomic.Uint64
 	lastSyncTimestampSecs atomic.Int64
 	lastSyncDurationNano  atomic.Int64
+	lastFullSweepSecs     atomic.Int64
 }
 
 // NewInspector creates a new Thanos bucket Inspector backed by an upstream Thanos objstore.BucketReader.
@@ -266,14 +278,21 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 	}
 
 	// 1. Identify missing ULIDs to fetch.
-	// 2. Identify cached ULIDs that are not yet marked for deletion to refresh deletion-mark status.
+	// 2. Identify cached ULIDs that are eligible candidates for deletion mark check.
+	// On steady-state 15m syncs, only probe blocks plausibly subject to compaction
+	// (<72h or compaction level < 3) or retention expiry. Every 6 hours,
+	// run a comprehensive full sweep across all cached blocks.
+	lastSweep := ins.lastFullSweepSecs.Load()
+	fullSweep := lastSweep == 0 || time.Since(time.Unix(lastSweep, 0)) >= fullDeletionSweepInterval
+	nowMs := start.UnixMilli()
+
 	ins.mu.RLock()
 	var missingULIDs []string
 	var checkDeletionULIDs []string
 	for ulidStr := range discoveredULIDs {
 		if cached, ok := ins.blocks[ulidStr]; !ok {
 			missingULIDs = append(missingULIDs, ulidStr)
-		} else if !cached.MarkedForDeletion {
+		} else if !cached.MarkedForDeletion && isBlockDeletionCandidate(cached, nowMs, ins.retention, fullSweep) {
 			checkDeletionULIDs = append(checkDeletionULIDs, ulidStr)
 		}
 	}
@@ -416,12 +435,45 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 	ins.ready.Store(true)
 	now := time.Now()
 	ins.lastSyncTimestampSecs.Store(now.Unix())
+	if fullSweep {
+		ins.lastFullSweepSecs.Store(now.Unix())
+	}
 	ins.logger.Info("completed thanos bucket inspection",
 		"cached_blocks", cachedCount,
 		"new_blocks_fetched", len(fetched),
 		"duration_ms", duration.Milliseconds(),
 	)
 	return nil
+}
+
+// isBlockDeletionCandidate checks whether a cached block not yet marked for deletion
+// should be probed for deletion-mark.json on this sync cycle.
+func isBlockDeletionCandidate(b BlockSummary, nowMs int64, ret RetentionConfig, fullSweep bool) bool {
+	if fullSweep {
+		return true
+	}
+	// Thanos Compactor marks blocks for deletion when:
+	// 1. A block is compacted into a larger block (typically compaction level < 3 or maxTime within last 72h).
+	if b.CompactionLevel < 3 || (nowMs-b.MaxTime) < recentBlockAgeThresholdMs {
+		return true
+	}
+	// 2. A block expires past the configured retention duration (within a 24h buffer).
+	var retSec float64
+	switch b.Resolution {
+	case "raw":
+		retSec = ret.RawSeconds
+	case "5m":
+		retSec = ret.FiveMinSec
+	case "1h":
+		retSec = ret.OneHourSec
+	}
+	if retSec > 0 {
+		retMs := int64(retSec * 1000)
+		if (nowMs - b.MaxTime) >= (retMs - retentionBufferMs) {
+			return true
+		}
+	}
+	return false
 }
 
 func (ins *Inspector) getObjectBytes(ctx context.Context, name string) ([]byte, error) {

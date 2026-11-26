@@ -21,7 +21,11 @@ import (
 // because churn measures turnover within an active population; metrics newly introduced,
 // fully retired, or pulsed at intervals equal to or exceeding the sliding window
 // (e.g. periodic 15m/1d recording rules) do not represent series turnover.
-func CalculateChurnRatio(curr, prev *hll.Sketch) float64 {
+//
+// If a non-nil scratch sketch is provided, it is reused for the union calculation
+// to avoid heap allocations. If scratch is nil or omitted, a temporary clone of curr is allocated
+// and released.
+func CalculateChurnRatio(curr, prev *hll.Sketch, scratch ...*hll.Sketch) float64 {
 	if curr == nil || prev == nil {
 		return 0
 	}
@@ -34,8 +38,21 @@ func CalculateChurnRatio(curr, prev *hll.Sketch) float64 {
 		return 0
 	}
 
-	union := curr.Clone()
-	defer union.Release()
+	var union *hll.Sketch
+	var autoRelease bool
+	if len(scratch) > 0 && scratch[0] != nil {
+		union = scratch[0]
+		union.Reset()
+		if err := union.Merge(curr); err != nil {
+			return 0
+		}
+	} else {
+		union = curr.Clone()
+		autoRelease = true
+	}
+	if autoRelease {
+		defer union.Release()
+	}
 	if err := union.Merge(prev); err != nil {
 		return 0
 	}
@@ -64,26 +81,32 @@ type churnEntry struct {
 // churnTracker maintains baseline sketches across sliding intervals per group key
 // so churn ratios can be computed without storing raw series IDs.
 type churnTracker struct {
-	mu       sync.Mutex
-	interval time.Duration
-	entries  map[uint64]*churnEntry
+	mu         sync.Mutex
+	interval   time.Duration
+	maxEntries int
+	entries    map[uint64]*churnEntry
 }
 
-func newChurnTracker(interval time.Duration) *churnTracker {
+func newChurnTracker(interval time.Duration, maxEntries int) *churnTracker {
 	return &churnTracker{
-		interval: interval,
-		entries:  make(map[uint64]*churnEntry),
+		interval:   interval,
+		maxEntries: maxEntries,
+		entries:    make(map[uint64]*churnEntry),
 	}
 }
 
 // updateAndRate records the current merged window sketch for groupKey at timestamp now
 // and returns the resulting churn ratio in [0, 1].
-func (ct *churnTracker) updateAndRate(groupKey uint64, sk *hll.Sketch, now time.Time) float64 {
+func (ct *churnTracker) updateAndRate(groupKey uint64, sk, scratch *hll.Sketch, now time.Time) float64 {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
 
 	e, ok := ct.entries[groupKey]
 	if !ok {
+		if ct.maxEntries > 0 && len(ct.entries) >= ct.maxEntries {
+			// At capacity: do not allocate additional churn sketches for burst keys.
+			return 0
+		}
 		ct.entries[groupKey] = &churnEntry{
 			prevAddedAt: now,
 			prevSketch:  nil,
@@ -116,15 +139,15 @@ func (ct *churnTracker) updateAndRate(groupKey uint64, sk *hll.Sketch, now time.
 		}
 	}
 
-	return CalculateChurnRatio(e.currSketch, e.prevSketch)
+	return CalculateChurnRatio(e.currSketch, e.prevSketch, scratch)
 }
 
-// cleanup evicts entries that have not been updated within 2 * interval.
+// cleanup evicts entries that have not been updated within interval.
 func (ct *churnTracker) cleanup(now time.Time) {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
 
-	cutoff := now.Add(-2 * ct.interval)
+	cutoff := now.Add(-ct.interval)
 	for k, e := range ct.entries {
 		if e.currAddedAt.Before(cutoff) {
 			if e.prevSketch != nil {
@@ -135,5 +158,21 @@ func (ct *churnTracker) cleanup(now time.Time) {
 			}
 			delete(ct.entries, k)
 		}
+	}
+}
+
+// releaseAll releases all retained HyperLogLog sketch register buffers back to the pool.
+func (ct *churnTracker) releaseAll() {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+
+	for k, e := range ct.entries {
+		if e.prevSketch != nil {
+			e.prevSketch.Release()
+		}
+		if e.currSketch != nil {
+			e.currSketch.Release()
+		}
+		delete(ct.entries, k)
 	}
 }

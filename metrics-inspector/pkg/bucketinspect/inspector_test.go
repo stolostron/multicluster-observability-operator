@@ -28,16 +28,18 @@ type iterCallRecord struct {
 
 type spyBucketReader struct {
 	*objstore.InMemBucket
-	mu        sync.Mutex
-	iterErr   error
-	getCalls  map[string]int
-	iterCalls []iterCallRecord
+	mu          sync.Mutex
+	iterErr     error
+	getCalls    map[string]int
+	existsCalls map[string]int
+	iterCalls   []iterCallRecord
 }
 
 func newSpyBucketReader() *spyBucketReader {
 	return &spyBucketReader{
 		InMemBucket: objstore.NewInMemBucket(),
 		getCalls:    make(map[string]int),
+		existsCalls: make(map[string]int),
 	}
 }
 
@@ -69,6 +71,13 @@ func (s *spyBucketReader) Get(ctx context.Context, name string) (io.ReadCloser, 
 	s.getCalls[name]++
 	s.mu.Unlock()
 	return s.InMemBucket.Get(ctx, name)
+}
+
+func (s *spyBucketReader) Exists(ctx context.Context, name string) (bool, error) {
+	s.mu.Lock()
+	s.existsCalls[name]++
+	s.mu.Unlock()
+	return s.InMemBucket.Exists(ctx, name)
 }
 
 func TestParseDurationSeconds(t *testing.T) {
@@ -753,5 +762,218 @@ func TestSyncContextCancellation(t *testing.T) {
 	ready, reason := ins.Ready()
 	if ready {
 		t.Fatalf("inspector should NOT be ready after cancelled Sync (reason=%q)", reason)
+	}
+}
+
+func TestIsBlockDeletionCandidate(t *testing.T) {
+	nowMs := time.Now().UnixMilli()
+	ret := RetentionConfig{
+		RawSeconds: 14 * 86400, // 14 days
+		FiveMinSec: 30 * 86400, // 30 days
+		OneHourSec: 90 * 86400, // 90 days
+	}
+
+	tests := []struct {
+		name      string
+		block     BlockSummary
+		ret       RetentionConfig
+		fullSweep bool
+		want      bool
+	}{
+		{
+			name: "full sweep forces probe on any block",
+			ret:  ret,
+			block: BlockSummary{
+				CompactionLevel: 3,
+				Resolution:      "1h",
+				MaxTime:         nowMs - 40*86400*1000, // 40 days old, level 3
+			},
+			fullSweep: true,
+			want:      true,
+		},
+		{
+			name: "recent block (<72h) probed even if compacted",
+			ret:  ret,
+			block: BlockSummary{
+				CompactionLevel: 3,
+				Resolution:      "raw",
+				MaxTime:         nowMs - 24*3600*1000, // 24h old
+			},
+			fullSweep: false,
+			want:      true,
+		},
+		{
+			name: "low compaction level (<3) probed even if older than 72h",
+			ret:  ret,
+			block: BlockSummary{
+				CompactionLevel: 2,
+				Resolution:      "raw",
+				MaxTime:         nowMs - 5*86400*1000, // 5 days old
+			},
+			fullSweep: false,
+			want:      true,
+		},
+		{
+			name: "block approaching retention expiry within 24h buffer probed",
+			ret:  ret,
+			block: BlockSummary{
+				CompactionLevel: 4,
+				Resolution:      "raw",
+				// retention is 14d; block is 13.5d old (within 24h of expiring)
+				MaxTime: nowMs - int64(13.5*86400*1000),
+			},
+			fullSweep: false,
+			want:      true,
+		},
+		{
+			name: "block past retention expiry probed",
+			ret:  ret,
+			block: BlockSummary{
+				CompactionLevel: 4,
+				Resolution:      "raw",
+				MaxTime:         nowMs - 15*86400*1000,
+			},
+			fullSweep: false,
+			want:      true,
+		},
+		{
+			name: "old compacted block well within retention skipped on fast path",
+			ret:  ret,
+			block: BlockSummary{
+				CompactionLevel: 4,
+				Resolution:      "1h",
+				// retention is 90d; block is 30d old (well clear of 72h recent and 90d retention)
+				MaxTime: nowMs - 30*86400*1000,
+			},
+			fullSweep: false,
+			want:      false,
+		},
+		{
+			name: "infinite retention (0s) old compacted block skipped on fast path",
+			ret: RetentionConfig{
+				RawSeconds: 0,
+				FiveMinSec: 0,
+				OneHourSec: 0,
+			},
+			block: BlockSummary{
+				CompactionLevel: 3,
+				Resolution:      "1h",
+				MaxTime:         nowMs - 100*86400*1000,
+			},
+			fullSweep: false,
+			want:      false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isBlockDeletionCandidate(tc.block, nowMs, tc.ret, tc.fullSweep)
+			if got != tc.want {
+				t.Errorf("isBlockDeletionCandidate() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSyncDeletionCandidateProbeSkipsNonCandidates(t *testing.T) {
+	spy := newSpyBucketReader()
+	now := time.Now()
+
+	// 1. Candidate block: recent (<72h)
+	candULID := "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+	candMeta := fmt.Sprintf(`{
+		"ulid": "%s",
+		"minTime": %d,
+		"maxTime": %d,
+		"thanos": {
+			"resolution": 0,
+			"downsample": {"resolution": 0},
+			"labels": {"tenant_id": "t1"},
+			"segment_title": "s1"
+		},
+		"compaction": {"level": 1, "sources": ["%s"]}
+	}`, candULID, now.Add(-2*time.Hour).UnixMilli(), now.Add(-1*time.Hour).UnixMilli(), candULID)
+	spy.put(candULID+"/meta.json", candMeta)
+
+	// 2. Non-candidate block: old (>72h), compaction level 3, well within retention
+	nonCandULID := "01ARZ3NDEKTSV4RRFFQ69G5FBW"
+	nonCandMeta := fmt.Sprintf(`{
+		"ulid": "%s",
+		"minTime": %d,
+		"maxTime": %d,
+		"thanos": {
+			"resolution": 0,
+			"downsample": {"resolution": 0},
+			"labels": {"tenant_id": "t1"},
+			"segment_title": "s1"
+		},
+		"compaction": {"level": 3, "sources": ["%s"]}
+	}`, nonCandULID, now.Add(-200*time.Hour).UnixMilli(), now.Add(-150*time.Hour).UnixMilli(), nonCandULID)
+	spy.put(nonCandULID+"/meta.json", nonCandMeta)
+
+	ins := NewInspector(spy, InspectorConfig{
+		Retention: RetentionConfig{
+			RawSeconds: 30 * 86400, // 30 days
+		},
+	})
+
+	// First sync fetches both blocks
+	if err := ins.Sync(context.Background()); err != nil {
+		t.Fatalf("first Sync failed: %v", err)
+	}
+	if ins.CachedBlocks() != 2 {
+		t.Fatalf("CachedBlocks = %d, want 2", ins.CachedBlocks())
+	}
+
+	spy.mu.Lock()
+	firstCandExists := spy.existsCalls[candULID+"/deletion-mark.json"]
+	firstNonCandExists := spy.existsCalls[nonCandULID+"/deletion-mark.json"]
+	spy.mu.Unlock()
+
+	// On initial fetch, Exists is called when reading metadata
+	if firstCandExists == 0 || firstNonCandExists == 0 {
+		t.Fatalf("expected Exists called during initial block ingest")
+	}
+
+	// Reset exists call counter
+	spy.mu.Lock()
+	spy.existsCalls = make(map[string]int)
+	spy.mu.Unlock()
+
+	// Second sync immediately after (incremental sync, fullSweep is false)
+	if err := ins.Sync(context.Background()); err != nil {
+		t.Fatalf("second Sync failed: %v", err)
+	}
+
+	spy.mu.Lock()
+	secondCandExists := spy.existsCalls[candULID+"/deletion-mark.json"]
+	secondNonCandExists := spy.existsCalls[nonCandULID+"/deletion-mark.json"]
+	spy.mu.Unlock()
+
+	if secondCandExists == 0 {
+		t.Errorf("expected candidate block to be checked for deletion-mark.json on incremental sync")
+	}
+	if secondNonCandExists != 0 {
+		t.Errorf("expected non-candidate block to be SKIPPED on incremental sync, but got %d Exists calls", secondNonCandExists)
+	}
+
+	// Now simulate full sweep (backdate lastFullSweepSecs by 7 hours)
+	ins.lastFullSweepSecs.Store(time.Now().Add(-7 * time.Hour).Unix())
+
+	spy.mu.Lock()
+	spy.existsCalls = make(map[string]int)
+	spy.mu.Unlock()
+
+	if err := ins.Sync(context.Background()); err != nil {
+		t.Fatalf("full sweep Sync failed: %v", err)
+	}
+
+	spy.mu.Lock()
+	fullCandExists := spy.existsCalls[candULID+"/deletion-mark.json"]
+	fullNonCandExists := spy.existsCalls[nonCandULID+"/deletion-mark.json"]
+	spy.mu.Unlock()
+
+	if fullCandExists == 0 || fullNonCandExists == 0 {
+		t.Errorf("expected ALL blocks to be checked during full sweep, got cand=%d, nonCand=%d", fullCandExists, fullNonCandExists)
 	}
 }

@@ -143,6 +143,13 @@ func (r *MCORenderer) Render(ctx context.Context) ([]*unstructured.Unstructured,
 
 	for idx := range resources {
 		if resources[idx].GetKind() == "Deployment" {
+			// Skip metrics-inspector: its Deployment is already fully rendered, sized, and configured
+			// by renderMetricsInspectorDeployment.
+			if resources[idx].GetName() == mcoconfig.GetOperandName(mcoconfig.MetricsInspector) ||
+				resources[idx].GetName() == mcoconfig.MetricsInspectorServiceName {
+				continue
+			}
+
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
 			if err != nil {
