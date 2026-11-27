@@ -230,7 +230,7 @@ func TestMetricsInspectorRendering(t *testing.T) {
 	for _, wantArg := range []string{
 		"--config.file=/etc/metrics-inspector/config.yaml",
 		"--estimator.interval=15m",
-		"--estimator.churn-exclude-regex=^acm_rs[:_]",
+		"--estimator.churn-exclude-regex=^(acm_rs[:_]|kubevirt_)",
 		"--estimator.max-items-per-interval=15000000",
 		fmt.Sprintf("--remote-write.url=http://%s-thanos-receive.%s.svc:19291/api/v1/receive", mcoconfig.GetDefaultCRName(), ns),
 		fmt.Sprintf("--remote-write.tenant=%s", mcoconfig.GetTenantUID()),
