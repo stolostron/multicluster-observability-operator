@@ -40,6 +40,7 @@ func putDigest(d *xxhash.Digest) {
 type Estimator struct {
 	cfg             StreamConfig
 	hasLabelKeyword bool
+	nameGroupIdx    int
 	groupSize       *groupSize
 	buckets         []*estimatorBucket
 	churn           *churnTracker
@@ -66,6 +67,7 @@ func NewEstimator(cfg StreamConfig) (*Estimator, error) {
 	e := &Estimator{
 		cfg:             cfg,
 		hasLabelKeyword: hasLabel,
+		nameGroupIdx:    slices.Index(cfg.GroupBy, "__name__"),
 		groupSize:       gs,
 		buckets:         make([]*estimatorBucket, cfg.Buckets),
 		stopCh:          make(chan struct{}),
@@ -298,8 +300,13 @@ func (e *Estimator) EvaluateAt(now time.Time) StreamReport {
 				continue
 			}
 
+			skipChurn := e.nameGroupIdx >= 0 &&
+				e.nameGroupIdx < len(values) &&
+				e.cfg.churnExcludeRe != nil &&
+				e.cfg.churnExcludeRe.MatchString(values[e.nameGroupIdx])
+
 			var churnRate float64
-			if e.churn != nil {
+			if e.churn != nil && !skipChurn {
 				churnRate = e.churn.updateAndRate(key, resSK, churnScratch, now)
 			}
 
@@ -307,6 +314,7 @@ func (e *Estimator) EvaluateAt(now time.Time) StreamReport {
 				Values:     values,
 				Estimate:   est,
 				ChurnRatio: churnRate,
+				SkipChurn:  skipChurn,
 			})
 		}
 	}

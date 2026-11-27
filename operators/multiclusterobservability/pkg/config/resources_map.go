@@ -386,10 +386,10 @@ var (
 	MetricsInspectorCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
 		Minimal:    "100m",
 		Default:    "100m",
-		Small:      "250m",
-		Medium:     "500m",
-		Large:      "1",
-		XLarge:     "1500m",
+		Small:      "150m",
+		Medium:     "300m",
+		Large:      "500m",
+		XLarge:     "1",
 		TwoXLarge:  "2",
 		FourXLarge: "4",
 	}

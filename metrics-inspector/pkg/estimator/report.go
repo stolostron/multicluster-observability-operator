@@ -27,6 +27,7 @@ type GroupEstimate struct {
 	Values     []string
 	Estimate   uint64
 	ChurnRatio float64
+	SkipChurn  bool
 }
 
 // StreamReport represents a point-in-time evaluation of a single Estimator stream.
@@ -125,7 +126,7 @@ func (r *StreamReport) collectSeries() []seriesPoint {
 			intVal: int64(g.Estimate), //nolint:gosec // HLL estimate is bounded well below math.MaxInt64
 		})
 
-		if r.CalculateChurn {
+		if r.CalculateChurn && !g.SkipChurn {
 			b.Set(labels.MetricName, MetricCardinalityChurn)
 			out = append(out, seriesPoint{
 				labels: b.Labels(),

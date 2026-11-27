@@ -44,6 +44,11 @@ func run() int {
 			estimator.DefaultMaxItemsPerInterval,
 			"Default Bloom filter deduplication capacity per interval when not specified in config.yaml.",
 		)
+		churnExcludeRegex = flag.String(
+			"estimator.churn-exclude-regex",
+			"",
+			"Optional RE2 regular expression matching __name__ values to exclude from per-metric churn calculation when not specified in config.yaml.",
+		)
 		listenAddr        = flag.String("web.listen-address", ":8490", "Address to listen on for Remote Write ingestion and health probes.")
 		metricsListenAddr = flag.String("metrics.listen-address", "", "Optional address to listen on for operational /metrics over plain HTTP (e.g. 127.0.0.1:8080 for kube-rbac-proxy).")
 		tlsServerCertFile = flag.String("tls.server.cert-file", "", "Optional path to the server TLS certificate file for the Remote Write listener.")
@@ -78,7 +83,11 @@ func run() int {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: parsedLevel}))
 	slog.SetDefault(logger)
 
-	cfg, err := estimator.LoadConfigWithDefaults(*configFile, *windowInterval, *maxItemsPerWindow)
+	cfg, err := estimator.LoadConfigWithAllDefaults(*configFile, estimator.ConfigDefaults{
+		Interval:          *windowInterval,
+		MaxItems:          *maxItemsPerWindow,
+		ChurnExcludeRegex: *churnExcludeRegex,
+	})
 	if err != nil {
 		logger.Error("failed to load initial estimator configuration", "file", *configFile, "err", err)
 		return 1

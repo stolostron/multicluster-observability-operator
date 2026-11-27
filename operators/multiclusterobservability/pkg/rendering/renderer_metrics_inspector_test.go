@@ -224,6 +224,7 @@ func TestMetricsInspectorRendering(t *testing.T) {
 	for _, wantArg := range []string{
 		"--config.file=/etc/metrics-inspector/config.yaml",
 		"--estimator.interval=15m",
+		"--estimator.churn-exclude-regex=^acm_rs[:_]",
 		"--estimator.max-items-per-interval=15000000",
 		"--web.listen-address=:8490",
 		"--metrics.listen-address=127.0.0.1:8080",
@@ -335,10 +336,10 @@ func TestMetricsInspectorResourceRequests(t *testing.T) {
 	}{
 		{size: mcoconfig.Default, wantCPU: "100m", wantMemory: "256Mi"},
 		{size: mcoconfig.Minimal, wantCPU: "100m", wantMemory: "256Mi"},
-		{size: mcoconfig.Small, wantCPU: "250m", wantMemory: "512Mi"},
-		{size: mcoconfig.Medium, wantCPU: "500m", wantMemory: "1Gi"},
-		{size: mcoconfig.Large, wantCPU: "1", wantMemory: "2Gi"},
-		{size: mcoconfig.XLarge, wantCPU: "1500m", wantMemory: "3Gi"},
+		{size: mcoconfig.Small, wantCPU: "150m", wantMemory: "512Mi"},
+		{size: mcoconfig.Medium, wantCPU: "300m", wantMemory: "1Gi"},
+		{size: mcoconfig.Large, wantCPU: "500m", wantMemory: "2Gi"},
+		{size: mcoconfig.XLarge, wantCPU: "1", wantMemory: "3Gi"},
 		{size: mcoconfig.TwoXLarge, wantCPU: "2", wantMemory: "4Gi"},
 		{size: mcoconfig.FourXLarge, wantCPU: "4", wantMemory: "6Gi"},
 	}

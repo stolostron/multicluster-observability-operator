@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/hll"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/protoparser"
@@ -755,5 +756,308 @@ streams:
 		if got < 5250 || got > 5550 {
 			t.Fatalf("step %d (%s): expected steady cardinality ~5400, got %d", step, elapsed, got)
 		}
+	}
+}
+
+func TestChurnExcludeRegexValidation(t *testing.T) {
+	yamlInvalid := `
+churn_exclude_regex: "["
+streams:
+  - group_by: [cluster]
+`
+	_, err := ParseConfig([]byte(yamlInvalid))
+	if err == nil {
+		t.Fatalf("expected error parsing invalid churn_exclude_regex, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid churn_exclude_regex") {
+		t.Fatalf("expected error to mention 'invalid churn_exclude_regex', got: %v", err)
+	}
+
+	cfg := Config{
+		ChurnExcludeRegex: `*invalid`,
+		Streams: []StreamConfig{
+			{GroupBy: []string{"cluster"}},
+		},
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Fatalf("expected Validate() to fail on invalid regex, got nil")
+	}
+
+	yamlInvalidStream := `
+churn_exclude_regex: "^valid_prefix_"
+streams:
+  - group_by: [cluster]
+    churn_exclude_regex: "["
+`
+	_, err = ParseConfig([]byte(yamlInvalidStream))
+	if err == nil {
+		t.Fatalf("expected error parsing invalid per-stream churn_exclude_regex, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid stream[0]") || !strings.Contains(err.Error(), "invalid churn_exclude_regex") {
+		t.Fatalf("expected error to mention 'invalid stream[0]' and 'invalid churn_exclude_regex', got: %v", err)
+	}
+}
+
+func TestChurnExcludeRegexPrecedence(t *testing.T) {
+	yamlWithout := []byte(`
+streams:
+  - group_by: [cluster]
+`)
+	cfgFallback, err := ParseConfigWithAllDefaults(yamlWithout, ConfigDefaults{
+		ChurnExcludeRegex: "^acm_rs[:_]",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfgFallback.ChurnExcludeRegex != "^acm_rs[:_]" {
+		t.Fatalf("expected ChurnExcludeRegex to fall back to CLI default, got %q", cfgFallback.ChurnExcludeRegex)
+	}
+	if len(cfgFallback.Streams) != 1 || cfgFallback.Streams[0].ChurnExcludeRe() == nil {
+		t.Fatalf("expected StreamConfig to have compiled regex from default")
+	}
+	if !cfgFallback.Streams[0].ChurnExcludeRe().MatchString("acm_rs:test") {
+		t.Fatalf("expected compiled regex to match 'acm_rs:test'")
+	}
+
+	yamlWith := []byte(`
+churn_exclude_regex: "^custom_prefix_"
+streams:
+  - group_by: [cluster]
+`)
+	cfgExplicit, err := ParseConfigWithAllDefaults(yamlWith, ConfigDefaults{
+		ChurnExcludeRegex: "^acm_rs[:_]",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfgExplicit.ChurnExcludeRegex != "^custom_prefix_" {
+		t.Fatalf("expected explicit YAML churn_exclude_regex to take precedence, got %q", cfgExplicit.ChurnExcludeRegex)
+	}
+	if len(cfgExplicit.Streams) != 1 || cfgExplicit.Streams[0].ChurnExcludeRe() == nil {
+		t.Fatalf("expected StreamConfig to have compiled regex from YAML")
+	}
+	if !cfgExplicit.Streams[0].ChurnExcludeRe().MatchString("custom_prefix_test") {
+		t.Fatalf("expected compiled regex to match 'custom_prefix_test'")
+	}
+	if cfgExplicit.Streams[0].ChurnExcludeRe().MatchString("acm_rs:test") {
+		t.Fatalf("expected CLI default to be overridden and not match 'acm_rs:test'")
+	}
+
+	yamlStreamOverride := []byte(`
+churn_exclude_regex: "^top_level_"
+streams:
+  - group_by: [cluster]
+  - group_by: [cluster, __name__]
+    churn_exclude_regex: "^stream_override_"
+`)
+	cfgStreamOverride, err := ParseConfigWithAllDefaults(yamlStreamOverride, ConfigDefaults{
+		ChurnExcludeRegex: "^acm_rs[:_]",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfgStreamOverride.Streams) != 2 {
+		t.Fatalf("expected 2 streams, got %d", len(cfgStreamOverride.Streams))
+	}
+	s0Re := cfgStreamOverride.Streams[0].ChurnExcludeRe()
+	if s0Re == nil || !s0Re.MatchString("top_level_metric") || s0Re.MatchString("stream_override_metric") {
+		t.Fatalf("stream 0 should match top_level_metric and not stream_override_metric")
+	}
+	s1Re := cfgStreamOverride.Streams[1].ChurnExcludeRe()
+	if s1Re == nil || !s1Re.MatchString("stream_override_metric") || s1Re.MatchString("top_level_metric") {
+		t.Fatalf("stream 1 should match stream_override_metric and not top_level_metric")
+	}
+}
+
+func TestChurnExcludeRegexEvaluation(t *testing.T) {
+	cfg, err := ParseConfig([]byte(`
+max_items_per_interval: 100000
+churn_exclude_regex: "^acm_rs[:_]"
+streams:
+  - interval: 15m
+    group_by: [__name__]
+    hll_precision: 12
+    calculate_churn: true
+  - interval: 15m
+    group_by: [cluster, __name__]
+    hll_precision: 12
+    calculate_churn: true
+  - interval: 15m
+    group_by: [cluster]
+    hll_precision: 12
+    calculate_churn: true
+`))
+	if err != nil {
+		t.Fatalf("ParseConfig failed: %v", err)
+	}
+
+	eng, err := NewEngine(cfg)
+	if err != nil {
+		t.Fatalf("NewEngine failed: %v", err)
+	}
+	defer eng.Stop()
+
+	// Ingest 3 distinct metrics
+	// 1. acm_rs:namespace:cpu_recommendation (matches ^acm_rs[:_])
+	// 2. acm_rs_vm:namespace:cpu_usage (matches ^acm_rs[:_])
+	// 3. container_cpu_working_set_bytes (does not match)
+	batch := []protoparser.TimeSeries{
+		{
+			Hash: xxhash.Sum64([]byte("local-cluster|acm_rs:namespace:cpu_recommendation")),
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "acm_rs:namespace:cpu_recommendation"},
+				{Name: "cluster", Value: "local-cluster"},
+			},
+		},
+		{
+			Hash: xxhash.Sum64([]byte("local-cluster|acm_rs_vm:namespace:cpu_usage")),
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "acm_rs_vm:namespace:cpu_usage"},
+				{Name: "cluster", Value: "local-cluster"},
+			},
+		},
+		{
+			Hash: xxhash.Sum64([]byte("local-cluster|container_cpu_working_set_bytes")),
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "container_cpu_working_set_bytes"},
+				{Name: "cluster", Value: "local-cluster"},
+			},
+		},
+	}
+
+	now := time.Now()
+	eng.Ingest(batch)
+
+	// First evaluation creates baseline windows
+	reports := eng.Evaluate(now)
+	if len(reports) != 3 {
+		t.Fatalf("expected 3 reports, got %d", len(reports))
+	}
+
+	// Advance time to populate churn calculation
+	now2 := now.Add(15 * time.Minute)
+	batch2 := []protoparser.TimeSeries{
+		{
+			Hash: xxhash.Sum64([]byte("local-cluster|acm_rs:namespace:cpu_recommendation|v2")),
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "acm_rs:namespace:cpu_recommendation"},
+				{Name: "cluster", Value: "local-cluster"},
+				{Name: "pod", Value: "pod-2"},
+			},
+		},
+		{
+			Hash: xxhash.Sum64([]byte("local-cluster|container_cpu_working_set_bytes|v2")),
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "container_cpu_working_set_bytes"},
+				{Name: "cluster", Value: "local-cluster"},
+				{Name: "pod", Value: "pod-2"},
+			},
+		},
+	}
+	eng.Ingest(batch2)
+	reports2 := eng.Evaluate(now2)
+
+	// Check Stream 0: [__name__]
+	r0 := reports2[0]
+	if len(r0.Groups) != 3 {
+		t.Fatalf("stream 0 [__name__]: expected 3 groups, got %d", len(r0.Groups))
+	}
+	for _, g := range r0.Groups {
+		name := g.Values[0]
+		if g.Estimate == 0 {
+			t.Fatalf("expected non-zero cardinality estimate for %s", name)
+		}
+		if strings.HasPrefix(name, "acm_rs:") || strings.HasPrefix(name, "acm_rs_vm:") {
+			if !g.SkipChurn {
+				t.Fatalf("expected SkipChurn=true for %s", name)
+			}
+		} else if name == "container_cpu_working_set_bytes" {
+			if g.SkipChurn {
+				t.Fatalf("expected SkipChurn=false for %s", name)
+			}
+		}
+	}
+	s0 := r0.collectSeries()
+	var churnNames0 []string
+	for _, pt := range s0 {
+		if pt.labels.Get(labels.MetricName) == MetricCardinalityChurn {
+			churnNames0 = append(churnNames0, pt.labels.Get("by__name__"))
+		}
+	}
+	if len(churnNames0) != 1 || churnNames0[0] != "container_cpu_working_set_bytes" {
+		t.Fatalf("stream 0: expected churn emitted only for container_cpu_working_set_bytes, got %v", churnNames0)
+	}
+
+	// Verify internal churnTracker for Stream 0 only contains non-excluded metrics
+	checkTracker := func() {
+		ct0 := eng.pipelines[0].estimators[0].churn
+		ct0.mu.Lock()
+		defer ct0.mu.Unlock()
+		if len(ct0.entries) != 1 {
+			t.Fatalf("stream 0 churnTracker: expected exactly 1 entry, got %d", len(ct0.entries))
+		}
+		expectedKey := xxhash.Sum64([]byte("\x00container_cpu_working_set_bytes"))
+		if _, ok := ct0.entries[expectedKey]; !ok {
+			t.Fatalf("stream 0 churnTracker: expected entry for container_cpu_working_set_bytes (key %d)", expectedKey)
+		}
+		excludedKey1 := xxhash.Sum64([]byte("\x00acm_rs:namespace:cpu_recommendation"))
+		if _, ok := ct0.entries[excludedKey1]; ok {
+			t.Fatalf("stream 0 churnTracker: unexpected entry for acm_rs:namespace:cpu_recommendation")
+		}
+		excludedKey2 := xxhash.Sum64([]byte("\x00acm_rs_vm:namespace:cpu_usage"))
+		if _, ok := ct0.entries[excludedKey2]; ok {
+			t.Fatalf("stream 0 churnTracker: unexpected entry for acm_rs_vm:namespace:cpu_usage")
+		}
+	}
+	checkTracker()
+
+	// Check Stream 1: [cluster, __name__]
+	r1 := reports2[1]
+	for _, g := range r1.Groups {
+		name := g.Values[1]
+		if g.Estimate == 0 {
+			t.Fatalf("expected non-zero cardinality estimate for %v", g.Values)
+		}
+		if strings.HasPrefix(name, "acm_rs:") || strings.HasPrefix(name, "acm_rs_vm:") {
+			if !g.SkipChurn {
+				t.Fatalf("expected SkipChurn=true for %v", g.Values)
+			}
+		} else if name == "container_cpu_working_set_bytes" {
+			if g.SkipChurn {
+				t.Fatalf("expected SkipChurn=false for %v", g.Values)
+			}
+		}
+	}
+	s1 := r1.collectSeries()
+	var churnNames1 []string
+	for _, pt := range s1 {
+		if pt.labels.Get(labels.MetricName) == MetricCardinalityChurn {
+			churnNames1 = append(churnNames1, pt.labels.Get("by__name__"))
+		}
+	}
+	if len(churnNames1) != 1 || churnNames1[0] != "container_cpu_working_set_bytes" {
+		t.Fatalf("stream 1: expected churn emitted only for container_cpu_working_set_bytes, got %v", churnNames1)
+	}
+
+	// Check Stream 2: [cluster] (not grouped by __name__)
+	r2 := reports2[2]
+	if len(r2.Groups) != 1 {
+		t.Fatalf("stream 2 [cluster]: expected 1 group, got %d", len(r2.Groups))
+	}
+	if r2.Groups[0].SkipChurn {
+		t.Fatalf("stream 2 [cluster]: expected SkipChurn=false")
+	}
+	s2 := r2.collectSeries()
+	hasClusterChurn := false
+	for _, pt := range s2 {
+		if pt.labels.Get(labels.MetricName) == MetricCardinalityChurn {
+			hasClusterChurn = true
+			if pt.labels.Get("by_cluster") != "local-cluster" {
+				t.Fatalf("stream 2: unexpected by_cluster label: %s", pt.labels.Get("by_cluster"))
+			}
+		}
+	}
+	if !hasClusterChurn {
+		t.Fatalf("stream 2 [cluster]: expected cardinality_churn_ratio to be emitted")
 	}
 }
