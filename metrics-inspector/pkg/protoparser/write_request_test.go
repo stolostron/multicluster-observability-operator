@@ -230,3 +230,57 @@ func TestParseStreamRW1ProtocolEdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestTimeSeriesHashWireOrderIndependence(t *testing.T) {
+	// Label: name="foo", value="bar"
+	// Order 1: tag 1 (name) then tag 2 (value)
+	lblOrder1 := []byte{
+		0x0a, 0x03, 'f', 'o', 'o',
+		0x12, 0x03, 'b', 'a', 'r',
+	}
+	// Order 2: tag 2 (value) then tag 1 (name)
+	lblOrder2 := []byte{
+		0x12, 0x03, 'b', 'a', 'r',
+		0x0a, 0x03, 'f', 'o', 'o',
+	}
+
+	buildMsg := func(lblBytes []byte) []byte {
+		// TimeSeries message (tag 1: repeated Label = 0x0a)
+		tsMsg := append([]byte{0x0a, byte(len(lblBytes))}, lblBytes...)
+		// WriteRequest message (tag 1: repeated TimeSeries = 0x0a)
+		wrMsg := append([]byte{0x0a, byte(len(tsMsg))}, tsMsg...)
+		return snappy.Encode(nil, wrMsg)
+	}
+
+	var hash1, hash2 uint64
+	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/write", bytes.NewReader(buildMsg(lblOrder1)))
+	err := ParseStream(req1, false, DefaultMaxWriteRequestSize, func(wr *WriteRequest) error {
+		if len(wr.Timeseries) != 1 {
+			t.Fatalf("expected 1 timeseries, got %d", len(wr.Timeseries))
+		}
+		hash1 = wr.Timeseries[0].Hash
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("ParseStream failed for order 1: %v", err)
+	}
+
+	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/write", bytes.NewReader(buildMsg(lblOrder2)))
+	err = ParseStream(req2, false, DefaultMaxWriteRequestSize, func(wr *WriteRequest) error {
+		if len(wr.Timeseries) != 1 {
+			t.Fatalf("expected 1 timeseries, got %d", len(wr.Timeseries))
+		}
+		hash2 = wr.Timeseries[0].Hash
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("ParseStream failed for order 2: %v", err)
+	}
+
+	if hash1 == 0 {
+		t.Fatal("expected non-zero hash")
+	}
+	if hash1 != hash2 {
+		t.Fatalf("expected identical hash regardless of field wire order, got %d vs %d", hash1, hash2)
+	}
+}

@@ -157,15 +157,20 @@ func (e *Estimator) InsertMany(tss []protoparser.TimeSeries) {
 
 		hasNames := len(groupByKeys) == 0
 		for kIdx, labelName := range groupByKeys {
+			found := false
 			for lIdx := range ts.Labels {
 				l := &ts.Labels[lIdx]
 				if l.Name == labelName {
 					hasNames = true
-					_, _ = d.WriteString("\x00")
+					found = true
+					_, _ = d.WriteString("\x01")
 					_, _ = d.WriteString(l.Value)
 					groupValues[kIdx] = l.Value
 					break
 				}
+			}
+			if !found {
+				_, _ = d.WriteString("\x00")
 			}
 		}
 

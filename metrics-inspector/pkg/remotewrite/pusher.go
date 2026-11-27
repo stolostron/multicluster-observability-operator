@@ -7,6 +7,7 @@ package remotewrite
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,6 +20,26 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stolostron/multicluster-observability-operator/metrics-inspector/pkg/estimator"
 )
+
+type statusError struct {
+	statusCode int
+	message    string
+}
+
+func (e *statusError) Error() string {
+	return e.message
+}
+
+func isRetryable(err error) bool {
+	if err == nil {
+		return false
+	}
+	var sErr *statusError
+	if errors.As(err, &sErr) {
+		return sErr.statusCode >= 500 || sErr.statusCode == http.StatusTooManyRequests
+	}
+	return true
+}
 
 const (
 	DefaultFlushInterval = 60 * time.Second
@@ -46,6 +67,7 @@ type PusherConfig struct {
 	ProbeRetryInterval time.Duration
 	BatchSize          int
 	Timeout            time.Duration
+	RetryBackoff       []time.Duration
 	TenantHeader       string
 	TenantID           string
 	Logger             *slog.Logger
@@ -84,6 +106,9 @@ func NewPusher(cfg PusherConfig, engine *estimator.Engine) *Pusher {
 	}
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = DefaultTimeout
+	}
+	if cfg.RetryBackoff == nil {
+		cfg.RetryBackoff = []time.Duration{500 * time.Millisecond, 1 * time.Second}
 	}
 	if cfg.TenantHeader == "" {
 		cfg.TenantHeader = DefaultTenantHeader
@@ -168,6 +193,11 @@ func (p *Pusher) getTenantID() string {
 	p.tenantMu.RLock()
 	defer p.tenantMu.RUnlock()
 	return p.tenantID
+}
+
+// TenantID returns the currently configured or observed Thanos tenant ID.
+func (p *Pusher) TenantID() string {
+	return p.getTenantID()
 }
 
 // Run starts the periodic flush loop until ctx is canceled.
@@ -259,9 +289,29 @@ func (p *Pusher) FlushAt(ctx context.Context, now time.Time) error {
 
 	for start := 0; start < len(allSeries); start += p.cfg.BatchSize {
 		end := min(start+p.cfg.BatchSize, len(allSeries))
-		if err := p.sendBatch(ctx, allSeries[start:end]); err != nil {
-			p.pushErrorsTotal.Add(1)
-			return err
+		batch := allSeries[start:end]
+		var sendErr error
+		for attempt := 0; ; attempt++ {
+			sendErr = p.sendBatch(ctx, batch)
+			if sendErr == nil {
+				break
+			}
+			if !isRetryable(sendErr) || attempt >= len(p.cfg.RetryBackoff) {
+				p.pushErrorsTotal.Add(1)
+				return sendErr
+			}
+			p.cfg.Logger.Warn("transient error pushing remote-write batch; retrying",
+				"attempt", attempt+1,
+				"max_retries", len(p.cfg.RetryBackoff),
+				"backoff", p.cfg.RetryBackoff[attempt],
+				"err", sendErr,
+			)
+			select {
+			case <-ctx.Done():
+				p.pushErrorsTotal.Add(1)
+				return ctx.Err()
+			case <-time.After(p.cfg.RetryBackoff[attempt]):
+			}
 		}
 		p.pushedSeriesTotal.Add(uint64(end - start)) //nolint:gosec // end > start guaranteed by loop bounds
 		p.pushSuccessTotal.Add(1)
@@ -306,7 +356,10 @@ func (p *Pusher) sendBatch(ctx context.Context, series []prompb.TimeSeries) erro
 
 	if resp.StatusCode/100 != 2 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("unexpected status %d from %s: %s", resp.StatusCode, p.cfg.Endpoint, string(body))
+		return &statusError{
+			statusCode: resp.StatusCode,
+			message:    fmt.Sprintf("unexpected status %d from %s: %s", resp.StatusCode, p.cfg.Endpoint, string(body)),
+		}
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return nil

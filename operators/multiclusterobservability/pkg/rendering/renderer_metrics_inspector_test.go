@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"slices"
@@ -19,6 +20,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util/tlstesting"
+	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +38,8 @@ func TestMetricsInspectorRendering(t *testing.T) {
 	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
 	templates.ResetTemplates()
 	t.Cleanup(templates.ResetTemplates)
+	mcoconfig.CleanUpOperandNames()
+	t.Cleanup(mcoconfig.CleanUpOperandNames)
 
 	ns := mcoconfig.GetDefaultNamespace()
 	objSecret := &corev1.Secret{
@@ -72,7 +76,8 @@ func TestMetricsInspectorRendering(t *testing.T) {
 			},
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			InstanceSize: mcoconfig.Large,
+			InstanceSize:       mcoconfig.Large,
+			EnableDownsampling: true,
 			StorageConfig: &mcov1beta2.StorageConfig{
 				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Name:                     "thanos-object-storage",
@@ -227,6 +232,9 @@ func TestMetricsInspectorRendering(t *testing.T) {
 		"--estimator.interval=15m",
 		"--estimator.churn-exclude-regex=^acm_rs[:_]",
 		"--estimator.max-items-per-interval=15000000",
+		fmt.Sprintf("--remote-write.url=http://%s-thanos-receive.%s.svc:19291/api/v1/receive", mcoconfig.GetDefaultCRName(), ns),
+		fmt.Sprintf("--remote-write.tenant=%s", mcoconfig.GetTenantUID()),
+		"--enable-downsampling=true",
 		"--web.listen-address=:8490",
 		"--metrics.listen-address=127.0.0.1:8080",
 		"--tls.server.cert-file=/var/metrics-inspector/server-certs/tls.crt",
@@ -353,5 +361,104 @@ func TestMetricsInspectorResourceRequests(t *testing.T) {
 		if mem != tc.wantMemory {
 			t.Errorf("MetricsInspectorMemoryRequest[%q] = %q, want %q", tc.size, mem, tc.wantMemory)
 		}
+	}
+}
+
+func TestMetricsInspectorCustomObservatoriumCRName(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working dir: %v", err)
+	}
+	templatesPath := path.Join(path.Dir(path.Dir(wd)), "manifests")
+	t.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+	templates.ResetTemplates()
+	t.Cleanup(templates.ResetTemplates)
+
+	mcoconfig.CleanUpOperandNames()
+	t.Cleanup(mcoconfig.CleanUpOperandNames)
+
+	customObsName := "custom-observatorium"
+	obsCR := &obsv1alpha1.Observatorium{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      customObsName,
+			Namespace: mcoconfig.GetDefaultNamespace(),
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind: "MultiClusterObservability",
+					Name: mcoconfig.GetMonitoringCRName(),
+				},
+			},
+		},
+	}
+	objSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "thanos-object-storage",
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Data: map[string][]byte{
+			"thanos.yaml": []byte("type: S3\nconfig:\n  bucket: test-bucket\n  endpoint: s3.amazonaws.com\n"),
+		},
+	}
+
+	kubeClient := tlstesting.NewFakeTLSClientBuilder().
+		WithScheme(corev1.AddToScheme).
+		WithScheme(ocinfrav1.AddToScheme).
+		WithScheme(obsv1alpha1.AddToScheme).
+		WithObjects(obsCR, objSecret).
+		Build(t)
+	if err := mcoconfig.SetOperandNames(kubeClient); err != nil {
+		t.Fatalf("SetOperandNames: %v", err)
+	}
+
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mcoconfig.GetMonitoringCRName(),
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			Capabilities: &mcov1beta2.CapabilitiesSpec{
+				Platform: &mcov1beta2.PlatformCapabilitiesSpec{
+					Metrics: mcov1beta2.PlatformMetricsSpec{
+						Inspector: mcov1beta2.MetricsInspectorSpec{
+							Enabled: true,
+						},
+					},
+				},
+			},
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Name: "thanos-object-storage",
+					Key:  "thanos.yaml",
+				},
+			},
+		},
+	}
+	renderer := NewMCORenderer(mco, kubeClient, nil)
+
+	resources, err := renderer.MetricsInspectorResources(t.Context(), mcoconfig.GetDefaultNamespace(), map[string]string{})
+	if err != nil {
+		t.Fatalf("MetricsInspectorResources: %v", err)
+	}
+
+	found := false
+	expectedDepName := mcoconfig.GetOperandName(mcoconfig.MetricsInspector)
+	wantURL := fmt.Sprintf("--remote-write.url=http://%s-thanos-receive.%s.svc:19291/api/v1/receive", customObsName, mcoconfig.GetDefaultNamespace())
+	for _, res := range resources {
+		if res.GetKind() == "Deployment" && res.GetName() == expectedDepName {
+			dep := &appsv1.Deployment{}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(res.Object, dep); err != nil {
+				t.Fatalf("FromUnstructured: %v", err)
+			}
+			for _, container := range dep.Spec.Template.Spec.Containers {
+				if container.Name == "metrics-inspector" {
+					if !slices.Contains(container.Args, wantURL) {
+						t.Errorf("expected %q in args, got %v", wantURL, container.Args)
+					}
+					found = true
+				}
+			}
+		}
+	}
+	if !found {
+		t.Errorf("did not find %s deployment to verify custom remote-write.url", expectedDepName)
 	}
 }

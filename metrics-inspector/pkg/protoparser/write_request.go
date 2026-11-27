@@ -181,7 +181,10 @@ func unmarshalTimeSeriesLabels(
 			return dst, hashesDst, fmt.Errorf("cannot unmarshal Label: %w", err)
 		}
 
-		_, _ = tsD.Write(payload)
+		_, _ = tsD.WriteString(lbl.Name)
+		_, _ = tsD.WriteString("\xff")
+		_, _ = tsD.WriteString(lbl.Value)
+		_, _ = tsD.WriteString("\xff")
 		if hashEachLabel {
 			hashesDst = append(hashesDst, xxhash.Sum64(valueBytes))
 		}

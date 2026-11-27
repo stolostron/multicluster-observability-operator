@@ -977,3 +977,101 @@ func TestSyncDeletionCandidateProbeSkipsNonCandidates(t *testing.T) {
 		t.Errorf("expected ALL blocks to be checked during full sweep, got cand=%d, nonCand=%d", fullCandExists, fullNonCandExists)
 	}
 }
+
+func TestCorruptMetaJSONSkippedCleanly(t *testing.T) {
+	spy := newSpyBucketReader()
+	validULID := "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+	corruptULID := "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+
+	validMeta := fmt.Sprintf(`{
+		"ulid": "%s",
+		"minTime": 1000,
+		"maxTime": 2000,
+		"thanos": {
+			"resolution": 0,
+			"downsample": {"resolution": 0},
+			"labels": {"tenant_id": "t1"}
+		}
+	}`, validULID)
+	spy.put(validULID+"/meta.json", validMeta)
+	spy.put(corruptULID+"/meta.json", "{ malformed json ...")
+
+	ins := NewInspector(spy, InspectorConfig{})
+	if err := ins.Sync(context.Background()); err != nil {
+		t.Fatalf("expected Sync() to succeed and skip corrupt block, got error: %v", err)
+	}
+
+	if ins.CachedBlocks() != 1 {
+		t.Fatalf("expected 1 valid block cached, got %d", ins.CachedBlocks())
+	}
+	if ok, reason := ins.Ready(); !ok {
+		t.Fatalf("expected Ready() = true, got false (%s)", reason)
+	}
+}
+
+func TestDisableDownsampling(t *testing.T) {
+	spy := newSpyBucketReader()
+	now := time.Now()
+	rawULID := "01ARZ3NDEKTSV4RRFFQ69G5FA1"
+	downsampleULID := "01ARZ3NDEKTSV4RRFFQ69G5FA2"
+
+	// Raw block: 48h to 72h old (24h span)
+	rawMin := now.Add(-72 * time.Hour).UnixMilli()
+	rawMax := now.Add(-48 * time.Hour).UnixMilli()
+	rawMeta := fmt.Sprintf(`{
+		"ulid": "%s",
+		"minTime": %d,
+		"maxTime": %d,
+		"thanos": {
+			"downsample": {"resolution": 0},
+			"labels": {"tenant_id": "default", "receive": "true"},
+			"files": [{"rel_path": "chunks/000001", "size_bytes": 1000000}]
+		},
+		"compaction": {"level": 2}
+	}`, rawULID, rawMin, rawMax)
+	spy.put(rawULID+"/meta.json", rawMeta)
+
+	// 5m downsampled block
+	downMeta := fmt.Sprintf(`{
+		"ulid": "%s",
+		"minTime": %d,
+		"maxTime": %d,
+		"thanos": {
+			"downsample": {"resolution": 300000},
+			"labels": {"tenant_id": "default", "receive": "true"},
+			"files": [{"rel_path": "chunks/000001", "size_bytes": 500000}]
+		},
+		"compaction": {"level": 2}
+	}`, downsampleULID, rawMin, rawMax)
+	spy.put(downsampleULID+"/meta.json", downMeta)
+
+	enableDown := false
+	ins := NewInspector(spy, InspectorConfig{
+		Retention: RetentionConfig{
+			RawSeconds: 30 * 86400,
+			// Infinite downsample retention (0s)
+			FiveMinSec: 0,
+			OneHourSec: 0,
+		},
+		EnableDownsampling: &enableDown,
+	})
+
+	if err := ins.Sync(context.Background()); err != nil {
+		t.Fatalf("Sync failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	ins.WritePrometheusText(&buf, now)
+	metricsText := buf.String()
+	// Assert 5m and 1h burn rates are 0
+	if !strings.Contains(metricsText, `thanos_bucket_burn_rate_bytes_per_second{producer="receive",resolution="5m",tenant_id="default"} 0`) {
+		t.Errorf("expected 5m burn rate = 0, got:\n%s", metricsText)
+	}
+	if !strings.Contains(metricsText, `thanos_bucket_burn_rate_bytes_per_second{producer="receive",resolution="1h",tenant_id="default"} 0`) {
+		t.Errorf("expected 1h burn rate = 0, got:\n%s", metricsText)
+	}
+	// Assert steady state projection IS emitted because raw retention is finite (30d), despite downsample retention being 0s
+	if !strings.Contains(metricsText, `thanos_bucket_projected_steady_state_bytes{producer="receive",tenant_id="default"}`) {
+		t.Errorf("expected projected steady state bytes emitted when downsampling is disabled and raw retention is finite, got:\n%s", metricsText)
+	}
+}

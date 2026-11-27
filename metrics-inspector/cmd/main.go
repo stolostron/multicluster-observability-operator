@@ -71,6 +71,7 @@ func run() int {
 		retentionRaw       = flag.String("retention.resolution-raw", bucketinspect.DefaultRetentionDuration, "Configured Thanos retention duration for raw (0s) resolution blocks.")
 		retention5m        = flag.String("retention.resolution-5m", bucketinspect.DefaultRetentionDuration, "Configured Thanos retention duration for 5m downsampled blocks.")
 		retention1h        = flag.String("retention.resolution-1h", bucketinspect.DefaultRetentionDuration, "Configured Thanos retention duration for 1h downsampled blocks.")
+		enableDownsampling = flag.Bool("enable-downsampling", true, "Enable Thanos downsampled block (5m and 1h) inspection and storage projection.")
 		logLevel           = flag.String("log.level", "info", "Log level for structured JSON output (debug, info, warn, error).")
 	)
 	flag.Parse()
@@ -109,16 +110,37 @@ func run() int {
 		Logger:        logger,
 	}, eng)
 
+	mainLn, err := net.Listen("tcp", *listenAddr)
+	if err != nil {
+		logger.Error("failed to listen on main address", "listen", *listenAddr, "err", err)
+		return 1
+	}
+	defer func() { _ = mainLn.Close() }()
+
+	var metricsLn net.Listener
+	if *metricsListenAddr != "" {
+		metricsLn, err = net.Listen("tcp", *metricsListenAddr)
+		if err != nil {
+			logger.Error("failed to listen on metrics address", "listen", *metricsListenAddr, "err", err)
+			return 1
+		}
+		defer func() { _ = metricsLn.Close() }()
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
+	var bgWg sync.WaitGroup
+	defer bgWg.Wait()
 	defer cancel()
 
 	inspector, err := initBucketInspector(
 		ctx,
+		&bgWg,
 		*objstoreConfigFile,
 		*bucketSyncInterval,
 		*retentionRaw,
 		*retention5m,
 		*retention1h,
+		*enableDownsampling,
 		logger,
 	)
 	if err != nil {
@@ -132,7 +154,7 @@ func run() int {
 	var mainMux *http.ServeMux
 	var metricsSrv *http.Server
 	if *metricsListenAddr != "" {
-		mainMux = newWriteServerMux(eng, pusher, inspector, metrics, *tenantHeader, *maxRequestSize, requireClientCert, logger)
+		mainMux = newWriteServerMux(eng, pusher, metrics, *tenantHeader, *maxRequestSize, requireClientCert, logger)
 		metricsMux := newMetricsServerMux(eng, pusher, inspector, metrics, logger)
 		metricsSrv = &http.Server{
 			Addr:              *metricsListenAddr,
@@ -165,23 +187,32 @@ func run() int {
 		srv.TLSConfig = tlsCfg
 	}
 
-	go pusher.Run(ctx)
+	bgWg.Go(func() {
+		pusher.Run(ctx)
+	})
 
+	var metricsServeErr atomic.Bool
 	if metricsSrv != nil {
-		go func() {
+		bgWg.Go(func() {
 			logger.Info("starting metrics HTTP server", "listen", *metricsListenAddr)
-			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if err := metricsSrv.Serve(metricsLn); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				logger.Error("metrics HTTP server terminated with error", "err", err)
+				metricsServeErr.Store(true)
 				cancel()
 			}
-		}()
+		})
 	}
 
 	stopSigCh := make(chan os.Signal, 1)
 	signal.Notify(stopSigCh, syscall.SIGINT, syscall.SIGTERM)
+	shutdownDone := make(chan struct{})
 	go func() {
-		sig := <-stopSigCh
-		logger.Info("received shutdown signal", "signal", sig.String())
+		defer close(shutdownDone)
+		select {
+		case sig := <-stopSigCh:
+			logger.Info("received shutdown signal", "signal", sig.String())
+		case <-ctx.Done():
+		}
 		metrics.shuttingDown.Store(true)
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer shutdownCancel()
@@ -197,21 +228,21 @@ func run() int {
 	}()
 
 	logger.Info("starting ACM metrics inspector", "listen", *listenAddr, "tls", useTLS, "mtls", requireClientCert)
+	var serveErr error
 	if useTLS {
-		ln, err := net.Listen("tcp", *listenAddr)
-		if err != nil {
-			logger.Error("failed to listen on address", "listen", *listenAddr, "err", err)
-			return 1
-		}
-		tlsListener := tls.NewListener(ln, srv.TLSConfig)
-		if err := srv.Serve(tlsListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("HTTPS server terminated with error", "err", err)
-			return 1
-		}
-		return 0
+		tlsListener := tls.NewListener(mainLn, srv.TLSConfig)
+		serveErr = srv.Serve(tlsListener)
+	} else {
+		serveErr = srv.Serve(mainLn)
 	}
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Error("HTTP server terminated with error", "err", err)
+	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+		logger.Error("server terminated with error", "err", serveErr)
+		cancel()
+	}
+
+	<-shutdownDone
+	bgWg.Wait()
+	if (serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed)) || metricsServeErr.Load() {
 		return 1
 	}
 	return 0
@@ -219,9 +250,11 @@ func run() int {
 
 func initBucketInspector(
 	ctx context.Context,
+	bgWg *sync.WaitGroup,
 	objstoreConfigFile string,
 	syncInterval time.Duration,
 	retentionRaw, retention5m, retention1h string,
+	enableDownsampling bool,
 	logger *slog.Logger,
 ) (*bucketinspect.Inspector, error) {
 	if objstoreConfigFile == "" {
@@ -242,18 +275,19 @@ func initBucketInspector(
 	}
 
 	inspector := bucketinspect.NewInspector(bkt, bucketinspect.InspectorConfig{
-		SyncInterval: syncInterval,
-		Retention:    retCfg,
-		Logger:       logger,
+		SyncInterval:       syncInterval,
+		Retention:          retCfg,
+		EnableDownsampling: &enableDownsampling,
+		Logger:             logger,
 	})
-	go func() {
+	bgWg.Go(func() {
 		defer func() {
 			if err := bkt.Close(); err != nil {
 				logger.Warn("failed to close object storage bucket client", "err", err)
 			}
 		}()
 		inspector.Run(ctx)
-	}()
+	})
 	return inspector, nil
 }
 
@@ -457,14 +491,13 @@ func newServerMux(
 	mux := http.NewServeMux()
 	registerWriteHandlers(mux, eng, pusher, m, tenantHeader, maxRequestSize, requireClientCert, logger)
 	registerMetricsHandlers(mux, eng, pusher, inspector, m, logger)
-	registerHealthHandlers(mux, pusher, inspector, m)
+	registerHealthHandlers(mux, m)
 	return mux
 }
 
 func newWriteServerMux(
 	eng *estimator.Engine,
 	pusher *remotewrite.Pusher,
-	inspector *bucketinspect.Inspector,
 	m *serverMetrics,
 	tenantHeader string,
 	maxRequestSize int64,
@@ -473,7 +506,7 @@ func newWriteServerMux(
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 	registerWriteHandlers(mux, eng, pusher, m, tenantHeader, maxRequestSize, requireClientCert, logger)
-	registerHealthHandlers(mux, pusher, inspector, m)
+	registerHealthHandlers(mux, m)
 	return mux
 }
 
@@ -486,7 +519,7 @@ func newMetricsServerMux(
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 	registerMetricsHandlers(mux, eng, pusher, inspector, m, logger)
-	registerHealthHandlers(mux, pusher, inspector, m)
+	registerHealthHandlers(mux, m)
 	return mux
 }
 
@@ -512,12 +545,6 @@ func registerWriteHandlers(
 		}
 		m.writeRequestsTotal.Add(1)
 
-		if tenantHeader != "" {
-			if incomingTenant := r.Header.Get(tenantHeader); incomingTenant != "" {
-				pusher.ObserveTenantID(incomingTenant)
-			}
-		}
-
 		err := protoparser.ParseStream(r, eng.FingerprintLabels(), maxRequestSize, func(wr *protoparser.WriteRequest) error {
 			eng.Ingest(wr.Timeseries)
 			return nil
@@ -527,6 +554,12 @@ func registerWriteHandlers(
 			logger.Warn("failed to parse remote write stream", "err", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
+		}
+
+		if tenantHeader != "" {
+			if incomingTenant := r.Header.Get(tenantHeader); incomingTenant != "" {
+				pusher.ObserveTenantID(incomingTenant)
+			}
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
@@ -560,8 +593,6 @@ func registerMetricsHandlers(
 
 func registerHealthHandlers(
 	mux *http.ServeMux,
-	pusher *remotewrite.Pusher,
-	inspector *bucketinspect.Inspector,
 	m *serverMetrics,
 ) {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -571,14 +602,6 @@ func registerHealthHandlers(
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
 		if m != nil && m.shuttingDown.Load() {
 			http.Error(w, "shutting down", http.StatusServiceUnavailable)
-			return
-		}
-		if ok, reason := pusher.Ready(); !ok {
-			http.Error(w, "thanos receive not ready: "+reason, http.StatusServiceUnavailable)
-			return
-		}
-		if ok, reason := inspector.Ready(); !ok {
-			http.Error(w, "object storage not ready: "+reason, http.StatusServiceUnavailable)
 			return
 		}
 		w.WriteHeader(http.StatusOK)

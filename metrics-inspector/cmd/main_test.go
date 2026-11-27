@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -170,7 +171,7 @@ streams:
 	inspector := bucketinspect.NewInspector(nil, bucketinspect.InspectorConfig{})
 	metrics := &serverMetrics{}
 
-	writeMux := newWriteServerMux(eng, pusher, inspector, metrics, remotewrite.DefaultTenantHeader, protoparser.DefaultMaxWriteRequestSize, true, slog.Default())
+	writeMux := newWriteServerMux(eng, pusher, metrics, remotewrite.DefaultTenantHeader, protoparser.DefaultMaxWriteRequestSize, true, slog.Default())
 	writeSrv := httptest.NewUnstartedServer(writeMux)
 	writeSrv.TLS = tlsCfg
 	writeSrv.StartTLS()
@@ -351,95 +352,127 @@ streams:
 	}
 	defer eng.Stop()
 
-	receiveSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer receiveSrv.Close()
-
-	bkt, err := bucketinspect.NewBucket([]byte(fmt.Sprintf("type: FILESYSTEM\nconfig:\n  directory: %s\n", t.TempDir())))
-	if err != nil {
-		t.Fatalf("NewBucket failed: %v", err)
-	}
-	defer func() { _ = bkt.Close() }()
-
-	pusher := remotewrite.NewPusher(remotewrite.PusherConfig{Endpoint: receiveSrv.URL}, eng)
-	inspector := bucketinspect.NewInspector(bkt, bucketinspect.InspectorConfig{})
+	pusher := remotewrite.NewPusher(remotewrite.PusherConfig{}, eng)
+	inspector := bucketinspect.NewInspector(nil, bucketinspect.InspectorConfig{})
 	metrics := &serverMetrics{}
 
 	mux := newServerMux(eng, pusher, inspector, metrics, remotewrite.DefaultTenantHeader, protoparser.DefaultMaxWriteRequestSize, false, slog.Default())
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	// 1. Before initial Thanos Receive probe or bucket sync: /healthz is 200 OK, /readyz is 503 (thanos receive not ready).
+	// 1. /healthz and /readyz are 200 OK immediately when server starts (decoupled from backend probes).
 	hResp, err := http.Get(srv.URL + "/healthz")
 	if err != nil {
 		t.Fatalf("GET /healthz failed: %v", err)
 	}
 	_ = hResp.Body.Close()
 	if hResp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 OK from /healthz before ready, got %d", hResp.StatusCode)
+		t.Fatalf("expected 200 OK from /healthz, got %d", hResp.StatusCode)
 	}
 
-	rResp1, err := http.Get(srv.URL + "/readyz")
+	rResp, err := http.Get(srv.URL + "/readyz")
 	if err != nil {
 		t.Fatalf("GET /readyz failed: %v", err)
 	}
-	rBody1, _ := io.ReadAll(rResp1.Body)
-	_ = rResp1.Body.Close()
-	if rResp1.StatusCode != http.StatusServiceUnavailable || !strings.Contains(string(rBody1), "thanos receive not ready") {
-		t.Fatalf("expected 503 'thanos receive not ready', got %d: %s", rResp1.StatusCode, string(rBody1))
+	_ = rResp.Body.Close()
+	if rResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK from /readyz, got %d", rResp.StatusCode)
 	}
 
-	// 2. After Thanos Receive probe succeeds, /readyz still returns 503 until bucket sync succeeds.
-	if err := pusher.Probe(t.Context()); err != nil {
-		t.Fatalf("pusher.Probe failed: %v", err)
-	}
-	rResp2, err := http.Get(srv.URL + "/readyz")
-	if err != nil {
-		t.Fatalf("GET /readyz failed: %v", err)
-	}
-	rBody2, _ := io.ReadAll(rResp2.Body)
-	_ = rResp2.Body.Close()
-	if rResp2.StatusCode != http.StatusServiceUnavailable || !strings.Contains(string(rBody2), "object storage not ready") {
-		t.Fatalf("expected 503 'object storage not ready', got %d: %s", rResp2.StatusCode, string(rBody2))
-	}
-
-	// 3. After initial bucket sync succeeds, /readyz returns 200 OK.
-	if err := inspector.Sync(t.Context()); err != nil {
-		t.Fatalf("inspector.Sync failed: %v", err)
-	}
-	rResp3, err := http.Get(srv.URL + "/readyz")
-	if err != nil {
-		t.Fatalf("GET /readyz failed: %v", err)
-	}
-	_ = rResp3.Body.Close()
-	if rResp3.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 OK from /readyz after both checks succeed, got %d", rResp3.StatusCode)
-	}
-
-	// 4. During graceful shutdown, /readyz returns 503 while /healthz remains 200 OK.
+	// 2. During graceful shutdown, /readyz returns 503 while /healthz remains 200 OK.
 	metrics.shuttingDown.Store(true)
-	rResp4, err := http.Get(srv.URL + "/readyz")
+	rRespShutdown, err := http.Get(srv.URL + "/readyz")
 	if err != nil {
 		t.Fatalf("GET /readyz failed: %v", err)
 	}
-	_ = rResp4.Body.Close()
-	if rResp4.StatusCode != http.StatusServiceUnavailable {
-		t.Fatalf("expected 503 from /readyz during shutdown, got %d", rResp4.StatusCode)
+	_ = rRespShutdown.Body.Close()
+	if rRespShutdown.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 from /readyz during shutdown, got %d", rRespShutdown.StatusCode)
 	}
 
-	hResp2, err := http.Get(srv.URL + "/healthz")
+	hRespShutdown, err := http.Get(srv.URL + "/healthz")
 	if err != nil {
 		t.Fatalf("GET /healthz failed: %v", err)
 	}
-	_ = hResp2.Body.Close()
-	if hResp2.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 OK from /healthz during shutdown, got %d", hResp2.StatusCode)
+	_ = hRespShutdown.Body.Close()
+	if hRespShutdown.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK from /healthz during shutdown, got %d", hRespShutdown.StatusCode)
+	}
+}
+
+func TestTenantNotObservedOnInvalidWriteRequest(t *testing.T) {
+	cfg, err := estimator.ParseConfig([]byte(`
+streams:
+  - interval: 15m
+    group_by: [cluster]
+    hll_precision: 14
+`))
+	if err != nil {
+		t.Fatalf("ParseConfig failed: %v", err)
+	}
+	eng, err := estimator.NewEngine(cfg)
+	if err != nil {
+		t.Fatalf("NewEngine failed: %v", err)
+	}
+	defer eng.Stop()
+
+	pusher := remotewrite.NewPusher(remotewrite.PusherConfig{}, eng)
+	inspector := bucketinspect.NewInspector(nil, bucketinspect.InspectorConfig{})
+	metrics := &serverMetrics{}
+
+	mux := newServerMux(eng, pusher, inspector, metrics, remotewrite.DefaultTenantHeader, protoparser.DefaultMaxWriteRequestSize, false, slog.Default())
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// 1. Post corrupt body with tenant header. Should return 400 Bad Request and not observe tenant.
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/write", bytes.NewReader([]byte("not-valid-snappy-payload")))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req.Header.Set(remotewrite.DefaultTenantHeader, "malformed-tenant")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request, got %d", resp.StatusCode)
+	}
+	if got := pusher.TenantID(); got != remotewrite.DefaultTenantID {
+		t.Fatalf("expected default tenant ID %q after invalid write request, got %q", remotewrite.DefaultTenantID, got)
+	}
+
+	// 2. Post valid write request. Tenant should be observed.
+	wr := prompb.WriteRequest{
+		Timeseries: []prompb.TimeSeries{
+			{
+				Labels:  []prompb.Label{{Name: "__name__", Value: "up"}},
+				Samples: []prompb.Sample{{Value: 1, Timestamp: 1000}},
+			},
+		},
+	}
+	pb, _ := wr.Marshal()
+	validReq, err := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/write", bytes.NewReader(snappy.Encode(nil, pb)))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	validReq.Header.Set(remotewrite.DefaultTenantHeader, "valid-tenant")
+	validResp, err := http.DefaultClient.Do(validReq)
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	_ = validResp.Body.Close()
+	if validResp.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected 204 No Content, got %d", validResp.StatusCode)
+	}
+	if got := pusher.TenantID(); got != "valid-tenant" {
+		t.Fatalf("expected 'valid-tenant', got %q", got)
 	}
 }
 
 func TestInitBucketInspectorFailFast(t *testing.T) {
-	if _, err := initBucketInspector(t.Context(), "/nonexistent/objstore.yaml", time.Minute, "15d", "90d", "180d", slog.Default()); err == nil {
+	var bgWg sync.WaitGroup
+	if _, err := initBucketInspector(t.Context(), &bgWg, "/nonexistent/objstore.yaml", time.Minute, "15d", "90d", "180d", true, slog.Default()); err == nil {
 		t.Fatal("expected error for missing objstore config file")
 	}
 
@@ -447,7 +480,7 @@ func TestInitBucketInspectorFailFast(t *testing.T) {
 	if err := os.WriteFile(cfgPath, []byte(fmt.Sprintf("type: FILESYSTEM\nconfig:\n  directory: %s\n", t.TempDir())), 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-	if _, err := initBucketInspector(t.Context(), cfgPath, time.Minute, "invalid-duration", "90d", "180d", slog.Default()); err == nil {
+	if _, err := initBucketInspector(t.Context(), &bgWg, cfgPath, time.Minute, "invalid-duration", "90d", "180d", true, slog.Default()); err == nil {
 		t.Fatal("expected error for invalid retention duration")
 	}
 }

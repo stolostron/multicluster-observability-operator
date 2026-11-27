@@ -65,6 +65,10 @@ type GrafanaDashboardController struct {
 	watchedNS         string
 	indexer           cache.Indexer
 
+	// mu protects uidMap from concurrent access between worker threads,
+	// periodic sweeps, and informer event callbacks (shouldEnqueue).
+	mu sync.RWMutex
+
 	// uidMap tracks which Grafana UIDs and folders are associated with a given ConfigMap (key).
 	// This allows for immediate deletion of dashboards and empty folders when a ConfigMap is removed or moved.
 	uidMap map[string]trackedState
@@ -254,7 +258,9 @@ func (c *GrafanaDashboardController) deleteTrackedUIDs(ctx context.Context, key 
 	}
 	defer c.unlockReconcile()
 
+	c.mu.RLock()
 	state, exists := c.uidMap[key]
+	c.mu.RUnlock()
 	if !exists {
 		return nil
 	}
@@ -270,17 +276,22 @@ func (c *GrafanaDashboardController) deleteTrackedUIDs(ctx context.Context, key 
 		}
 	}
 
+	c.mu.Lock()
 	if len(failedUIDs) > 0 {
 		// Update the map to only track what's left
 		c.uidMap[key] = trackedState{
 			uids:   failedUIDs,
 			folder: state.folder,
 		}
+	} else {
+		// All deleted successfully
+		delete(c.uidMap, key)
+	}
+	c.mu.Unlock()
+
+	if len(failedUIDs) > 0 {
 		return errors.Join(errs...)
 	}
-
-	// All deleted successfully
-	delete(c.uidMap, key)
 
 	if state.folder != "" {
 		return c.cleanupFolderIfEmpty(ctx, state.folder)
@@ -341,10 +352,21 @@ func (c *GrafanaDashboardController) shouldEnqueue(oldCm, newCm *corev1.ConfigMa
 		return false
 	}
 
-	// Ignore periodic informer cache resync events when the ConfigMap has not changed.
-	// In client-go, a periodic resync delivers a synthetic Update event where
-	// old and new refer to the identical cached object or share the same non-empty ResourceVersion.
+	// Ignore periodic informer cache resync events when the ConfigMap has not changed,
+	// UNLESS it is a desired dashboard that is currently untracked in uidMap (e.g. dropped
+	// during initial sync failure), in which case we must re-enqueue it.
 	if oldCm != nil && (oldCm == newCm || (oldCm.ResourceVersion != "" && oldCm.ResourceVersion == newCm.ResourceVersion)) {
+		if isDesiredDashboardConfigmap(newCm) {
+			key, err := cache.MetaNamespaceKeyFunc(newCm)
+			if err == nil {
+				c.mu.RLock()
+				_, tracked := c.uidMap[key]
+				c.mu.RUnlock()
+				if !tracked {
+					return true
+				}
+			}
+		}
 		return false
 	}
 
@@ -434,6 +456,7 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 	// Update the controller's map with the fresh state discovered from Kubernetes.
 	// We perform a surgical update instead of a full overwrite to minimize the risk
 	// of overwriting a concurrent syncHandler update for a specific ConfigMap.
+	c.mu.Lock()
 	// 1. Remove keys from the map that are no longer present in Kubernetes as desired dashboards.
 	for key := range c.uidMap {
 		if _, exists := newUIDMap[key]; !exists {
@@ -451,6 +474,7 @@ func (c *GrafanaDashboardController) cleanupOrphanDashboards(ctx context.Context
 			c.uidMap[key] = newState
 		}
 	}
+	c.mu.Unlock()
 
 	folderUIDsWithDashboards := make(map[string]struct{})
 	for _, d := range dashboards {
@@ -717,7 +741,9 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 	// Immediate cleanup for keys removed from this ConfigMap.
 	// We compare the UIDs we just identified as desired (currentUIDs) against
 	// the UIDs we knew about from the previous successful reconcile (oldUIDs).
+	c.mu.RLock()
 	oldState := c.uidMap[cmKey]
+	c.mu.RUnlock()
 
 	// Find UIDs that were in the map but are not in the current ConfigMap data
 	currentSet := make(map[string]struct{}, len(currentUIDs))
@@ -740,10 +766,12 @@ func (c *GrafanaDashboardController) updateDashboard(ctx context.Context, newObj
 	}
 
 	// Update the map with current state + those that failed to delete.
+	c.mu.Lock()
 	c.uidMap[cmKey] = trackedState{
 		uids:   append(currentUIDs, failedDeletions...),
 		folder: folderTitle,
 	}
+	c.mu.Unlock()
 
 	// Perform immediate folder cleanup.
 	// 1. Check the CURRENT folder (in case all dashboards were removed from it but CM still exists)

@@ -254,3 +254,98 @@ streams:
 		t.Fatalf("expected PushSuccessTotal()=0 during InitialDelay, got %d", got)
 	}
 }
+
+func TestPusherFlushRetryOn5xx(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) < 2 {
+			http.Error(w, "temporary 503", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	cfg, err := estimator.ParseConfig([]byte(`
+streams:
+  - interval: 15m
+    group_by: [cluster]
+`))
+	if err != nil {
+		t.Fatalf("ParseConfig failed: %v", err)
+	}
+	eng, err := estimator.NewEngine(cfg)
+	if err != nil {
+		t.Fatalf("NewEngine failed: %v", err)
+	}
+	defer eng.Stop()
+
+	eng.Ingest([]protoparser.TimeSeries{{
+		Hash: 12345,
+		Labels: []prompb.Label{
+			{Name: "__name__", Value: "up"},
+			{Name: "cluster", Value: "cls1"},
+		},
+	}})
+
+	pusher := NewPusher(PusherConfig{
+		Endpoint:     srv.URL,
+		RetryBackoff: []time.Duration{10 * time.Millisecond, 20 * time.Millisecond},
+	}, eng)
+
+	if err := pusher.FlushAt(context.Background(), time.Now()); err != nil {
+		t.Fatalf("FlushAt expected to succeed after retry, got: %v", err)
+	}
+	if attempts.Load() != 2 {
+		t.Fatalf("expected 2 attempts, got %d", attempts.Load())
+	}
+	if pusher.PushSuccessTotal() != 1 {
+		t.Fatalf("expected PushSuccessTotal=1, got %d", pusher.PushSuccessTotal())
+	}
+}
+
+func TestPusherFlushNoRetryOn4xx(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		http.Error(w, "bad request", http.StatusBadRequest)
+	}))
+	defer srv.Close()
+
+	cfg, err := estimator.ParseConfig([]byte(`
+streams:
+  - interval: 15m
+    group_by: [cluster]
+`))
+	if err != nil {
+		t.Fatalf("ParseConfig failed: %v", err)
+	}
+	eng, err := estimator.NewEngine(cfg)
+	if err != nil {
+		t.Fatalf("NewEngine failed: %v", err)
+	}
+	defer eng.Stop()
+
+	eng.Ingest([]protoparser.TimeSeries{{
+		Hash: 12345,
+		Labels: []prompb.Label{
+			{Name: "__name__", Value: "up"},
+			{Name: "cluster", Value: "cls1"},
+		},
+	}})
+
+	pusher := NewPusher(PusherConfig{
+		Endpoint:     srv.URL,
+		RetryBackoff: []time.Duration{10 * time.Millisecond, 20 * time.Millisecond},
+	}, eng)
+
+	if err := pusher.FlushAt(context.Background(), time.Now()); err == nil {
+		t.Fatal("FlushAt expected to fail on 400 Bad Request, got nil")
+	}
+	if attempts.Load() != 1 {
+		t.Fatalf("expected exactly 1 attempt (no retries on 400), got %d", attempts.Load())
+	}
+	if pusher.PushErrorsTotal() != 1 {
+		t.Fatalf("expected PushErrorsTotal=1, got %d", pusher.PushErrorsTotal())
+	}
+}

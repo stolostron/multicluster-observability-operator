@@ -8,6 +8,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -106,24 +107,40 @@ type thanosBlockMeta struct {
 	} `json:"thanos"`
 }
 
+// CorruptMetaError indicates that a block's meta.json contains invalid or malformed JSON.
+type CorruptMetaError struct {
+	ULID string
+	Err  error
+}
+
+func (e *CorruptMetaError) Error() string {
+	return fmt.Sprintf("invalid meta.json for block %s: %s", e.ULID, e.Err.Error())
+}
+
+func (e *CorruptMetaError) Unwrap() error {
+	return e.Err
+}
+
 // InspectorConfig configures the periodic Thanos bucket inspector.
 type InspectorConfig struct {
-	SyncInterval      time.Duration
-	InitRetryInterval time.Duration
-	Retention         RetentionConfig
-	Concurrency       int
-	Logger            *slog.Logger
+	SyncInterval       time.Duration
+	InitRetryInterval  time.Duration
+	Retention          RetentionConfig
+	EnableDownsampling *bool
+	Concurrency        int
+	Logger             *slog.Logger
 }
 
 // Inspector periodically scans a Thanos object storage bucket using an incremental
 // in-memory ULID cache and exposes raw storage primitives in Prometheus text format.
 type Inspector struct {
-	bkt               objstore.BucketReader
-	interval          time.Duration
-	initRetryInterval time.Duration
-	retention         RetentionConfig
-	concurrency       int
-	logger            *slog.Logger
+	bkt                objstore.BucketReader
+	interval           time.Duration
+	initRetryInterval  time.Duration
+	retention          RetentionConfig
+	enableDownsampling bool
+	concurrency        int
+	logger             *slog.Logger
 
 	ready      atomic.Bool
 	readyErrMu sync.RWMutex
@@ -157,15 +174,20 @@ func NewInspector(bkt objstore.BucketReader, cfg InspectorConfig) *Inspector {
 	if logger == nil {
 		logger = slog.Default()
 	}
+	enableDownsampling := true
+	if cfg.EnableDownsampling != nil {
+		enableDownsampling = *cfg.EnableDownsampling
+	}
 	ins := &Inspector{
-		bkt:               bkt,
-		interval:          interval,
-		initRetryInterval: initRetryInterval,
-		retention:         cfg.Retention,
-		concurrency:       concurrency,
-		logger:            logger,
-		readyErr:          "waiting for initial object storage bucket sync",
-		blocks:            make(map[string]BlockSummary),
+		bkt:                bkt,
+		interval:           interval,
+		initRetryInterval:  initRetryInterval,
+		retention:          cfg.Retention,
+		enableDownsampling: enableDownsampling,
+		concurrency:        concurrency,
+		logger:             logger,
+		readyErr:           "waiting for initial object storage bucket sync",
+		blocks:             make(map[string]BlockSummary),
 	}
 	if bkt == nil {
 		ins.ready.Store(true)
@@ -345,6 +367,11 @@ func (ins *Inspector) Sync(ctx context.Context) error {
 
 				summary, err := parseBlockSummary(ctx, ins.bkt, ulidStr, rawMeta, hasDeletion)
 				if err != nil {
+					var corruptErr *CorruptMetaError
+					if errors.As(err, &corruptErr) {
+						ins.logger.Warn("corrupt block meta.json; skipping block", "ulid", ulidStr, "err", err)
+						return
+					}
 					fetchMu.Lock()
 					fetchErrors++
 					if firstFetchErr == nil {
@@ -521,7 +548,7 @@ func parseBlockSummary(
 ) (BlockSummary, error) {
 	var meta thanosBlockMeta
 	if err := json.Unmarshal(rawMeta, &meta); err != nil {
-		return BlockSummary{}, fmt.Errorf("invalid meta.json for block %s: %w", ulidStr, err)
+		return BlockSummary{}, &CorruptMetaError{ULID: ulidStr, Err: err}
 	}
 
 	tenantID := strings.TrimSpace(meta.Thanos.Labels["tenant_id"])
@@ -547,16 +574,21 @@ func parseBlockSummary(
 	// Fall back to querying object attributes when thanos.files is unpopulated (e.g. older TSDB blocks).
 	// We only recursively iterate this single block directory, never the entire bucket.
 	if storageBytes == 0 && bkt != nil {
-		_ = bkt.Iter(ctx, ulidStr, func(rel string) error {
+		if iterErr := bkt.Iter(ctx, ulidStr, func(rel string) error {
 			if strings.HasSuffix(rel, metaFilename) {
 				return nil
 			}
 			attrs, err := bkt.Attributes(ctx, rel)
-			if err == nil && attrs.Size > 0 {
+			if err != nil {
+				return fmt.Errorf("stat object %q: %w", rel, err)
+			}
+			if attrs.Size > 0 {
 				storageBytes += attrs.Size
 			}
 			return nil
-		}, objstore.WithRecursiveIter())
+		}, objstore.WithRecursiveIter()); iterErr != nil {
+			return BlockSummary{}, fmt.Errorf("fallback attributes iteration for block %s: %w", ulidStr, iterErr)
+		}
 	}
 	if !hasMetaSize {
 		storageBytes += int64(len(rawMeta))
@@ -960,7 +992,10 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 	rawRet := ins.retention.RawSeconds
 	fiveMinRet := ins.retention.FiveMinSec
 	oneHourRet := ins.retention.OneHourSec
-	hasInfiniteRetention := rawRet <= 0 || fiveMinRet <= 0 || oneHourRet <= 0
+	hasInfiniteRetention := rawRet <= 0
+	if ins.enableDownsampling {
+		hasInfiniteRetention = hasInfiniteRetention || fiveMinRet <= 0 || oneHourRet <= 0
+	}
 
 	sortedProducers := slices.Collect(maps.Keys(activeProducers))
 	slices.SortFunc(sortedProducers, func(a, b producerGroupKey) int {
@@ -1034,61 +1069,70 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 		burnRates := map[string]float64{"raw": burnRateRaw}
 		ratios := make(map[string]float64, len(downsampleSpecs))
 
-		for _, spec := range downsampleSpecs {
-			res := spec.resolution
-			ratio := spec.defaultRatio
-
-			// Match overlapping age tiers where both downsampled and raw blocks exist with >=1h of span.
-			var matchResBytes, matchRawBytes int64
-			var matchResSpan, matchRawSpan float64
-			for _, tier := range allAgeTiers {
-				rSpan := spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, res, tier}]
-				rwSpan := spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, "raw", tier}]
-				rBytes := storageByKey[storageKey{pKey.tenantID, pKey.producer, res, tier, "false"}]
-				rwBytes := storageByKey[storageKey{pKey.tenantID, pKey.producer, "raw", tier, "false"}]
-				if rSpan >= 3600 && rwSpan >= 3600 && rwBytes > 0 && rBytes > 0 {
-					matchResBytes += rBytes
-					matchResSpan += rSpan
-					matchRawBytes += rwBytes
-					matchRawSpan += rwSpan
-				}
-			}
-
-			if matchResSpan >= 3600 && matchRawSpan >= 3600 && matchRawBytes > 0 && matchResBytes > 0 {
-				ratio = (float64(matchResBytes) / matchResSpan) / (float64(matchRawBytes) / matchRawSpan)
-			} else {
-				// Fallback: evaluate ratio across all tiers if downsampled blocks exist.
-				var resTotalBytes int64
-				var resTotalSpan float64
-				for _, tier := range allAgeTiers {
-					resTotalBytes += storageByKey[storageKey{pKey.tenantID, pKey.producer, res, tier, "false"}]
-					resTotalSpan += spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, res, tier}]
-				}
-				if resTotalSpan >= 3600 && resTotalBytes > 0 && burnRateRaw > 0 {
-					ratio = (float64(resTotalBytes) / resTotalSpan) / burnRateRaw
-				}
-			}
-
-			if ratio <= 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
-				ratio = spec.defaultRatio
-			}
-			ratios[res] = ratio
-			burnRates[res] = burnRateRaw * ratio
-		}
-
-		// Fallback for burn rates if burnRateRaw was 0 but downsampled blocks exist.
-		if burnRateRaw == 0 {
+		if ins.enableDownsampling {
 			for _, spec := range downsampleSpecs {
-				var resTotalBytes int64
-				var resTotalSpan float64
+				res := spec.resolution
+				ratio := spec.defaultRatio
+
+				// Match overlapping age tiers where both downsampled and raw blocks exist with >=1h of span.
+				var matchResBytes, matchRawBytes int64
+				var matchResSpan, matchRawSpan float64
 				for _, tier := range allAgeTiers {
-					resTotalBytes += storageByKey[storageKey{pKey.tenantID, pKey.producer, spec.resolution, tier, "false"}]
-					resTotalSpan += spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, spec.resolution, tier}]
+					rSpan := spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, res, tier}]
+					rwSpan := spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, "raw", tier}]
+					rBytes := storageByKey[storageKey{pKey.tenantID, pKey.producer, res, tier, "false"}]
+					rwBytes := storageByKey[storageKey{pKey.tenantID, pKey.producer, "raw", tier, "false"}]
+					if tier == ageTier0To7d {
+						rwSpan = recentSpan
+						rwBytes = recentCompactedBytes
+					}
+					if rSpan >= 3600 && rwSpan >= 3600 && rwBytes > 0 && rBytes > 0 {
+						matchResBytes += rBytes
+						matchResSpan += rSpan
+						matchRawBytes += rwBytes
+						matchRawSpan += rwSpan
+					}
 				}
-				if resTotalSpan >= 3600 && resTotalBytes > 0 {
-					burnRates[spec.resolution] = float64(resTotalBytes) / resTotalSpan
+
+				if matchResSpan >= 3600 && matchRawSpan >= 3600 && matchRawBytes > 0 && matchResBytes > 0 {
+					ratio = (float64(matchResBytes) / matchResSpan) / (float64(matchRawBytes) / matchRawSpan)
+				} else {
+					// Fallback: evaluate ratio across all tiers if downsampled blocks exist.
+					var resTotalBytes int64
+					var resTotalSpan float64
+					for _, tier := range allAgeTiers {
+						resTotalBytes += storageByKey[storageKey{pKey.tenantID, pKey.producer, res, tier, "false"}]
+						resTotalSpan += spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, res, tier}]
+					}
+					if resTotalSpan >= 3600 && resTotalBytes > 0 && burnRateRaw > 0 {
+						ratio = (float64(resTotalBytes) / resTotalSpan) / burnRateRaw
+					}
+				}
+
+				if ratio <= 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
+					ratio = spec.defaultRatio
+				}
+				ratios[res] = ratio
+				burnRates[res] = burnRateRaw * ratio
+			}
+
+			// Fallback for burn rates if burnRateRaw was 0 but downsampled blocks exist.
+			if burnRateRaw == 0 {
+				for _, spec := range downsampleSpecs {
+					var resTotalBytes int64
+					var resTotalSpan float64
+					for _, tier := range allAgeTiers {
+						resTotalBytes += storageByKey[storageKey{pKey.tenantID, pKey.producer, spec.resolution, tier, "false"}]
+						resTotalSpan += spannedSecByTier[tierGroupKey{pKey.tenantID, pKey.producer, spec.resolution, tier}]
+					}
+					if resTotalSpan >= 3600 && resTotalBytes > 0 {
+						burnRates[spec.resolution] = float64(resTotalBytes) / resTotalSpan
+					}
 				}
 			}
+		} else {
+			burnRates["5m"] = 0
+			burnRates["1h"] = 0
 		}
 
 		for _, res := range []string{"raw", "5m", "1h"} {
@@ -1100,11 +1144,16 @@ func (ins *Inspector) collectAt(ch chan<- prometheus.Metric, now time.Time) {
 			)
 		}
 		if !hasInfiniteRetention {
-			effective5mRet := max(0, fiveMinRet-thanosDownsampleDelay5mSec)
-			effective1hRet := max(0, oneHourRet-thanosDownsampleDelay1hSec)
-			projectedSteadyState := burnRates["raw"]*rawRet +
-				burnRates["5m"]*effective5mRet +
-				burnRates["1h"]*effective1hRet
+			var projectedSteadyState float64
+			if ins.enableDownsampling {
+				effective5mRet := max(0, fiveMinRet-thanosDownsampleDelay5mSec)
+				effective1hRet := max(0, oneHourRet-thanosDownsampleDelay1hSec)
+				projectedSteadyState = burnRates["raw"]*rawRet +
+					burnRates["5m"]*effective5mRet +
+					burnRates["1h"]*effective1hRet
+			} else {
+				projectedSteadyState = burnRates["raw"] * rawRet
+			}
 			ch <- prometheus.MustNewConstMetric(
 				descProjectedSteadyStateBytes,
 				prometheus.GaugeValue,

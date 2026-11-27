@@ -541,6 +541,147 @@ func TestChurnTrackerMaxEntriesAndCleanup(t *testing.T) {
 	ct.mu.Unlock()
 }
 
+func TestChurnBaselineRollover(t *testing.T) {
+	interval := 15 * time.Minute
+	ct := newChurnTracker(interval, 100)
+	defer ct.releaseAll()
+
+	scratch := hll.MustNewByPrecision(14)
+	defer scratch.Release()
+
+	// Set A: 2000 hashes
+	sketchA := hll.MustNewByPrecision(14)
+	defer sketchA.Release()
+	for i := range 2000 {
+		sketchA.InsertHash(xxhash.Sum64(fmt.Appendf(nil, "setA-%d", i)))
+	}
+
+	// Set B: 2000 hashes (completely disjoint from A)
+	sketchB := hll.MustNewByPrecision(14)
+	defer sketchB.Release()
+	for i := range 2000 {
+		sketchB.InsertHash(xxhash.Sum64(fmt.Appendf(nil, "setB-%d", i)))
+	}
+
+	startTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	groupKey := uint64(42)
+
+	// Simulate 1-minute flushes for 35 minutes.
+	// Minutes 0..4: Set A
+	// Minutes 5..35: Set B (flips at minute 5)
+	rates := make([]float64, 36)
+	for m := 0; m <= 35; m++ {
+		now := startTime.Add(time.Duration(m) * time.Minute)
+		curSketch := sketchA
+		if m >= 5 {
+			curSketch = sketchB
+		}
+		rates[m] = ct.updateAndRate(groupKey, curSketch, scratch, now)
+	}
+
+	// During warmup (minutes 0..14), rate must be 0
+	for m := 0; m < 15; m++ {
+		if rates[m] != 0 {
+			t.Errorf("minute %d: expected rate 0 during warmup, got %f", m, rates[m])
+		}
+	}
+
+	// At minute 15, current is Set B and baseline olderSketch is Set A (from minute 0).
+	// Churn ratio must be ~1.0 (100%), definitely not ~0.
+	if rates[15] < 0.95 {
+		t.Fatalf("minute 15: expected ~1.0 churn (flips from A to B), got %f", rates[15])
+	}
+
+	// At minute 20, still comparing against Set A
+	if rates[20] < 0.95 {
+		t.Fatalf("minute 20: expected ~1.0 churn, got %f", rates[20])
+	}
+
+	// At minute 35, both baseline and current are Set B, so churn must be ~0.
+	if rates[35] > 0.05 {
+		t.Fatalf("minute 35: expected ~0 churn once rollover settles on B, got %f", rates[35])
+	}
+}
+
+func TestGroupByTupleCollision(t *testing.T) {
+	cfg, err := ParseConfig([]byte(`
+max_items_per_interval: 100000
+streams:
+  - interval: 15m
+    group_by: [cluster, namespace]
+    hll_precision: 12
+    calculate_churn: false
+    group_limit: 100
+    min_cardinality: 0
+`))
+	if err != nil {
+		t.Fatalf("ParseConfig failed: %v", err)
+	}
+
+	eng, err := NewEngine(cfg)
+	if err != nil {
+		t.Fatalf("NewEngine failed: %v", err)
+	}
+	defer eng.Stop()
+
+	// Ingest:
+	// 1. {cluster="prod"} (missing namespace)
+	// 2. {namespace="prod"} (missing cluster)
+	// 3. {cluster="prod", namespace="prod"} (both present)
+	ts1 := protoparser.TimeSeries{
+		Hash: 101,
+		Labels: []prompb.Label{
+			{Name: "cluster", Value: "prod"},
+			{Name: "__name__", Value: "m1"},
+		},
+	}
+	ts2 := protoparser.TimeSeries{
+		Hash: 102,
+		Labels: []prompb.Label{
+			{Name: "namespace", Value: "prod"},
+			{Name: "__name__", Value: "m2"},
+		},
+	}
+	ts3 := protoparser.TimeSeries{
+		Hash: 103,
+		Labels: []prompb.Label{
+			{Name: "cluster", Value: "prod"},
+			{Name: "namespace", Value: "prod"},
+			{Name: "__name__", Value: "m3"},
+		},
+	}
+
+	eng.Ingest([]protoparser.TimeSeries{ts1, ts2, ts3})
+
+	reports := eng.Evaluate(time.Now())
+	if len(reports) != 1 {
+		t.Fatalf("expected 1 stream report, got %d", len(reports))
+	}
+	groups := reports[0].Groups
+	if len(groups) != 3 {
+		t.Fatalf("expected 3 distinct groups, got %d: %+v", len(groups), groups)
+	}
+
+	seen := make(map[string]bool)
+	for _, g := range groups {
+		k := fmt.Sprintf("cls=%s,ns=%s", g.Values[0], g.Values[1])
+		seen[k] = true
+		if g.Estimate != 1 {
+			t.Errorf("group %s: expected estimate 1, got %d", k, g.Estimate)
+		}
+	}
+
+	for _, expectedKey := range []string{
+		"cls=prod,ns=",
+		"cls=,ns=prod",
+		"cls=prod,ns=prod",
+	} {
+		if !seen[expectedKey] {
+			t.Errorf("missing expected distinct group %q, seen: %v", expectedKey, seen)
+		}
+	}
+}
+
 func TestEngineIngestAndEvaluate(t *testing.T) {
 	cfg, err := ParseConfig([]byte(`
 max_items_per_interval: 100000
@@ -996,15 +1137,15 @@ streams:
 		if len(ct0.entries) != 1 {
 			t.Fatalf("stream 0 churnTracker: expected exactly 1 entry, got %d", len(ct0.entries))
 		}
-		expectedKey := xxhash.Sum64([]byte("\x00container_cpu_working_set_bytes"))
+		expectedKey := xxhash.Sum64([]byte("\x01container_cpu_working_set_bytes"))
 		if _, ok := ct0.entries[expectedKey]; !ok {
 			t.Fatalf("stream 0 churnTracker: expected entry for container_cpu_working_set_bytes (key %d)", expectedKey)
 		}
-		excludedKey1 := xxhash.Sum64([]byte("\x00acm_rs:namespace:cpu_recommendation"))
+		excludedKey1 := xxhash.Sum64([]byte("\x01acm_rs:namespace:cpu_recommendation"))
 		if _, ok := ct0.entries[excludedKey1]; ok {
 			t.Fatalf("stream 0 churnTracker: unexpected entry for acm_rs:namespace:cpu_recommendation")
 		}
-		excludedKey2 := xxhash.Sum64([]byte("\x00acm_rs_vm:namespace:cpu_usage"))
+		excludedKey2 := xxhash.Sum64([]byte("\x01acm_rs_vm:namespace:cpu_usage"))
 		if _, ok := ct0.entries[excludedKey2]; ok {
 			t.Fatalf("stream 0 churnTracker: unexpected entry for acm_rs_vm:namespace:cpu_usage")
 		}

@@ -72,10 +72,11 @@ func CalculateChurnRatio(curr, prev *hll.Sketch, scratch ...*hll.Sketch) float64
 }
 
 type churnEntry struct {
-	prevAddedAt time.Time
-	prevSketch  *hll.Sketch
-	currAddedAt time.Time
-	currSketch  *hll.Sketch
+	olderAt     time.Time
+	olderSketch *hll.Sketch
+	newerAt     time.Time
+	newerSketch *hll.Sketch
+	lastSeenAt  time.Time
 }
 
 // churnTracker maintains baseline sketches across sliding intervals per group key
@@ -108,38 +109,38 @@ func (ct *churnTracker) updateAndRate(groupKey uint64, sk, scratch *hll.Sketch, 
 			return 0
 		}
 		ct.entries[groupKey] = &churnEntry{
-			prevAddedAt: now,
-			prevSketch:  nil,
-			currAddedAt: now,
-			currSketch:  sk.Clone(),
+			olderAt:     now,
+			olderSketch: sk.Clone(),
+			lastSeenAt:  now,
 		}
 		return 0
 	}
 
-	if !e.prevAddedAt.After(now.Add(-ct.interval)) {
-		// Reuse the old prevSketch buffer as the new currSketch if available to avoid heap allocations.
-		nextCurr := e.prevSketch
-		if nextCurr != nil {
-			nextCurr.Reset()
-			_ = nextCurr.Merge(sk)
+	e.lastSeenAt = now
+
+	halfInterval := ct.interval / 2
+	if e.newerSketch == nil && !e.olderAt.After(now.Add(-halfInterval)) {
+		e.newerSketch = sk.Clone()
+		e.newerAt = now
+	} else if e.newerSketch != nil && !e.newerAt.After(now.Add(-ct.interval)) {
+		recycled := e.olderSketch
+		if recycled != nil {
+			recycled.Reset()
+			_ = recycled.Merge(sk)
 		} else {
-			nextCurr = sk.Clone()
+			recycled = sk.Clone()
 		}
-		e.prevAddedAt = now
-		e.prevSketch = e.currSketch
-		e.currAddedAt = now
-		e.currSketch = nextCurr
-	} else {
-		e.currAddedAt = now
-		if e.currSketch != nil {
-			e.currSketch.Reset()
-			_ = e.currSketch.Merge(sk)
-		} else {
-			e.currSketch = sk.Clone()
-		}
+		e.olderSketch = e.newerSketch
+		e.olderAt = e.newerAt
+		e.newerSketch = recycled
+		e.newerAt = now
 	}
 
-	return CalculateChurnRatio(e.currSketch, e.prevSketch, scratch)
+	if now.Sub(e.olderAt) < ct.interval {
+		return 0
+	}
+
+	return CalculateChurnRatio(sk, e.olderSketch, scratch)
 }
 
 // cleanup evicts entries that have not been updated within interval.
@@ -149,12 +150,12 @@ func (ct *churnTracker) cleanup(now time.Time) {
 
 	cutoff := now.Add(-ct.interval)
 	for k, e := range ct.entries {
-		if e.currAddedAt.Before(cutoff) {
-			if e.prevSketch != nil {
-				e.prevSketch.Release()
+		if e.lastSeenAt.Before(cutoff) {
+			if e.olderSketch != nil {
+				e.olderSketch.Release()
 			}
-			if e.currSketch != nil {
-				e.currSketch.Release()
+			if e.newerSketch != nil {
+				e.newerSketch.Release()
 			}
 			delete(ct.entries, k)
 		}
@@ -167,11 +168,11 @@ func (ct *churnTracker) releaseAll() {
 	defer ct.mu.Unlock()
 
 	for k, e := range ct.entries {
-		if e.prevSketch != nil {
-			e.prevSketch.Release()
+		if e.olderSketch != nil {
+			e.olderSketch.Release()
 		}
-		if e.currSketch != nil {
-			e.currSketch.Release()
+		if e.newerSketch != nil {
+			e.newerSketch.Release()
 		}
 		delete(ct.entries, k)
 	}

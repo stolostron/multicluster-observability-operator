@@ -259,9 +259,13 @@ func (r *MCORenderer) renderMetricsInspectorDeployment(
 		inspectorContainer.Resources = corev1.ResourceRequirements{}
 	}
 
+	observatoriumName := mcoconfig.GetOperandName(mcoconfig.Observatorium)
+	if observatoriumName == "" {
+		observatoriumName = mcoconfig.GetDefaultCRName()
+	}
 	receiveWriteURL := fmt.Sprintf(
-		"http://%sthanos-receive.%s.svc:19291/api/v1/receive",
-		mcoconfig.GetOperandNamePrefix(),
+		"http://%s-thanos-receive.%s.svc:19291/api/v1/receive",
+		observatoriumName,
 		namespace,
 	)
 	retArgs := resolveMetricsInspectorRetentionArgs(r.cr)
@@ -275,6 +279,7 @@ func (r *MCORenderer) renderMetricsInspectorDeployment(
 		fmt.Sprintf("--estimator.max-items-per-interval=%d", resolveMetricsInspectorMaxItems(r.cr.Spec.InstanceSize)),
 		fmt.Sprintf("--remote-write.url=%s", receiveWriteURL),
 		fmt.Sprintf("--remote-write.tenant=%s", mcoconfig.GetTenantUID()),
+		fmt.Sprintf("--enable-downsampling=%t", r.cr.Spec.EnableDownsampling),
 	)
 	inspectorContainer.Args = append(inspectorContainer.Args, retArgs...)
 	inspectorContainer.Args = append(inspectorContainer.Args, objArgs...)
