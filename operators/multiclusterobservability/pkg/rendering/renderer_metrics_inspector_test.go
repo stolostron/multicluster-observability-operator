@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 func TestMetricsInspectorRendering(t *testing.T) {
@@ -104,7 +105,7 @@ func TestMetricsInspectorRendering(t *testing.T) {
 		Platform: &mcov1beta2.PlatformCapabilitiesSpec{
 			Metrics: mcov1beta2.PlatformMetricsSpec{
 				Default: mcov1beta2.PlatformMetricsDefaultSpec{
-					Enabled: true,
+					Enabled: ptr.To(true),
 				},
 				Inspector: mcov1beta2.MetricsInspectorSpec{
 					Enabled: true,
@@ -289,7 +290,7 @@ func TestMetricsInspectorRendering(t *testing.T) {
 
 	// 5. In legacy collector mode (MCOA disabled), ScrapeConfig is omitted during render
 	// but included in MetricsInspectorResourcesForRemoval.
-	mco.Spec.Capabilities.Platform.Metrics.Default.Enabled = false
+	mco.Spec.Capabilities.Platform.Metrics.Default.Enabled = ptr.To(false)
 	legacyResources, err := renderer.MetricsInspectorResources(t.Context(), namespace, labels)
 	if err != nil {
 		t.Fatalf("MetricsInspectorResources (legacy mode) failed: %v", err)
