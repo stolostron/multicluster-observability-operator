@@ -482,13 +482,14 @@ var _ = Describe("RHACM4K-58751: Enable and teardown virtualization right-sizing
 		}, 2*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
+	// Rebuilding the addon and its work can take a few minutes when this group starts with MCOA disabled.
 	It("Should find the PrometheusRule 'acm-rs-virt-prometheus-rules' in namespace 'openshift-monitoring'", func() {
 		Eventually(func() error {
 			_, err := dynClient.Resource(prGVR).
 				Namespace("openshift-monitoring").
 				Get(context.TODO(), "acm-rs-virt-prometheus-rules", metav1.GetOptions{})
 			return err
-		}, 2*time.Minute, 10*time.Second).Should(Succeed())
+		}, 5*time.Minute, 10*time.Second).Should(Succeed())
 	})
 
 	It("Should validate VM metrics in the 'observability-metrics-allowlist' ConfigMap in namespace 'open-cluster-management-observability'", func() {
