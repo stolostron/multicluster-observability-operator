@@ -7,6 +7,7 @@ package tests
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"regexp"
@@ -631,7 +632,8 @@ func checkRightSizingResource(ctx context.Context, client dynamic.ResourceInterf
 	if err != nil {
 		if !wantPresent && apierrors.IsNotFound(err) {
 			// An unserved API also returns 404. Require the error to identify the object.
-			if status, ok := err.(apierrors.APIStatus); ok {
+			var status apierrors.APIStatus
+			if errors.As(err, &status) {
 				if details := status.Status().Details; details != nil && details.Name == name {
 					return nil
 				}
@@ -997,12 +999,12 @@ func logPodDetailDashboardVersions(ctx context.Context, client dynamic.Interface
 		dashboard, err := client.Resource(gvr).Namespace(analyticsNamespace).Get(readCtx, podDetailDashboardName, metav1.GetOptions{})
 		cancel()
 		if err != nil {
-			fmt.Fprintf(GinkgoWriter, "Read PersesDashboard %s/%s via %s: %v\n", analyticsNamespace, podDetailDashboardName, version, err)
+			GinkgoWriter.Printf("Read PersesDashboard %s/%s via %s: %v\n", analyticsNamespace, podDetailDashboardName, version, err)
 			continue
 		}
 		spec, _, specErr := unstructured.NestedMap(dashboard.Object, "spec")
 		config, _, configErr := unstructured.NestedMap(spec, "config")
-		fmt.Fprintf(GinkgoWriter, "PersesDashboard %s/%s via %s uid=%s resourceVersion=%s deletionTimestamp=%v\n  spec: %s (err=%v)\n  spec.config: %s (err=%v)\n",
+		GinkgoWriter.Printf("PersesDashboard %s/%s via %s uid=%s resourceVersion=%s deletionTimestamp=%v\n  spec: %s (err=%v)\n  spec.config: %s (err=%v)\n",
 			analyticsNamespace, podDetailDashboardName, version, dashboard.GetUID(), dashboard.GetResourceVersion(), dashboard.GetDeletionTimestamp(),
 			summarizePersesDashboardSpec(spec), specErr, summarizePersesDashboardSpec(config), configErr)
 	}
