@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: observability-metrics-inspector
+  namespace: open-cluster-management-observability
+  labels:
+    app.kubernetes.io/component: metrics-inspector
+    app.kubernetes.io/name: observability-metrics-inspector
+    app.kubernetes.io/part-of: multicluster-observability-operator
+spec:
+  endpoints:
+    - port: https-metrics
+      scheme: https
+      path: /metrics
+      interval: 60s
+      scrapeTimeout: 10s
+      tlsConfig:
+        caFile: /etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt
+        serverName: observability-metrics-inspector.open-cluster-management-observability.svc
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+  namespaceSelector:
+    matchNames:
+      - open-cluster-management-observability
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: metrics-inspector
+      app.kubernetes.io/name: observability-metrics-inspector

@@ -1,0 +1,13 @@
+resources:
+- cluster_role.yaml
+- cluster_role_binding.yaml
+- service_account.yaml
+- configmap.yaml
+- service.yaml
+- service_monitor.yaml
+- deployment.yaml
+- scrape-config.yaml
+- dash-acm-metrics-inspector-cluster.yaml
+- dash-acm-metrics-inspector-overview.yaml
+- dash-acm-metrics-inspector-name.yaml
+- dash-acm-metrics-thanos-bucket.yaml

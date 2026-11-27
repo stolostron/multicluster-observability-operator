@@ -25,7 +25,7 @@ spec:
       ports:
         - port: 10901
           protocol: TCP
-    # remote write via obs-api
+    # remote write via obs-api and metrics-inspector
     - from:
         - podSelector:
             matchLabels:
@@ -33,6 +33,10 @@ spec:
               app.kubernetes.io/instance: observability
               app.kubernetes.io/name: observatorium-api
               app.kubernetes.io/part-of: observatorium
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: metrics-inspector
+              app.kubernetes.io/name: observability-metrics-inspector
       ports:
         - port: 19291
           protocol: TCP

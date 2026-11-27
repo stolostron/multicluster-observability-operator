@@ -4,6 +4,7 @@ WORKDIR /workspace
 # copy go tests into build image
 COPY go.sum go.mod ./
 COPY ./operators ./operators
+COPY ./metrics-inspector ./metrics-inspector
 COPY ./tests ./tests
 
 # compile go tests in build image

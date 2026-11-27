@@ -332,7 +332,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if err := deployer.Deploy(ctx, res); err != nil {
 			if meta.IsNoMatchError(err) {
 				kind := res.GetKind()
-				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind {
+				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind || kind == "ServiceMonitor" {
 					reqLogger.Info("CRD not yet available, waiting for MCOA to install it", "Kind", kind)
 					continue
 				}
@@ -347,6 +347,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	if !rendering.MCOAPlatformMetricsEnabled(instance) {
 		if err := r.undeployMCOAGrafanaResources(ctx, instance, renderer, deployer); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	if !rendering.MetricsInspectorEnabled(instance) {
+		if err := r.undeployMetricsInspectorResources(ctx, instance, renderer, deployer); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -1095,6 +1100,35 @@ func (r *MultiClusterObservabilityReconciler) undeployMCOAGrafanaResources(
 			if meta.IsNoMatchError(err) {
 				kind := res.GetKind()
 				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind {
+					log.Info("CRD not available on MCO, skipping cleanup", "Kind", kind)
+					continue
+				}
+			}
+			return fmt.Errorf("failed to undeploy %s %s/%s: %w", res.GetKind(), resNS, res.GetName(), err)
+		}
+	}
+
+	return nil
+}
+
+// undeployMetricsInspectorResources removes metrics-inspector resources when the inspector capability is disabled.
+func (r *MultiClusterObservabilityReconciler) undeployMetricsInspectorResources(
+	ctx context.Context,
+	instance *mcov1beta2.MultiClusterObservability,
+	renderer *rendering.MCORenderer,
+	deployer *deploying.Deployer,
+) error {
+	namespace, labels := renderer.NamespaceAndLabels()
+	toDelete, err := renderer.MetricsInspectorResourcesForRemoval(ctx, namespace, labels)
+	if err != nil {
+		return fmt.Errorf("failed to list metrics-inspector resources for deletion in namespace %s: %w", namespace, err)
+	}
+	for _, res := range toDelete {
+		resNS := res.GetNamespace()
+		if err := deployer.Undeploy(ctx, res, instance); err != nil {
+			if meta.IsNoMatchError(err) {
+				kind := res.GetKind()
+				if kind == monitoringv1.PrometheusRuleKind || kind == monitoringv1alpha1.ScrapeConfigsKind || kind == "ServiceMonitor" {
 					log.Info("CRD not available on MCO, skipping cleanup", "Kind", kind)
 					continue
 				}

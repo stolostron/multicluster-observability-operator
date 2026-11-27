@@ -20,6 +20,7 @@ var (
 	proxyTemplates                 []*resource.Resource
 	endpointObservabilityTemplates []*resource.Resource
 	mcoaTemplates                  []*resource.Resource
+	metricsInspectorTemplates      []*resource.Resource
 )
 
 // GetOrLoadGenericTemplates reads base manifest.
@@ -118,6 +119,20 @@ func GetOrLoadMCOATemplates(r *templates.TemplateRenderer) ([]*resource.Resource
 	return mcoaTemplates, nil
 }
 
+// GetOrLoadMetricsInspectorTemplates reads the metrics-inspector manifests.
+func GetOrLoadMetricsInspectorTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
+	if len(metricsInspectorTemplates) > 0 {
+		return metricsInspectorTemplates, nil
+	}
+
+	basePath := path.Join(r.GetTemplatesPath(), "base")
+
+	if err := r.AddTemplateFromPath(path.Join(basePath, "metrics-inspector"), &metricsInspectorTemplates); err != nil {
+		return metricsInspectorTemplates, err
+	}
+	return metricsInspectorTemplates, nil
+}
+
 // GetEndpointObservabilityTemplates reads endpoint-observability manifest.
 func GetOrLoadEndpointObservabilityTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(endpointObservabilityTemplates) > 0 {
@@ -143,4 +158,5 @@ func ResetTemplates() {
 	proxyTemplates = nil
 	endpointObservabilityTemplates = nil
 	mcoaTemplates = nil
+	metricsInspectorTemplates = nil
 }

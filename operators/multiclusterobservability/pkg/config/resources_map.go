@@ -382,6 +382,27 @@ var (
 		TwoXLarge:  "1Gi",
 		FourXLarge: "1Gi",
 	}
+
+	MetricsInspectorCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:    "100m",
+		Default:    "100m",
+		Small:      "150m",
+		Medium:     "300m",
+		Large:      "500m",
+		XLarge:     "1",
+		TwoXLarge:  "2",
+		FourXLarge: "4",
+	}
+	MetricsInspectorMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:    "256Mi",
+		Default:    "256Mi",
+		Small:      "512Mi",
+		Medium:     "1Gi",
+		Large:      "2Gi",
+		XLarge:     "3Gi",
+		TwoXLarge:  "4Gi",
+		FourXLarge: "6Gi",
+	}
 )
 
 const (
@@ -514,6 +535,16 @@ var (
 			FourXLarge: intptr(3),
 		},
 		MultiClusterObservabilityAddon: {
+			Minimal:    intptr(1),
+			Default:    intptr(1),
+			Small:      intptr(1),
+			Medium:     intptr(1),
+			Large:      intptr(1),
+			XLarge:     intptr(1),
+			TwoXLarge:  intptr(1),
+			FourXLarge: intptr(1),
+		},
+		MetricsInspector: {
 			Minimal:    intptr(1),
 			Default:    intptr(1),
 			Small:      intptr(1),

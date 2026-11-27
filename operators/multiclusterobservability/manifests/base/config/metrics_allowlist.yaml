@@ -53,6 +53,14 @@ data:
       - ALERTS
       - authenticated_user_requests
       - authentication_attempts
+      - cardinality_estimator_deduplicated_series_total
+      - cardinality_estimator_ingested_series_total
+      - cardinality_estimator_last_push_timestamp_seconds
+      - cardinality_estimator_push_errors_total
+      - cardinality_estimator_push_success_total
+      - cardinality_estimator_pushed_series_total
+      - cardinality_estimator_write_errors_total
+      - cardinality_estimator_write_requests_total
       - cluster_infrastructure_provider
       - cluster_operator_conditions
       - cluster_operator_up      
@@ -239,6 +247,16 @@ data:
       - policyreport_info
       - prometheus_operator_reconcile_errors_total
       - prometheus_operator_reconcile_operations_total
+      - thanos_bucket_blocks
+      - thanos_bucket_burn_rate_bytes_per_second
+      - thanos_bucket_configured_retention_seconds
+      - thanos_bucket_last_sync_duration_seconds
+      - thanos_bucket_last_sync_timestamp_seconds
+      - thanos_bucket_oldest_block_timestamp_seconds
+      - thanos_bucket_projected_steady_state_bytes
+      - thanos_bucket_storage_bytes
+      - thanos_bucket_sync_errors_total
+      - thanos_bucket_syncs_total
       - up
 
     matches:

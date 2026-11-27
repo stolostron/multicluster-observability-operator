@@ -473,7 +473,11 @@ func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 		svcName = "mcoa-" + svcName
 	}
 
-	hosts := []string{config.GetObsAPISvc(svcName)}
+	hosts := []string{
+		config.GetObsAPISvc(svcName),
+		fmt.Sprintf("%s.%s.svc", config.MetricsInspectorServiceName, config.GetDefaultNamespace()),
+		fmt.Sprintf("%s.%s.svc.cluster.local", config.MetricsInspectorServiceName, config.GetDefaultNamespace()),
+	}
 
 	customHostURL, err := config.GetObsAPIExternalURL(context.TODO(), c, obsAPIGateway, config.GetDefaultNamespace())
 	if err != nil {

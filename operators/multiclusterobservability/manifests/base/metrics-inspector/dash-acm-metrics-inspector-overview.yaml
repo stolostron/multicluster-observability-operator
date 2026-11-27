@@ -1,0 +1,2304 @@
+apiVersion: v1
+data:
+  acm-metrics-inspector-overview.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": false,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": true,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 7,
+          "panels": [
+            {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 10,
+                "w": 24,
+                "x": 0,
+                "y": 1
+              },
+              "id": 8,
+              "options": {
+                "code": {
+                  "language": "plaintext",
+                  "showLineNumbers": false,
+                  "showMiniMap": false
+                },
+                "content": "### **📝 Managing Monitoring Cardinality**\n\nThis dashboard helps you visualize the metric cardinality and series churn ingested from all managed clusters. Understanding and controlling cardinality is crucial, as the number of unique metrics directly correlates with the CPU, memory, and storage resources required by the Thanos monitoring platform.\n\n#### **Real-Time Probabilistic Estimation (HyperLogLog)**\n\nCardinality and series churn are computed continuously on the Hub by the `observability-metrics-inspector` service using **Time-Sliced Bloom Filters** and **Sliding-Window HyperLogLog (HLL)** sketches over a 15-minute sliding window, pushed to Thanos every **60 seconds**.\n\nAll panels on this Overview dashboard display **15m Estimates (Remote Write)** from `observability-metrics-inspector`. When drilling down into individual clusters or metrics via the links below, lower dashboard sections query **Exact Counts (Thanos TSDB)** directly from storage.\n\n#### **🤔 What is Cardinality & Churn?**\n\n* **Cardinality (`cardinality_estimate`):** The total number of unique **time series** active over the 15-minute window. A time series is a unique combination of a **metric name** and its descriptive **labels**.\n* **Series Churn Percentage (`cardinality_churn_ratio`):** Measures the proportion of newly created or short-lived series entering the 15-minute window relative to total active series (displayed as a percentage from `0.00%` to `100.00%`). High churn puts heavy pressure on the TSDB head block, index compaction, and memory even when standing cardinality appears stable:\n  * **< 10% (Green / Normal):** Typical steady-state cluster operation.\n  * **10% – 30% (Amber / Elevated):** Moderate turnover, common during rolling deployments, CronJobs, or auto-scaling events.\n  * **> 30% (Red / High):** Aggressive series turnover (often caused by ephemeral labels such as UUIDs, pod hashes, or dynamically generated timestamps).\n  * **Note on low-frequency rules (≥ 7.5m):** Right-sizing recording rules (`acm_rs:*`, `acm_rs_vm:*`) and KubeVirt metrics (`kubevirt_*`) are excluded from churn calculation by default and will show no churn data. Other custom periodic recording rules evaluated slower than 7.5m (e.g. 15m+) may report elevated churn unless added to `--estimator.churn-exclude-regex` / `churn_exclude_regex`.\n\n#### **🔍 How to Use These Dashboards**\n\n1. **Fleet Overview & Churn:** Check the **Total Fleet Cardinality** and **Peak Cluster Churn** indicators for fleet-level health.\n2. **Cardinality Outliers (>3σ):** Automatically identifies clusters and metrics whose cardinality exceeds 3 standard deviations above the fleet average.\n3. **Anomalies & Churn Triage:** Inspect the top churning clusters and statistical outliers before they cause Thanos resource saturation.\n4. **Cluster Cardinality:** Shows the total number of series sent by each managed cluster. Click on a cluster to drill down by namespace and pod.\n5. **Metric Cardinality:** Shows the highest-cardinality metrics across all clusters. Click on a metric to drill down by cluster, namespace, and pod.\n\n#### **Telemetry Tiers: 15m Estimate (Remote Write) vs. Exact Count (Thanos TSDB) & Historical Trends**\n\nDepending on where you look, cardinality numbers will not add up 1:1:\n* **15m Estimate (Remote Write) (`cardinality_estimate`):** Computed at the ingress mirror via HyperLogLog over a **15-minute sliding window** (±1.6% error). It measures raw incoming series volume at the cluster perimeter. Crucially, if managed clusters send metrics in **High Availability (HA) mode** (dual Prometheus replicas with replica labels), ingress estimation counts both streams as distinct incoming series before any deduplication or relabeling occurs.\n* **Exact Count (Thanos TSDB) (`count(...)`):** Evaluated directly against the Thanos TSDB head block at a **single point in time (instantaneous)**. This reflects only series that were successfully committed and are currently queryable in storage. This number is typically lower than the ingress estimate due to:\n  * **HA Deduplication:** Thanos Query deduplicates dual replica streams (collapsing `prometheus_replica` / `replica` labels), reducing apparent cluster cardinality by up to 2× for HA setups.\n  * **Zero Churn Retention:** Unlike the 15-minute HLL window that retains ephemeral series, instantaneous `count()` reflects only series actively posting samples at that exact tick, excluding short-lived churn or dropped series.\n* **Macro Trends: 7d & 30d Ingress Lookback:** Historical deltas (`Δ 7d`, `Δ 30d`) compare the current ingress estimate directly against historical estimates (`offset 7d` / `offset 30d`). Both sides of this comparison use the same estimator metric, showing directional growth or reduction in incoming traffic over time without being affected by TSDB compaction or block retention.",
+                "mode": "markdown"
+              },
+              "pluginVersion": "11.6.1",
+              "title": "",
+              "type": "text"
+            }
+          ],
+          "title": "Dashboard Guide (Click to Expand)",
+          "type": "row"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 1
+          },
+          "id": 22,
+          "panels": [],
+          "title": "Fleet Overview",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Total unique time series active across all managed clusters in the 15-minute sliding window, estimated at ingress via HyperLogLog.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#3274D9"
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 5,
+            "x": 0,
+            "y": 2
+          },
+          "id": 20,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(avg_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[5m]))",
+              "format": "time_series",
+              "instant": false,
+              "legendFormat": "Total Cardinality",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Total Fleet Cardinality (15m)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Number of managed clusters reporting cardinality telemetry to the Hub.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#8AB8FF"
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 5,
+            "y": 2
+          },
+          "id": 21,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "count(cardinality_estimate{group_by_keys=\"cluster\"})",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Monitored Clusters",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 0.1
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.3
+                  }
+                ]
+              },
+              "unit": "percentunit",
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 5,
+            "x": 9,
+            "y": 2
+          },
+          "id": 15,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "max(max_over_time(cardinality_churn_ratio{group_by_keys=\"cluster\"}[15m]))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Peak Cluster Churn (15m)",
+          "type": "stat",
+          "description": "Maximum series churn in the fleet over a 15-minute sliding window. Values > 10% indicate notable churn; > 30% indicate high series churn."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 3
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 5,
+            "x": 14,
+            "y": 2
+          },
+          "id": 11,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(label_replace(cardinality_estimate{group_by_keys=\"cluster\"}, \"cluster\", \"$1\", \"by_cluster\", \"(.*)\") > on() group_left() (avg(cardinality_estimate{group_by_keys=\"cluster\"}) + 3 * stddev(cardinality_estimate{group_by_keys=\"cluster\"})))",
+              "format": "table",
+              "instant": true,
+              "interval": "1m",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Cluster Outliers (>3σ)",
+          "type": "stat",
+          "description": "Number of managed clusters whose cardinality exceeds the fleet mean by >3 standard deviations."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 5,
+            "x": 19,
+            "y": 2
+          },
+          "id": 12,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(label_replace(cardinality_estimate{group_by_keys=\"__name__\"}, \"metric_name\", \"$1\", \"by__name__\", \"(.*)\") > on() group_left() (avg(cardinality_estimate{group_by_keys=\"__name__\"}) + 3 * stddev(cardinality_estimate{group_by_keys=\"__name__\"})))",
+              "format": "table",
+              "instant": true,
+              "interval": "1m",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Metric Outliers (>3σ)",
+          "type": "stat",
+          "description": "Number of metrics whose cardinality across all clusters exceeds the fleet mean by >3 standard deviations."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short",
+              "min": 0
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 6
+          },
+          "id": 19,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(avg_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[10m]))",
+              "interval": "1m",
+              "legendFormat": "Total Cardinality",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Fleet Total Cardinality Over Time (15m)",
+          "type": "timeseries",
+          "description": "Total unique time series received across all managed clusters over time, estimated at ingress via HyperLogLog (±1.6% variance) over a 15m sliding window and smoothed with a 10m moving average."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 2,
+              "mappings": [],
+              "max": 1,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 0.1
+                  },
+                  {
+                    "color": "#F2495C",
+                    "value": 0.3
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Peak Cluster Churn"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#F2495C",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Fleet Weighted Average Churn"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 6
+          },
+          "id": 16,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true,
+              "sortBy": "Last *",
+              "sortDesc": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "max(avg_over_time(cardinality_churn_ratio{group_by_keys=\"cluster\"}[5m]))",
+              "interval": "1m",
+              "legendFormat": "Peak Cluster Churn",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(avg_over_time(cardinality_churn_ratio{group_by_keys=\"cluster\"}[5m]) * on(by_cluster) avg_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[5m])) / sum(avg_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[5m]))",
+              "interval": "1m",
+              "legendFormat": "Fleet Weighted Average Churn",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Fleet Series Churn Over Time (15m)",
+          "type": "timeseries",
+          "description": "Historical fleet-wide series churn ratio over a 15m sliding window, smoothed with a 5m moving average. Tracks the worst cluster churn spike (Peak Cluster Churn) alongside the fleet-wide cardinality-weighted average churn rate. Values > 10% indicate elevated turnover (e.g. rolling updates); values > 30% indicate aggressive churn."
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 14
+          },
+          "id": 9,
+          "panels": [],
+          "title": "Anomalies & Churn Triage",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cluster"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Detailed dashboard",
+                        "url": "/d/4y9qgtj63s00y9/cluster?${__url_time_range}&var-datasource=$datasource&var-cluster=${__data.fields.cluster}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.minWidth",
+                    "value": 140
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Cardinality"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 15
+          },
+          "id": 10,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Cardinality"
+              }
+            ]
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "label_replace(cardinality_estimate{group_by_keys=\"cluster\"}, \"cluster\", \"$1\", \"by_cluster\", \"(.*)\") > on() group_left() (avg(cardinality_estimate{group_by_keys=\"cluster\"}) + 3 * stddev(cardinality_estimate{group_by_keys=\"cluster\"}))",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Outlier Clusters (>3σ)",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "cluster",
+                    "Value"
+                  ]
+                }
+              }
+            }
+          ],
+          "type": "table",
+          "description": "Managed clusters whose cardinality exceeds the fleet mean by >3 standard deviations. 'No data' indicates normal distribution across all clusters."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "metric_name"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Detailed dashboard",
+                        "url": "/d/j6djrnie7njo1r?var-metric_name=${__data.fields.metric_name}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.minWidth",
+                    "value": 180
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Cardinality"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 15
+          },
+          "id": 13,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Cardinality"
+              }
+            ]
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "label_replace(cardinality_estimate{group_by_keys=\"__name__\"}, \"metric_name\", \"$1\", \"by__name__\", \"(.*)\") > on() group_left() (avg(cardinality_estimate{group_by_keys=\"__name__\"}) + 3 * stddev(cardinality_estimate{group_by_keys=\"__name__\"}))",
+              "format": "table",
+              "instant": true,
+              "interval": "1m",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Outlier Metrics (>3σ)",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "metric_name",
+                    "Value"
+                  ]
+                }
+              }
+            }
+          ],
+          "type": "table",
+          "description": "Metrics whose cardinality across all clusters exceeds the fleet mean by >3 standard deviations. 'No data' indicates normal distribution across all metrics."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.5
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cluster"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Drill down",
+                        "url": "/d/4y9qgtj63s00y9/cluster?${__url_time_range}&var-datasource=$datasource&var-cluster=${__data.fields.cluster}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.minWidth",
+                    "value": 140
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Churn"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green"
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 0.1
+                        },
+                        {
+                          "color": "red",
+                          "value": 0.3
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 15
+          },
+          "id": 17,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "topk(10, label_replace(max_over_time(cardinality_churn_ratio{group_by_keys=\"cluster\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\"))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Top Churning Clusters (15m Window)",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "cluster",
+                    "Value"
+                  ]
+                }
+              }
+            }
+          ],
+          "type": "table",
+          "description": "Clusters with highest series churn ratio. High churn indicates short-lived pods, rapid restarts, or ephemeral labels."
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 23
+          },
+          "id": 3,
+          "panels": [],
+          "title": "Cluster Cardinality",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Top 8 clusters by ingress series cardinality received over a 15m sliding window (HLL estimate, smoothed with 5m rolling average). Measures metric stream volume at the front door before deduplication.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 3,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 10,
+            "x": 0,
+            "y": 24
+          },
+          "id": 1,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "width": 400
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "expr": "topk(8, label_replace(avg_over_time(cardinality_estimate{group_by_keys=\"cluster\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\"))",
+              "interval": "1m",
+              "legendFormat": "{{cluster}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Cluster Cardinality Over Time (15m)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false,
+                "minWidth": 100
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "-"
+                    }
+                  },
+                  "type": "special"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent"
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cluster"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Detailed dashboard",
+                        "url": "/d/4y9qgtj63s00y9/cluster?${__url_time_range}&var-datasource=$datasource&var-cluster=${__data.fields.cluster}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.minWidth",
+                    "value": 160
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cardinality"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 125
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "% Fleet"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "basic",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "#5794F2",
+                          "value": null
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "7d Trend"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 90
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 10
+                        },
+                        {
+                          "color": "red",
+                          "value": 30
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Churn"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 90
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 0.1
+                        },
+                        {
+                          "color": "red",
+                          "value": 0.3
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 14,
+            "x": 10,
+            "y": 24
+          },
+          "id": 2,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "enablePagination": true,
+              "fields": [
+                "Cardinality"
+              ],
+              "reducer": [
+                "sum"
+              ],
+              "show": true
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Cardinality"
+              }
+            ]
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum by (cluster) (label_replace(cardinality_estimate{group_by_keys=\"cluster\"}, \"cluster\", \"$1\", \"by_cluster\", \"(.*)\"))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Now"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum by (cluster) (label_replace(cardinality_estimate{group_by_keys=\"cluster\"} offset 7d, \"cluster\", \"$1\", \"by_cluster\", \"(.*)\"))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "7d Ago"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(cardinality_estimate{group_by_keys=\"cluster\"})",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Total"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum by (cluster) (label_replace(max_over_time(cardinality_churn_ratio{group_by_keys=\"cluster\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\"))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Churn"
+            }
+          ],
+          "title": "Cluster Cardinality & Macro Trends (15m)",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "diff_7d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "-",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #7d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_7d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "diff_7d"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #7d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "7d Trend",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_7d"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_total",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Total"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% Fleet",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_total"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "destinationType": "number",
+                    "targetField": "7d Trend"
+                  }
+                ],
+                "fields": {}
+              }
+            },
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "cluster",
+                    "Value #Now",
+                    "% Fleet",
+                    "7d Trend",
+                    "Value #Churn"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #(.*)",
+                "renamePattern": "$1"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "includeByName": {},
+                "indexByName": {
+                  "cluster": 0,
+                  "Now": 1,
+                  "% Fleet": 2,
+                  "7d Trend": 3,
+                  "Churn": 4
+                },
+                "renameByName": {
+                  "Now": "Cardinality",
+                  "% Fleet": "% Fleet",
+                  "7d Trend": "7d Trend",
+                  "Churn": "Churn"
+                }
+              }
+            }
+          ],
+          "type": "table",
+          "description": "Current 15-minute ingress cardinality compared against historical 7-day and 30-day ingress snapshots. Note: Compaction and series turnover mean historical comparisons indicate macro directional drift rather than exact ledger reconciliation."
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 36
+          },
+          "id": 4,
+          "panels": [],
+          "title": "Metric Cardinality",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Top metrics by ingress cardinality received across all clusters over a 15m sliding window (HLL estimate, smoothed with 5m rolling average).",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 10,
+            "x": 0,
+            "y": 37
+          },
+          "id": 6,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "expr": "topk(5, label_replace(avg_over_time(cardinality_estimate{group_by_keys=\"__name__\"}[15m]), \"metric_name\", \"$1\", \"by__name__\", \"(.*)\"))",
+              "interval": "1m",
+              "legendFormat": "{{metric_name}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Metric Cardinality Over Time (15m)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Highest cardinality metrics across all clusters with 7d and 30d drift. Front-door ingress estimation captures total active series combinations. Note: Right-sizing recording rules (acm_rs:*, acm_rs_vm:*) and KubeVirt metrics (kubevirt_*) are excluded from churn calculation by default and will show no churn data. Other custom periodic recording rules evaluated slower than 7.5m (e.g. 15m+) may report elevated churn unless added to --estimator.churn-exclude-regex / churn_exclude_regex.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto",
+                  "wrapText": false
+                },
+                "filterable": true,
+                "inspect": false,
+                "minWidth": 100
+              },
+              "fieldMinMax": false,
+              "mappings": [
+                {
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "-"
+                    }
+                  },
+                  "type": "special"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "metric_name"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Detailed dashboard",
+                        "url": "/d/j6djrnie7njo1r/metric-name?${__url_time_range}&var-datasource=$datasource&var-metric_name=${__data.fields.metric_name}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.minWidth",
+                    "value": 280
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cardinality"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 125
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "% Fleet"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "basic",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "#5794F2",
+                          "value": null
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "7d Trend"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 90
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 10
+                        },
+                        {
+                          "color": "red",
+                          "value": 30
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Churn"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 90
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 0.1
+                        },
+                        {
+                          "color": "red",
+                          "value": 0.3
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 14,
+            "x": 10,
+            "y": 37
+          },
+          "id": 5,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "enablePagination": true,
+              "fields": [
+                "Cardinality"
+              ],
+              "reducer": [
+                "sum"
+              ],
+              "show": true
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Cardinality"
+              }
+            ]
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum by (metric_name) (label_replace(cardinality_estimate{group_by_keys=\"__name__\"}, \"metric_name\", \"$1\", \"by__name__\", \"(.*)\"))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Now"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum by (metric_name) (label_replace(cardinality_estimate{group_by_keys=\"__name__\"} offset 7d, \"metric_name\", \"$1\", \"by__name__\", \"(.*)\"))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "7d Ago"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(cardinality_estimate{group_by_keys=\"__name__\"})",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Total"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum by (metric_name) (label_replace(max_over_time(cardinality_churn_ratio{group_by_keys=\"__name__\"}[15m]), \"metric_name\", \"$1\", \"by__name__\", \"(.*)\"))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Churn"
+            }
+          ],
+          "title": "Metric Cardinality & Macro Trends (15m)",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "diff_7d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "-",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #7d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_7d",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "diff_7d"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #7d Ago"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "7d Trend",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_7d"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "ratio_total",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Now"
+                    }
+                  },
+                  "operator": "/",
+                  "right": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Value #Total"
+                    }
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "% Fleet",
+                "binary": {
+                  "left": {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ratio_total"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "fixed": "100"
+                  }
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "destinationType": "number",
+                    "targetField": "7d Trend"
+                  }
+                ],
+                "fields": {}
+              }
+            },
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "metric_name",
+                    "Value #Now",
+                    "% Fleet",
+                    "7d Trend",
+                    "Value #Churn"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #(.*)",
+                "renamePattern": "$1"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "includeByName": {},
+                "indexByName": {
+                  "metric_name": 0,
+                  "Now": 1,
+                  "% Fleet": 2,
+                  "7d Trend": 3,
+                  "Churn": 4
+                },
+                "renameByName": {
+                  "Now": "Cardinality",
+                  "% Fleet": "% Fleet",
+                  "7d Trend": "7d Trend",
+                  "Churn": "Churn"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "preload": false,
+      "schemaVersion": 41,
+      "tags": [],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Metrics Cardinality Overview",
+      "uid": "nvnki4yiix7ppe",
+      "version": 125
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-acm-metrics-inspector-overview
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: Metrics Inspector

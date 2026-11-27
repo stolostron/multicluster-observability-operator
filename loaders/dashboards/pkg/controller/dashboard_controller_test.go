@@ -237,7 +237,9 @@ func TestDeleteTrackedUIDs(t *testing.T) {
 }
 
 func TestNewKubeInformer_Filtering(t *testing.T) {
-	c := &GrafanaDashboardController{}
+	c := &GrafanaDashboardController{
+		uidMap: make(map[string]trackedState),
+	}
 
 	dashCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{CustomDashboardLabelKey: "true"}},
@@ -267,6 +269,163 @@ func TestNewKubeInformer_Filtering(t *testing.T) {
 	t.Run("ignore regular CM update", func(t *testing.T) {
 		if c.shouldEnqueue(regularCM, regularCM) {
 			t.Error("should not enqueue regular CM update")
+		}
+	})
+
+	t.Run("ignore informer resync for unchanged dashboard (same pointer)", func(t *testing.T) {
+		dashKey, _ := cache.MetaNamespaceKeyFunc(dashCM)
+		c.mu.Lock()
+		c.uidMap[dashKey] = trackedState{uids: []string{"uid"}}
+		c.mu.Unlock()
+		if c.shouldEnqueue(dashCM, dashCM) {
+			t.Error("should not enqueue identical pointer resync event")
+		}
+	})
+
+	t.Run("ignore informer resync for unchanged dashboard (matching ResourceVersion)", func(t *testing.T) {
+		dashV1 := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "12345",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		dashV1Copy := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "12345",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		dashV1Key, _ := cache.MetaNamespaceKeyFunc(dashV1)
+		c.mu.Lock()
+		c.uidMap[dashV1Key] = trackedState{uids: []string{"uid1"}}
+		c.mu.Unlock()
+		if c.shouldEnqueue(dashV1, dashV1Copy) {
+			t.Error("should not enqueue resync with matching ResourceVersion")
+		}
+	})
+
+	t.Run("ignore update when content, folder, and home settings are identical despite different ResourceVersion", func(t *testing.T) {
+		oldDash := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "100",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		newDash := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "101",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+				Annotations:     map[string]string{"unrelated.annotation": "bar"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		if c.shouldEnqueue(oldDash, newDash) {
+			t.Error("should not enqueue update when dashboard data and folder are unchanged")
+		}
+	})
+
+	t.Run("enqueue when dashboard Data changes", func(t *testing.T) {
+		oldDash := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "100",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		newDash := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "101",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo-updated\"}"},
+		}
+		if !c.shouldEnqueue(oldDash, newDash) {
+			t.Error("expected to enqueue when dashboard data changes")
+		}
+	})
+
+	t.Run("enqueue when dashboard folder changes", func(t *testing.T) {
+		oldDash := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "100",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+				Annotations:     map[string]string{CustomFolderKey: "FolderA"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		newDash := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "101",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+				Annotations:     map[string]string{CustomFolderKey: "FolderB"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		if !c.shouldEnqueue(oldDash, newDash) {
+			t.Error("expected to enqueue when dashboard folder changes")
+		}
+	})
+
+	t.Run("enqueue when home dashboard annotation changes", func(t *testing.T) {
+		oldDash := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "100",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		newDash := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "dash1",
+				ResourceVersion: "101",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true", HomeDashboardUIDKey: "uid-1"},
+				Annotations:     map[string]string{SetHomeDashboardKey: "true"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		if !c.shouldEnqueue(oldDash, newDash) {
+			t.Error("expected to enqueue when home dashboard annotation changes")
+		}
+	})
+
+	t.Run("enqueue on resync when desired dashboard is untracked in uidMap", func(t *testing.T) {
+		dash := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            "untracked-dash",
+				Namespace:       "default",
+				ResourceVersion: "100",
+				Labels:          map[string]string{CustomDashboardLabelKey: "true"},
+			},
+			Data: map[string]string{"foo.json": "{\"title\":\"foo\"}"},
+		}
+		// Ensure it is not in c.uidMap
+		c.mu.Lock()
+		delete(c.uidMap, "default/untracked-dash")
+		c.mu.Unlock()
+
+		if !c.shouldEnqueue(dash, dash) {
+			t.Error("expected to enqueue on resync when desired dashboard is untracked in uidMap")
+		}
+
+		// Once tracked, resync with identical ResourceVersion should not enqueue
+		c.mu.Lock()
+		c.uidMap["default/untracked-dash"] = trackedState{uids: []string{"uid1"}}
+		c.mu.Unlock()
+
+		if c.shouldEnqueue(dash, dash) {
+			t.Error("should not enqueue on resync when desired dashboard is already tracked in uidMap")
 		}
 	})
 }

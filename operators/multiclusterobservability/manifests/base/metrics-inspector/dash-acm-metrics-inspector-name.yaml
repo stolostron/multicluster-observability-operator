@@ -1,6 +1,6 @@
 apiVersion: v1
 data:
-  acm-metrics-cardinality-name.json: |-
+  acm-metrics-inspector-name.json: |-
     {
       "annotations": {
         "list": [
@@ -18,23 +18,62 @@ data:
           }
         ]
       },
-      "editable": true,
+      "editable": false,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 63,
+      "id": null,
       "links": [],
       "panels": [
         {
-          "collapsed": false,
+          "collapsed": true,
           "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
             "y": 0
           },
+          "id": 13,
+          "panels": [
+            {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "gridPos": {
+                "h": 10,
+                "w": 24,
+                "x": 0,
+                "y": 1
+              },
+              "id": 14,
+              "options": {
+                "code": {
+                  "language": "plaintext",
+                  "showLineNumbers": false,
+                  "showMiniMap": false
+                },
+                "content": "### **📝 Understanding Metric Cardinality & Data Sources**\n\nThis drill-down dashboard analyzes the distribution and churn of a specific metric (**\"$metric_name\"**) across clusters, namespaces, and pods.\n\n---\n\n#### **Telemetry Tiers: Remote Write Estimates vs. Thanos TSDB Counts**\n\n* **15m Estimate (Remote Write):** Probabilistic HyperLogLog count (±1.6%) and churn ratio of unique series received for \"$metric_name\" per cluster over a 15-minute sliding window before TSDB compaction or relabeling (requires ≥ 25 series per cluster).\n* **Exact Count (Thanos TSDB):** Point-in-time deterministic count of active time series currently stored in Thanos TSDB for the selected cluster/namespace/pod. Values may differ from the 15m estimate due to short-lived churn.\n\n> [!NOTE]\n> Hub-generated metrics (e.g. Thanos Ruler recording rules or alerts) bypass Remote Write mirroring and appear only in the **Exact Count (Thanos TSDB)** sections below. Right-sizing recording rules (`acm_rs:*`, `acm_rs_vm:*`) and KubeVirt metrics (`kubevirt_*`) are excluded from churn calculation by default and will show no churn data. Other custom periodic recording rules evaluated slower than 7.5m (e.g. 15m+) may report elevated churn unless added to `--estimator.churn-exclude-regex` / `churn_exclude_regex`.\n\n---\n\n#### **🔍 How to Drill Down**\n\n1. **Cluster Level:** Review which clusters send the highest volume of \"$metric_name\" and their churn rate. Click a cluster in the table to populate the **$cluster** filter.\n2. **Namespace Level:** Inspect exact TSDB series counts for this metric across namespaces in that cluster. Click a namespace to populate the **$namespace** filter.\n3. **Pod Level:** Inspect series counts across pods and view raw labelsets currently indexed in storage.",
+                "mode": "markdown"
+              },
+              "pluginVersion": "11.6.1",
+              "title": "",
+              "type": "text"
+            }
+          ],
+          "title": "Dashboard Guide (Click to Expand)",
+          "type": "row"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 1
+          },
           "id": 3,
           "panels": [],
-          "title": "Metric Cardinality by Cluster for Metric \"$metric_name\"",
+          "title": "Cluster Cardinality & Churn for \"$metric_name\" — 15m Estimate (Remote Write)",
           "type": "row"
         },
         {
@@ -42,7 +81,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "15m Estimate (Remote Write): Probabilistic HyperLogLog count (±1.6% variance) of unique series received for \"$metric_name\" per cluster over a 15-minute sliding window before HA deduplication, relabel drops, or TSDB write limits. This is an ingress volume indicator and will naturally differ from instantaneous TSDB head counts below.\n\nℹ️ No data? Internally generated metrics (e.g. Thanos Ruler recording rules, alerts) bypass ingress and will only appear in the Exact Count (Thanos TSDB) sections below. Ingress cluster estimates also require ≥ 25 series per cluster.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -65,14 +104,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
-                "pointSize": 5,
+                "pointSize": 3,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -98,10 +137,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 9,
-            "w": 12,
+            "h": 8,
+            "w": 24,
             "x": 0,
-            "y": 1
+            "y": 2
           },
           "id": 2,
           "options": {
@@ -125,15 +164,15 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "sum(last_over_time(cluster_name:cardinality{metric_name=\"$metric_name\"}[35m])) by (cluster)",
+              "expr": "sum(label_replace(avg_over_time(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")) by (cluster)",
               "instant": false,
-              "interval": "30m",
-              "legendFormat": "__auto",
+              "interval": "1m",
+              "legendFormat": "{{cluster}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Cardinality Over Time",
+          "title": "Cluster Cardinality Over Time",
           "type": "timeseries"
         },
         {
@@ -141,7 +180,114 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "Ingress series churn ratio per cluster for metric \"$metric_name\" over a 15m sliding window, smoothed with a 15m moving average. Values > 10% indicate elevated turnover; values > 30% indicate aggressive churn (e.g. short-lived pods, rapid restarts, ephemeral labels).\n\nNote: Right-sizing recording rules (acm_rs:*, acm_rs_vm:*) and KubeVirt metrics (kubevirt_*) are excluded from churn calculation by default and will show no churn data. Other custom periodic recording rules evaluated slower than 7.5m (e.g. 15m+) may report elevated churn unless added to --estimator.churn-exclude-regex / churn_exclude_regex.\n\nℹ️ No data? Internally generated metrics bypass ingress and will only appear in the Exact Count (Thanos TSDB) sections below.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 2,
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 0.1
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.3
+                  }
+                ]
+              },
+              "unit": "percentunit",
+              "max": 1
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 10
+          },
+          "id": 12,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "11.6.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "expr": "topk(8, label_replace(avg_over_time(cardinality_churn_ratio{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\", by_cluster!=\"\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\"))",
+              "instant": false,
+              "legendFormat": "{{cluster}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Cluster Churn Over Time",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Ingress series count for \"$metric_name\" per cluster over the current 15m sliding window. Click a cluster to drill down into stored TSDB namespace series.\n\nℹ️ No data? Internally generated metrics bypass ingress and will only appear in the Exact Count (Thanos TSDB) sections below.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -185,14 +331,123 @@ data:
                     ]
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cluster Churn"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Churn"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 90
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 0.1
+                        },
+                        {
+                          "color": "red",
+                          "value": 0.3
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cluster Cardinality"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 125
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "Cardinality"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "% of Total"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "basic",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "#5794F2",
+                          "value": null
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
           "gridPos": {
-            "h": 9,
+            "h": 10,
             "w": 12,
             "x": 12,
-            "y": 1
+            "y": 10
           },
           "id": 1,
           "options": {
@@ -222,7 +477,7 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cluster_name:cardinality{metric_name=\"$metric_name\"}[35m])) by (cluster)",
+              "expr": "sum(label_replace(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}, \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")) by (cluster)",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
@@ -236,16 +491,31 @@ data:
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "sum(last_over_time(cluster_name:cardinality{metric_name=\"$metric_name\"}[35m])) ",
+              "expr": "sum(cardinality_estimate{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"})",
               "format": "table",
               "hide": false,
               "instant": true,
               "legendFormat": "__auto",
               "range": false,
               "refId": "Total Cardinality"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(label_replace(max_over_time(cardinality_churn_ratio{group_by_keys=\"cluster,__name__\", by__name__=\"$metric_name\"}[15m]), \"cluster\", \"$1\", \"by_cluster\", \"(.*)\")) by (cluster)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "Cluster Churn"
             }
           ],
-          "title": "Current Cardinality",
+          "title": "Current Cluster Cardinality & Churn",
           "transformations": [
             {
               "id": "merge",
@@ -305,7 +575,8 @@ data:
                   "names": [
                     "cluster",
                     "Value #Cluster Cardinality",
-                    "% of Total"
+                    "% of Total",
+                    "Value #Cluster Churn"
                   ]
                 }
               }
@@ -326,11 +597,11 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 10
+            "y": 19
           },
           "id": 4,
           "panels": [],
-          "title": "Metric Cardinality by Namespace for Cluster \"$cluster\"",
+          "title": "Namespace Cardinality in \"$cluster\" — Exact Count (Thanos TSDB)",
           "type": "row"
         },
         {
@@ -338,7 +609,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "Exact Count (Thanos TSDB): Exact deterministic count of series for \"$metric_name\" currently active in Thanos TSDB storage across namespaces at this specific minute.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -361,14 +632,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -397,7 +668,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 11
+            "y": 20
           },
           "id": 6,
           "options": {
@@ -421,9 +692,9 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace!=\"\"}) by (namespace))",
+              "expr": "topk(8, max_over_time((count by (namespace) ({__name__=\"$metric_name\", cluster=\"$cluster\", namespace!=\"\"}))[5m:]))",
               "instant": false,
-              "legendFormat": "__auto",
+              "legendFormat": "{{namespace}}",
               "range": true,
               "refId": "A"
             },
@@ -433,7 +704,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"\"})",
+              "expr": "max_over_time((count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"\"}))[5m:])",
               "hide": false,
               "instant": false,
               "legendFormat": "Non Namespaced",
@@ -441,7 +712,7 @@ data:
               "refId": "B"
             }
           ],
-          "title": "Cardinality Over Time",
+          "title": "Namespace Cardinality Over Time",
           "type": "timeseries"
         },
         {
@@ -449,7 +720,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "Active series committed in TSDB storage for \"$metric_name\" grouped by namespace. Click a namespace to drill down into pod series.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -516,6 +787,49 @@ data:
                     ]
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "% of Total"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "basic",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "#5794F2",
+                          "value": null
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -523,7 +837,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 11
+            "y": 20
           },
           "id": 5,
           "options": {
@@ -576,7 +890,7 @@ data:
               "refId": "Total"
             }
           ],
-          "title": "Current Cardinality",
+          "title": "Current Namespace Cardinality",
           "transformations": [
             {
               "id": "merge",
@@ -657,11 +971,11 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 21
+            "y": 30
           },
           "id": 7,
           "panels": [],
-          "title": "Metric Cardinality by Pod for Namespace \"$namespace\"",
+          "title": "Pod Cardinality in \"$namespace\" — Exact Count (Thanos TSDB)",
           "type": "row"
         },
         {
@@ -669,7 +983,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "Exact Count (Thanos TSDB): Exact deterministic count of series for \"$metric_name\" across pods over time.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -692,14 +1006,14 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineWidth": 1,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
                 },
                 "showPoints": "auto",
-                "spanNulls": false,
+                "spanNulls": true,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
@@ -728,7 +1042,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 22
+            "y": 31
           },
           "id": 10,
           "options": {
@@ -752,7 +1066,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "topk(8, count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod!=\"\"}) by (pod))",
+              "expr": "topk(8, max_over_time((count by (pod) ({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod!=\"\"}))[5m:]))",
               "instant": false,
               "legendFormat": "{{pod}}",
               "range": true,
@@ -764,7 +1078,7 @@ data:
                 "uid": "000000001"
               },
               "editorMode": "code",
-              "expr": "count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"\"})",
+              "expr": "max_over_time((count({__name__=\"$metric_name\", cluster=\"$cluster\", namespace=\"$namespace\", pod=\"\"}))[5m:])",
               "hide": false,
               "instant": false,
               "legendFormat": "No Pod",
@@ -772,7 +1086,7 @@ data:
               "refId": "B"
             }
           ],
-          "title": "Cardinality Over Time",
+          "title": "Pod Cardinality Over Time",
           "type": "timeseries"
         },
         {
@@ -780,7 +1094,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "Active series committed in TSDB storage for \"$metric_name\" in namespace \"$namespace\" grouped by pod. Click a pod to inspect raw labelsets.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -824,6 +1138,49 @@ data:
                     ]
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "% of Total"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "basic",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "#5794F2",
+                          "value": null
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -831,7 +1188,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 22
+            "y": 31
           },
           "id": 8,
           "options": {
@@ -884,7 +1241,7 @@ data:
               "refId": "Total"
             }
           ],
-          "title": "Current Cardinality",
+          "title": "Current Pod Cardinality",
           "transformations": [
             {
               "id": "merge",
@@ -965,11 +1322,11 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 32
+            "y": 41
           },
           "id": 11,
           "panels": [],
-          "title": "Timeseries in Pod \"$pod\"",
+          "title": "Raw Time Series in Pod \"$pod\" — Exact List (Thanos TSDB)",
           "type": "row"
         },
         {
@@ -977,7 +1334,7 @@ data:
             "type": "prometheus",
             "uid": "000000001"
           },
-          "description": "",
+          "description": "Exact individual time series and labelsets currently indexed in TSDB storage for \"$metric_name\" in pod \"$pod\".",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1010,7 +1367,7 @@ data:
             "h": 14,
             "w": 24,
             "x": 0,
-            "y": 33
+            "y": 42
           },
           "id": 9,
           "options": {
@@ -1043,7 +1400,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Raw Timeseries",
+          "title": "Raw Time Series",
           "type": "table"
         }
       ],
@@ -1057,34 +1414,35 @@ data:
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_name:cardinality,metric_name)",
+            "definition": "label_values(cardinality_estimate{group_by_keys=\"__name__\"},by__name__)",
             "includeAll": false,
             "label": "Metric name",
             "name": "metric_name",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_name:cardinality,metric_name)",
+              "query": "label_values(cardinality_estimate{group_by_keys=\"__name__\"},by__name__)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 2,
             "regex": "",
             "sort": 1,
-            "type": "query"
+            "type": "query",
+            "description": "Select an ingested metric. Note: Ingress estimates only measure front-door incoming streams. Internally synthesized metrics (such as Thanos Ruler recording rules, alerts, or TSDB-derived series) bypass ingress and will show \"No data\" in the top section—scroll down to the \"Exact Count (Thanos TSDB)\" panels for storage-level data."
           },
           {
             "datasource": {
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_name:cardinality{metric_name=\"$metric_name\"},cluster)",
+            "definition": "label_values({__name__=\"$metric_name\"},cluster)",
             "includeAll": false,
             "label": "Cluster",
             "name": "cluster",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_name:cardinality{metric_name=\"$metric_name\"},cluster)",
+              "query": "label_values({__name__=\"$metric_name\"},cluster)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 2,
@@ -1097,14 +1455,14 @@ data:
               "type": "prometheus",
               "uid": "000000001"
             },
-            "definition": "label_values(cluster_namespace:cardinality{cluster=\"$cluster\"},namespace)",
+            "definition": "label_values({__name__=\"$metric_name\", cluster=\"$cluster\"},namespace)",
             "includeAll": false,
             "label": "Namespace",
             "name": "namespace",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(cluster_namespace:cardinality{cluster=\"$cluster\"},namespace)",
+              "query": "label_values({__name__=\"$metric_name\", cluster=\"$cluster\"},namespace)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 1,
@@ -1140,12 +1498,12 @@ data:
       "timepicker": {},
       "timezone": "browser",
       "title": "Metric Name Cardinality / Cluster / Namespace / Pod",
-      "uid": "aeotjz90jlkw0f",
-      "version": 19
+      "uid": "j6djrnie7njo1r",
+      "version": 34
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-acm-metrics-cardinality-name
+  name: grafana-dashboard-acm-metrics-inspector-name
   namespace: open-cluster-management-observability
   annotations:
-    observability.open-cluster-management.io/dashboard-folder: Metrics Cardinality
+    observability.open-cluster-management.io/dashboard-folder: Metrics Inspector
